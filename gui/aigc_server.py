@@ -689,8 +689,16 @@ OSS_CONFIG = {
     'CUSTOM_DOMAIN': 'oceanedgen.oss-cn-shenzhen.aliyuncs.com'
 }
 
-auth = oss2.Auth(OSS_CONFIG['ACCESS_KEY_ID'], OSS_CONFIG['ACCESS_KEY_SECRET'])
-bucket = oss2.Bucket(auth, OSS_CONFIG['ENDPOINT'], OSS_CONFIG['BUCKET_NAME'])
+auth = None
+bucket = None
+if OSS_CONFIG['ACCESS_KEY_ID'] and OSS_CONFIG['ACCESS_KEY_SECRET']:
+    try:
+        auth = oss2.Auth(OSS_CONFIG['ACCESS_KEY_ID'], OSS_CONFIG['ACCESS_KEY_SECRET'])
+        bucket = oss2.Bucket(auth, OSS_CONFIG['ENDPOINT'], OSS_CONFIG['BUCKET_NAME'])
+    except Exception as e:
+        print(f"Warning: Failed to initialize Aliyun OSS: {e}")
+else:
+    print("Warning: Aliyun OSS credentials not found. OSS features will be disabled.")
 
 def generate_product_id():
     return f"prod_{datetime.now().strftime('%Y%m%d')}_{uuid.uuid4().hex[:8]}"
