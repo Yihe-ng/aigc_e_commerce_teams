@@ -52,28 +52,39 @@ python3.12 -m venv .venv
 
 #### 1.3 安装 PyTorch
 
-根据你的显卡类型选择合适的 PyTorch 版本：
+**关键步骤：选择正确的 CUDA 版本**
 
-**CUDA 版本（推荐用于 NVIDIA 显卡）**
+PyTorch 需要与你的显卡驱动版本兼容。请按照以下步骤操作：
 
-首先检查你的 CUDA 版本：
+1. **检查显卡驱动支持的最高 CUDA 版本**：
+   在命令行输入：
+   ```bash
+   nvidia-smi
+   ```
+   查看右上角的 `CUDA Version: xx.x`（例如 12.4）。**这是你的显卡驱动支持的最高版本**。
 
+2. **选择 PyTorch 版本**：
+   - 你安装的 PyTorch CUDA 版本必须 **小于或等于** 你的驱动支持版本。
+   - 推荐使用最新稳定版以获得最佳性能。
+
+**根据你的检查结果选择一条命令安装：**
+
+**情况 A：显卡驱动支持 CUDA 12.4 或更高（推荐 RTX 40/30 系列更新驱动后）**
 ```bash
-nvidia-smi
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 ```
 
-查看输出中的 `CUDA Version`，然后安装对应版本的 PyTorch：
-
+**情况 B：显卡驱动支持 CUDA 12.1 - 12.3**
 ```bash
-# CUDA 12.1 版本（适用于大多数现代 NVIDIA 显卡）
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+```
 
-# CUDA 11.8 版本（适用于较旧的 NVIDIA 显卡）
+**情况 C：显卡驱动较旧（支持 CUDA 11.8）**
+```bash
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
-**CPU 版本（适用于无显卡或非 NVIDIA 显卡）**
-
+**CPU 版本（无 NVIDIA 显卡）**
 ```bash
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 ```
@@ -129,20 +140,27 @@ conda activate qwen3_tts_env
 
 #### 2.3 安装 PyTorch
 
-根据你的显卡类型选择合适的 PyTorch 版本：
+**关键步骤：选择正确的 CUDA 版本**
 
-**CUDA 版本（推荐用于 NVIDIA 显卡）**
+1. 检查显卡驱动支持版本：`nvidia-smi`
+2. 选择 **小于或等于** 驱动支持版本的 PyTorch。
 
+**情况 A：显卡驱动支持 CUDA 12.4+（推荐）**
 ```bash
-# CUDA 12.1 版本
-conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
+conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
+```
 
-# CUDA 11.8 版本
+**情况 B：显卡驱动支持 CUDA 12.1**
+```bash
+conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
+```
+
+**情况 C：显卡驱动支持 CUDA 11.8**
+```bash
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 ```
 
-**CPU 版本（适用于无显卡或非 NVIDIA 显卡）**
-
+**CPU 版本**
 ```bash
 conda install pytorch torchvision torchaudio cpuonly -c pytorch
 ```
@@ -229,20 +247,27 @@ uv venv --python 3.12
 
 #### 3.4 安装 PyTorch
 
-根据你的显卡类型选择合适的 PyTorch 版本：
+**关键步骤：选择正确的 CUDA 版本**
 
-**CUDA 版本（推荐用于 NVIDIA 显卡）**
+1. 检查显卡驱动支持版本：`nvidia-smi`
+2. 选择 **小于或等于** 驱动支持版本的 PyTorch。
 
+**情况 A：显卡驱动支持 CUDA 12.4+（推荐）**
 ```bash
-# CUDA 12.1 版本
-uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+```
 
-# CUDA 11.8 版本
+**情况 B：显卡驱动支持 CUDA 12.1**
+```bash
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+```
+
+**情况 C：显卡驱动支持 CUDA 11.8**
+```bash
 uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
-**CPU 版本（适用于无显卡或非 NVIDIA 显卡）**
-
+**CPU 版本**
 ```bash
 uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 ```
@@ -651,8 +676,33 @@ python -m pip install --upgrade pip
 
 ### 6.1 显卡性能优化
 
+- **启用 FlashAttention 2（强烈推荐）**：
+  FlashAttention 2 可以显著降低显存占用并提升推理速度。
+  
+  **Windows 用户安装指南**：
+  Windows 下直接 pip 安装通常会因编译环境问题失败。推荐使用社区提供的预编译 whl 包：
+  1. 访问 [kingbri1/flash-attention releases](https://github.com/kingbri1/flash-attention/releases)
+  2. 根据你的 Python 版本（如 cp312）和 PyTorch/CUDA 版本下载对应的 `.whl` 文件
+     - 例如：`flash_attn-2.x.x+cu124torch2.6cxx11abiFALSE-cp312-cp312-win_amd64.whl`
+  3. 离线安装：`pip install <下载的文件名>.whl`
+  
+  **Linux 用户**：
+  ```bash
+  pip install flash-attn --no-build-isolation
+  ```
+  
+  **启用方法**：
+  在 `server.py` 中加载模型时添加 `attn_implementation="flash_attention_2"` 参数：
+  ```python
+  model = Qwen3TTSModel.from_pretrained(
+      model_dir,
+      device_map="cuda:0",
+      dtype=torch.bfloat16,
+      attn_implementation="flash_attention_2"
+  )
+  ```
+
 - **使用 bfloat16**：代码中已默认启用，可减少显存占用并提升速度
-- **启用 Flash Attention**：代码中已启用，可加速注意力计算
 - **关闭其他 GPU 程序**：释放更多显存给 TTS 模型
 
 ### 6.2 CPU 性能优化
@@ -711,8 +761,8 @@ python -m venv .venv
 # 3. 激活虚拟环境
 .venv\Scripts\Activate.ps1
 
-# 4. 安装 PyTorch（根据显卡选择）
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# 4. 安装 PyTorch（根据显卡选择，此处示例为 CUDA 12.4）
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 # 5. 安装项目依赖
 pip install modelscope fastapi uvicorn soundfile pydantic qwen-tts
@@ -734,8 +784,8 @@ conda activate qwen3_tts_env
 # 2. 进入项目目录
 cd %你的路径%\aigc_e_commerce
 
-# 3. 安装 PyTorch（根据显卡选择）
-conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
+# 3. 安装 PyTorch（根据显卡选择，此处示例为 CUDA 12.4）
+conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
 
 # 4. 安装项目依赖
 pip install modelscope fastapi uvicorn soundfile pydantic qwen-tts
@@ -762,8 +812,8 @@ uv venv --python 3.12
 # 4. 激活虚拟环境
 .venv\Scripts\Activate.ps1
 
-# 5. 安装 PyTorch（根据显卡选择）
-uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# 5. 安装 PyTorch（根据显卡选择，此处示例为 CUDA 12.4）
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 # 6. 安装项目依赖
 uv pip install modelscope fastapi uvicorn soundfile pydantic qwen-tts

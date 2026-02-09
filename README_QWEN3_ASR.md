@@ -2,6 +2,10 @@
 
 本文档详细说明如何在本项目中部署和使用 Qwen3-ASR 服务。
 
+**Qwen3-ASR** 是基于 Qwen3-Omni 基础模型开发的语音识别模型系列。
+*   **多语言支持**：支持 52 种语言和方言（包括中文、英语、日语、韩语、粤语等）。
+*   **高性能**：本项目默认使用的 **Qwen3-ASR-0.6B** 版本在保持高识别精度的同时，拥有极高的推理效率，支持流式与离线统一推理。
+
 ## 1. 环境准备
 
 确保您的系统已安装 Python 3.10 或更高版本，并已配置好虚拟环境（本项目使用 `.venv`）。
@@ -17,13 +21,25 @@
 
 ### 1.2 安装依赖
 
-Qwen3-ASR 需要 `transformers`、`torch`、`accelerate` 等库。我们推荐直接安装 `qwen-asr` 包，它会自动处理大部分依赖。
+Qwen3-ASR 需要 `qwen-asr` 核心包以及 `modelscope`（用于模型下载）。
 
 ```powershell
-pip install qwen-asr python-multipart uvicorn
+pip install -U qwen-asr modelscope python-multipart uvicorn
 ```
 
 *注意：如果遇到 `nagisa` 相关错误，无需理会，我们的服务端代码不依赖该模块。*
+
+### 1.3 模型下载（可选）
+
+服务端代码会在首次启动时自动通过 ModelScope 下载模型。如果您身处中国大陆，建议预先手动下载以确保速度和稳定性：
+
+```powershell
+# 安装 modelscope CLI（如果尚未安装）
+pip install -U modelscope
+
+# 下载模型（默认会下载到 ModelScope 缓存目录，server.py 会自动识别）
+modelscope download --model Qwen/Qwen3-ASR-0.6B
+```
 
 ## 2. 服务端部署
 
@@ -39,7 +55,7 @@ $env:PYTHONPATH="."
 python asr\qwen3_server\server.py
 ```
 
-*   **首次运行**: 会自动从 HuggingFace/ModelScope 下载 `Qwen/Qwen3-ASR-0.6B` 模型（约 1-2GB），请保持网络畅通。
+*   **首次运行**: 会自动从 ModelScope 下载 `Qwen/Qwen3-ASR-0.6B` 模型（约 1-2GB）。如果您已按照 1.3 节手动下载，这里将直接加载。
 *   **启动成功**: 当看到 `Uvicorn running on http://0.0.0.0:8001` 时，表示服务已就绪。
 
 ## 3. 项目配置
@@ -84,4 +100,5 @@ python main.py
 
 1.  **显存不足**: 默认配置尝试使用 CUDA (GPU)。如果显存不足或只有 CPU，代码会自动回退到 CPU 运行 (`device=cpu`)，但速度会较慢。
 2.  **端口冲突**: 如果 8001 端口被占用，请修改 `asr/qwen3_server/server.py` 和 `system.conf` 中的端口号。
-3.  **识别超时**: Qwen3 模型较大，首次推理或 CPU 推理可能较慢。我们在 `core/recorder.py` 中将超时时间调整为了 10 秒。
+3.87→3.  **识别超时**: 尽管 0.6B 模型推理很快，但在首次加载或纯 CPU 模式下仍可能稍慢。我们在 `core/recorder.py` 中将超时时间调整为了 10 秒。
+4.  **多语言识别**: 模型默认支持自动语种识别。您可以直接说中文、英文、日文等，无需额外配置。
