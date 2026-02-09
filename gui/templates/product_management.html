@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>商品信息管理</title>
+    <link href="../static/css/root.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Montserrat&display=swap" rel="stylesheet">
+    <style>
+        /* 2. 全屏粒子容器 */
+        #particles-js {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: transparent;
+        }
+
+        /* 3. 面板格子底纹 */
+        .panel-content-area {
+            background: 
+                /* 白色底色 */
+                white,
+                /* 青色网格 */
+                linear-gradient(rgba(94, 234, 212, 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(94, 234, 212, 0.3) 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-blend-mode: overlay;
+        }
+
+        /* 5. 表格特殊处理 */
+        #productTable {
+            background-color: white; /* 表格不透明 */
+        }
+
+        /* 为两个面板添加网格背景 */
+        .panel-border-animated {
+            position: relative;
+            background-color: rgba(255, 255, 255, 0.9); /* 半透明白色背景 */
+        }
+
+        .panel-border-animated::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(94, 234, 212, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(94, 234, 212, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            z-index: -1;
+            border-radius: inherit;
+        }
+
+
+        /* 面板样式 - 统一科技感 */
+        .panel-border-animated {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(94, 234, 212, 0.3);
+            box-shadow: 0 0 15px rgba(94, 234, 212, 0.1);
+            border-radius: 8px;
+            color: #e2e8f0;
+            backdrop-filter: blur(5px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel-border-animated::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #5eead4, transparent);
+            animation: border-flow 3s infinite;
+        }
+
+        @keyframes border-flow {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .panel-border-animated .panel-title {
+            padding: 15px;
+            font-size: 16px;
+            color: #5eead4;
+            background: rgba(15, 23, 42, 0.5);
+            border-bottom: 1px solid rgba(94, 234, 212, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* 表单控件样式 */
+        .form-control {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(94, 234, 212, 0.3);
+            color: #e2e8f0;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            background: rgba(15, 23, 42, 0.7);
+            border-color: #5eead4;
+            box-shadow: 0 0 0 2px rgba(94, 234, 212, 0.2);
+            color: #fff;
+        }
+
+        .form-label {
+            color: #94a3b8;
+        }
+
+        /* 按钮样式 */
+        .btn-primary {
+            background: linear-gradient(135deg, #5eead4 0%, #38bdf8 100%);
+            border: none;
+            color: #0f172a;
+            font-weight: 500;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #38bdf8 0%, #5eead4 100%);
+            box-shadow: 0 0 15px rgba(94, 234, 212, 0.5);
+        }
+
+        /* 商品表格样式 - 科技感风格 */
+        #productTable {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            table-layout: fixed;
+        }
+
+        #productTable thead th {
+            position: sticky;
+            top: 0;
+            background: rgba(15, 23, 42, 0.95);
+            z-index: 10;
+            padding: 15px;
+            color: #5eead4;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid rgba(94, 234, 212, 0.5);
+        }
+
+        #productTable td {
+            vertical-align: middle;
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(94, 234, 212, 0.1);
+            background: rgba(15, 23, 42, 0.7);
+            color: #e2e8f0;
+        }
+
+        #productTable tr:hover td {
+            background: rgba(94, 234, 212, 0.1);
+        }
+
+        /* 操作按钮样式 */
+        .edit-btn, .delete-btn {
+            min-width: 70px;
+            margin: 2px;
+            transition: all 0.3s;
+        }
+
+        .edit-btn {
+            background: rgba(94, 234, 212, 0.1);
+            border: 1px solid #5eead4;
+            color: #5eead4;
+        }
+
+        .edit-btn:hover {
+            background: rgba(94, 234, 212, 0.3);
+            box-shadow: 0 0 10px rgba(94, 234, 212, 0.3);
+        }
+
+        .delete-btn {
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid #f87171;
+            color: #f87171;
+        }
+
+        .delete-btn:hover {
+            background: rgba(248, 113, 113, 0.3);
+            box-shadow: 0 0 10px rgba(248, 113, 113, 0.3);
+        }
+
+        /* 图片样式 */
+        #productTable img {
+            max-height: 60px;
+            object-fit: contain;
+            border: 1px solid rgba(94, 234, 212, 0.3);
+            border-radius: 4px;
+            transition: all 0.3s;
+            background: rgba(0,0,0,0.2);
+        }
+
+        #productTable img:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(94, 234, 212, 0.5);
+        }
+
+        /* 特点列表样式 */
+        .list-unstyled li {
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #cbd5e1;
+            position: relative;
+            padding-left: 15px;
+        }
+
+        .list-unstyled li::before {
+            content: "•";
+            color: #5eead4;
+            position: absolute;
+            left: 0;
+        }
+
+        /* 价格样式 */
+        #productTable td:nth-child(4) {
+            color: #5eead4;
+            font-weight: 500;
+            font-size: 1.1em;
+        }
+
+        /* 表格滚动条样式 */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table-responsive::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: rgba(94, 234, 212, 0.7);
+            border-radius: 3px;
+        }
+
+        .table-responsive::-webkit-scrollbar-track {
+            background: rgba(94, 234, 212, 0.1);
+        }
+
+        /* 标题样式 */
+        .title {
+            color: #5eead4;
+            text-shadow: 0 0 10px rgba(94, 234, 212, 0.3);
+        }
+
+        .breadcrumb {
+            background: transparent;
+            color: #94a3b8;
+        }
+
+        /* 预览图片样式 */
+        .preview-image {
+            max-width: 120px;
+            max-height: 120px;
+            border: 1px solid rgba(94, 234, 212, 0.3);
+            border-radius: 4px;
+            transition: all 0.3s;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .preview-image:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(94, 234, 212, 0.5);
+        }
+
+        .image-container {
+            position: relative;
+            display: inline-block;
+            margin-right: 15px;
+            margin-bottom: 15px;
+        }
+
+        .remove-image {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ff4444;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            text-align: center;
+            line-height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .url-display {
+            font-size: 12px;
+            word-break: break-all;
+            display: block;
+            margin-top: 5px;
+            color: #ccc;
+            background: rgba(0,0,0,0.3);
+            padding: 5px;
+            border-radius: 3px;
+        }
+
+        .uploaded-image-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 5px;
+        }
+
+        /* 添加图片加载错误样式 */
+        .img-thumbnail {
+            background-color: rgba(0,0,0,0.1);
+            padding: 2px;
+        }
+
+        .img-thumbnail:before {
+            content: "图片加载中...";
+            display: block;
+            text-align: center;
+            line-height: 60px;
+            color: #999;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+<!-- 全屏粒子容器 -->
+<div id="particles-js"></div>
+
+<!-- ... existing header/sidebar code from index_main.html ... -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- START TOP -->
+<div id="top" class="clearfix">
+    <!-- Logo -->
+    <div class="applogo">
+        <a href="index_main.html" class="logo">
+            <span class="logo-text">智创电商营销系统</span>
+            <span class="logo-glow"></span>
+        </a>
+    </div>
+        <!-- 菜单按钮  -->
+        <a href="#" class="sidebar-open-button-mobile"><i class="fa fa-bars"></i></a>
+        <a href="#" class="sidebar-open-button"><i class="fa fa-bars"></i></a>
+    <!-- 搜索框 -->
+    <form class="searchform">
+        <input type="text" class="searchbox" id="searchbox" placeholder="搜索">
+        <span class="searchbutton"><i class="fa fa-search"></i></span>
+    </form>
+    
+    <!-- 用户菜单 -->
+    <ul class="top-right">
+        <li class="dropdown link">
+            <a href="#" data-toggle="dropdown" class="dropdown-toggle profilebox"><img
+                    src="static/images/用户头像.jpg" alt="img"><b>模拟用户</b><span
+                    class="caret"></span></a>
+            <ul class="dropdown-menu dropdown-menu-list dropdown-menu-right">
+                <li role="presentation" class="dropdown-header">更多</li>
+                <li><a href="#"><i class="fa falist fa-wrench"></i>设置</a></li>
+                <li><a href="#"><i class="fa falist fa-lock"></i> 修改密码</a></li>
+                <li><a href="#"><i class="fa falist fa-power-off"></i> 退出登录</a></li>
+                <li class="divider"></li>
+                <li><a href="#">更多功能更新中......</a></li>
+            </ul>
+        </li>
+    </ul>
+</div>
+<!-- END TOP -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- END TOP -->
+<!-- START SIDEBAR -->
+<div class="sidebar clearfix">
+    <ul class="sidebar-panel nav">
+        <li><a href="/home"><span class="icon color5"><i class="fa fa-home"></i></span>首页</a></li>
+        <li><a href="#" class="active"><span class="icon color10"><i class="fa fa-th"></i></span>商品信息管理<span
+                class="caret"></span></a>
+            <ul style="display: block;">
+                <li><a href="/product_management">商品基础信息库</a></li>
+                <li><a href="/product_marketing">商品营销素材库</a></li>
+            </ul>
+        </li>
+        <li><a href="test1"><span class="icon color5"><i class="fa fa-comment-o"></i></span>文案智造器</a></li>
+        <li><a href="test2"><span class="icon color11"><i class="fa fa-photo"></i></span>营销图创作</a></li>
+        <li><a href="test3"><span class="icon color8"><i class="fa fa-film"></i></span>短视频智造</a></li>
+        <li><a href="http://127.0.0.1:5000/setting"><span class="icon color12"><i class="fa fa-smile-o"></i></span>数字直播大厅</a></li>
+        <li><a href="calendar"><span class="icon color8"><i class="fa fa-calendar-o"></i></span>营销日程规划<span
+                class="label label-danger">NEW</span></a></li>
+        <li><a href="note"><span class="icon color8"><i class="fa fa-bullhorn"></i></span>营销笔记发布</a></li>
+        <li><a href="http://127.0.0.1:5000"><span class="icon color5"><i class="fa fa-desktop"></i></span>登录</a></li>
+    </ul>
+
+</div>
+<!-- END SIDEBAR -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<div class="content">
+    <div class="page-header">
+        <h1 class="title">商品基础信息库</h1>
+        <ol class="breadcrumb">
+            <li><a href="/home">首页</a></li>
+            <li class="active">商品基础信息库</li>
+        </ol>
+    </div>
+
+    <div class="container-padding">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-border-animated">
+                    <div class="panel-title">
+                        <i class="fa fa-plus-circle"></i> 添加/编辑商品信息
+                    </div>
+                    <div class="panel-body">
+                        <div id="alertsContainer" style="margin-bottom: 20px;"></div>
+                        <form id="productForm" class="form-horizontal">
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">商品名称</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" id="productName" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">商品类别</label>
+                                <div class="col-sm-10">
+                                    <select class="form-control" id="productCategory" required>
+                                        <option value="">选择分类</option>
+                                        <option value="服装">服装</option>
+                                        <option value="电子产品">电子产品</option>
+                                        <option value="食品">食品</option>
+                                        <option value="美妆">美妆</option>
+                                        <option value="其他">其他</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">价格</label>
+                                <div class="col-sm-10">
+                                    <div class="input-group">
+                                        <span class="input-group-addon">¥</span>
+                                        <input type="number" class="form-control" id="productPrice" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">商品特点</label>
+                                <div class="col-sm-10">
+                                    <textarea class="form-control" id="productFeatures" rows="3" required 
+                                              placeholder="每行输入一个特点，这些特点将用于AIGC内容生成"></textarea>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">详细描述</label>
+                                <div class="col-sm-10">
+                                    <textarea class="form-control" id="productDescription" rows="5" required></textarea>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">商品图片</label>
+                                <div class="col-sm-10">
+                                    <input type="file" class="form-control" id="productImages" 
+                                           accept="image/*" multiple>
+                                    <div class="help-block">支持JPG、PNG、GIF、WEBP格式，单个文件不超过20MB</div>
+                                    
+                                    <!-- 图片预览区域 -->
+                                    <div id="imagePreviewContainer" class="mt-3"></div>
+                                    
+                                    <!-- 上传进度条 -->
+                                    <div id="uploadProgressContainer" class="mt-3" style="display:none;">
+                                        <div class="progress">
+                                            <div id="uploadProgressBar" class="progress-bar progress-bar-striped active" 
+                                                 role="progressbar" style="width:0%">
+                                                <span id="progressText">0%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 已上传图片URL -->
+                                    <div id="uploadedImagesContainer" class="mt-3" style="display:none;">
+                                        <h5><i class="fa fa-image"></i> 已上传图片</h5>
+                                        <div id="uploadedImages" class="row"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div class="col-sm-offset-2 col-sm-10">
+                                    <button type="submit" class="btn btn-primary" id="saveBtn">
+                                        <i class="fa fa-save"></i> 保存商品
+                                    </button>
+                                    <button type="button" class="btn btn-default" id="resetBtn">
+                                        <i class="fa fa-refresh"></i> 重置
+                                    </button>
+                                    <button type="button" class="btn btn-danger" id="cancelEditBtn" style="display:none;">
+                                        <i class="fa fa-times"></i> 取消编辑
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-12">
+                <div class="panel panel-border-animated">
+                    <div class="panel-title">
+                        <i class="fa fa-list"></i> 商品列表
+                    </div>
+                    <div class="panel-body table-responsive">
+                        <table class="table table-hover" id="productTable">
+                            <thead>
+                                <tr>
+                                    <th width="10%">主图</th>
+                                    <th width="20%">名称</th>
+                                    <th width="15%">类别</th>
+                                    <th width="10%">价格</th>
+                                    <th width="30%">特点</th>
+                                    <th width="15%">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 动态内容将通过JavaScript填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 页脚 -->
+    <div class="row footer">
+        <div class="col-md-12 text-center">
+            智行合一团队 - 智创电商营销系统 © 2025
+        </div>
+    </div>
+</div>
+
+<!-- ... existing footer/scripts from index_main.html ... -->
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    let uploadedImageUrls = [];
+    let currentEditProduct = null;
+
+    const MAX_FILE_SIZE = 20 * 1024 * 1024;
+    const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+    $('#productImages').change(function() {
+        $('#imagePreviewContainer').empty();
+        
+        Array.from(this.files).forEach(file => {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const imgContainer = $('<div class="image-container"></div>');
+                const img = $(`<img src="${e.target.result}" class="preview-image">`);
+                const removeBtn = $('<div class="remove-image">×</div>');
+                
+                removeBtn.click(function() {
+                    imgContainer.remove();
+                });
+                
+                imgContainer.append(img).append(removeBtn);
+                $('#imagePreviewContainer').append(imgContainer);
+            };
+            
+            reader.readAsDataURL(file);
+        });
+    });
+
+    async function uploadImage(file) {
+        console.log("开始上传:", file.name);
+        try {
+            // 文件验证
+            if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+                throw new Error(`不支持的文件类型: ${file.type}`);
+            }
+            
+            if (file.size > MAX_FILE_SIZE) {
+                throw new Error(`文件大小超过${MAX_FILE_SIZE/1024/1024}MB限制`);
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // 显示上传进度
+            const response = await fetch('/upload_image', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || '上传失败');
+            }
+            
+            const result = await response.json();
+            console.log("上传成功:", result);
+            return result;
+            
+        } catch (error) {
+            console.error("上传失败:", error);
+            throw error;
+        }
+    }
+
+    $('#productForm').submit(async function(e) {
+        e.preventDefault();
+        
+        const submitBtn = $('#saveBtn');
+        submitBtn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> 处理中...');
+        
+        try {
+            uploadedImageUrls = [];
+            const files = $('#productImages')[0].files;
+            
+            if (files.length > 0) {
+                $('#uploadProgressContainer').show();
+                
+                for (let i = 0; i < files.length; i++) {
+                    const progress = Math.round(((i + 1) / files.length) * 100);
+                    $('#uploadProgressBar').css('width', progress + '%').text(progress + '%');
+                    
+                    try {
+                        const result = await uploadImage(files[i]);
+                        uploadedImageUrls.push(result.image_url);
+                        
+                        $('#uploadedImages').append(`
+                            <div class="col-md-3 uploaded-image-item">
+                                <img src="${result.image_url}" class="preview-image">
+                                <span class="url-display">${result.filename}</span>
+                            </div>
+                        `);
+                    } catch (error) {
+                        console.error(`文件 ${files[i].name} 上传失败:`, error);
+                        continue;
+                    }
+                }
+                // 确保进度条到达100%
+                $('#uploadProgressBar').css('width', '100%').text('100%');
+            }
+            
+            const productData = {
+                name: $('#productName').val(),
+                category: $('#productCategory').val(),
+                price: parseFloat($('#productPrice').val()),
+                features: $('#productFeatures').val().split('\n').map(f => f.trim()),
+                description: $('#productDescription').val(),
+                images: uploadedImageUrls
+            };
+            
+            const response = await fetch('/save_product', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(productData)
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.error || '保存失败');
+            }
+            
+            showAlert('商品信息保存成功！', 'success');
+            loadProducts(); // 刷新商品列表
+            
+        } catch (error) {
+            showAlert(`操作失败: ${error.message}`, 'danger');
+        } finally {
+            submitBtn.prop('disabled', false).html('<i class="fa fa-save"></i> 保存商品');
+        }
+    });
+
+    function showAlert(message, type = 'success') {
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        `;
+        $('#alertsContainer').html(alertHtml);
+        setTimeout(() => $('.alert').alert('close'), 5000);
+    }
+
+    function resetForm() {
+        $('#productForm')[0].reset();
+        $('#imagePreviewContainer').empty();
+        $('#uploadedImagesContainer').hide();
+        $('#uploadProgressContainer').hide();
+        uploadedImageUrls.length = 0;
+        currentEditProduct = null;
+        $('#saveBtn').html('<i class="fa fa-save"></i> 保存商品');
+    }
+
+    function loadProducts() {
+        $.get('/get_products', function(products) {
+            const tableBody = $('#productTable tbody');
+            tableBody.empty();
+            
+            products.forEach(product => {
+                // 确保主图URL正确处理
+                let mainImage = '<i class="fa fa-image fa-2x"></i>';
+                if (product.main_image) {
+                    // 统一URL格式
+                    let imageUrl = product.main_image;
+                    if (!imageUrl.startsWith('http')) {
+                        imageUrl = `https://${OSS_CUSTOM_DOMAIN}/${imageUrl}`;
+                    }
+                    // 添加错误处理
+                    mainImage = `
+                        <img src="${imageUrl}" 
+                             class="img-thumbnail" 
+                             style="max-height:60px;"
+                             onerror="this.onerror=null;this.parentElement.innerHTML='<i class=\\'fa fa-image fa-2x\\'></i>'">
+                    `;
+                }
+                
+                // 渲染商品行
+                tableBody.append(`
+                    <tr data-id="${product.id}">
+                        <td>${mainImage}</td>
+                        <td>${product.name}</td>
+                        <td>${product.category}</td>
+                        <td>¥${product.price.toFixed(2)}</td>
+                        <td><ul class="list-unstyled">${renderFeatures(product.features)}</ul></td>
+                        <td>
+                            <button class="btn btn-sm btn-info edit-btn">
+                                <i class="fa fa-edit"></i> 编辑
+                            </button>
+                            <button class="btn btn-sm btn-danger delete-btn">
+                                <i class="fa fa-trash"></i> 删除
+                            </button>
+                        </td>
+                    </tr>
+                `);
+            });
+        }).fail(error => {
+            console.error("加载商品失败:", error);
+            showAlert('加载商品列表失败: ' + error.statusText, 'danger');
+        });
+    }
+
+    // 辅助函数：处理特点显示
+    function renderFeatures(features) {
+        if (!features) return '';
+        if (Array.isArray(features)) {
+            return features.map(f => `<li>${f}</li>`).join('');
+        }
+        return features.split('\n').map(f => `<li>${f.trim()}</li>`).join('');
+    }
+
+    $(document).on('click', '.edit-btn', async function() {
+        const productId = $(this).closest('tr').data('id');
+        const submitBtn = $('#saveBtn');
+        submitBtn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> 加载中...');
+        
+        try {
+            const response = await fetch(`/get_product_detail/${productId}`);
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.error || '加载失败');
+            }
+            
+            // 填充表单
+            const product = result.product;
+            $('#productName').val(product.name);
+            $('#productCategory').val(product.category);
+            $('#productPrice').val(product.price);
+            $('#productFeatures').val(
+                Array.isArray(product.features) 
+                    ? product.features.join('\n') 
+                    : product.features
+            );
+            $('#productDescription').val(product.description);
+            
+            // 显示图片
+            $('#uploadedImages').empty();
+            if (product.images && product.images.length > 0) {
+                product.images.forEach(url => {
+                    $('#uploadedImages').append(`
+                        <div class="col-md-3 uploaded-image-item">
+                            <img src="${url}" class="preview-image">
+                            <span class="url-display">${url.split('/').pop()}</span>
+                            <button class="btn btn-xs btn-danger remove-image-btn" data-url="${url}">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    `);
+                });
+                uploadedImageUrls = [...product.images];
+            }
+            
+            currentEditProduct = productId;
+            $('#saveBtn').html('<i class="fa fa-save"></i> 更新商品');
+            $('#cancelEditBtn').show();
+            $('html, body').animate({ scrollTop: 0 }, 'slow');
+            
+        } catch (error) {
+            showAlert(`加载商品失败: ${error.message}`, 'danger');
+        } finally {
+            submitBtn.prop('disabled', false);
+        }
+    });
+
+    $(document).on('click', '.delete-btn', async function() {
+        const productId = $(this).closest('tr').data('id');
+        
+        if (!confirm(`确定要永久删除商品 ${productId} 吗？`)) return;
+        
+        try {
+            const response = await fetch(`/delete_product/${productId}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.error || '删除失败');
+            }
+            
+            showAlert('商品已删除', 'success');
+            loadProducts();
+            
+        } catch (error) {
+            console.error("删除失败:", error);
+            showAlert(`删除失败: ${error.message}`, 'danger');
+        }
+    });
+
+    $(document).on('click', '.remove-image-btn', function() {
+        const imageUrl = $(this).data('url');
+        if (confirm('确定要删除这张图片吗？')) {
+            $(this).closest('.uploaded-image-item').remove();
+            uploadedImageUrls = uploadedImageUrls.filter(url => url !== imageUrl);
+        }
+    });
+
+    $('#cancelEditBtn').click(function() {
+        resetForm();
+        $(this).hide();
+    });
+
+    loadProducts();
+    $('#resetBtn').click(resetForm);
+
+    // 添加拖拽上传功能
+    $('#uploadArea').on('dragover', e => {
+        e.preventDefault();
+        $(e.currentTarget).addClass('drag-over');
+    }).on('dragleave', e => {
+        $(e.currentTarget).removeClass('drag-over');
+    }).on('drop', e => {
+        e.preventDefault();
+        $(e.currentTarget).removeClass('drag-over');
+        $('#productImages')[0].files = e.originalEvent.dataTransfer.files;
+        updateFileList();
+    });
+
+    // 商品保存成功后处理
+    async function saveProduct(productData) {
+        const url = currentEditProduct 
+            ? `/save_product/${currentEditProduct}`
+            : '/save_product';
+        
+        const method = currentEditProduct ? 'PUT' : 'POST';
+        
+        try {
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...productData,
+                    images: uploadedImageUrls
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.error || '保存失败');
+            }
+            
+            showAlert(currentEditProduct ? '商品更新成功！' : '商品添加成功！', 'success');
+            resetForm();
+            loadProducts();
+            
+            return result;
+            
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // 新增：面板格子动态效果
+    document.querySelectorAll('.panel-border-animated').forEach(panel => {
+        panel.addEventListener('mousemove', (e) => {
+            const x = e.clientX - panel.getBoundingClientRect().left;
+            const y = e.clientY - panel.getBoundingClientRect().top;
+            panel.style.backgroundPosition = `${-x*0.05}px ${-y*0.05}px`;
+        });
+    });
+});
+</script>
+
+<div id="alertContainer"></div>
+<div id="uploadProgressContainer" style="display: none;">
+    <div class="progress">
+        <div id="uploadProgressBar" class="progress-bar"></div>
+    </div>
+</div>
+<div id="uploadedImages" class="row"></div>
+<!-- 在原有JS引用后添加 -->
+<script src="../static/js/particles.min.js"></script>
+<script src="../static/js/particles-init.js"></script>
+</body>
+</html> 

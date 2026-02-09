@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description"
+          content="Kode is a Premium Bootstrap Admin Template, It's responsive, clean coded and mobile friendly">
+    <meta name="keywords" content="bootstrap, admin, dashboard, flat admin template, responsive,"/>
+    <title>视频生成 - AI应用创新团队</title>
+
+    <!-- ========== Css Files ========== -->
+    <link href="../static/css/root.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Montserrat&display=swap" rel="stylesheet">
+    <style>
+        .panel-border-animated {
+            background: linear-gradient(135deg, #1e5799 0%,#207cca 51%,#2989d8 100%);
+            border: 1px solid #399bff;
+            box-shadow: 0 0 10px rgba(57, 155, 255, 0.5);
+            border-radius: 4px;
+            color: white;
+        }
+        /* 视频生成商品选择器样式 */
+        #video-product-category, #video-product-select {
+            border-radius: 4px;
+            padding: 8px 12px;
+            border: 1px solid rgba(94, 234, 212, 0.3);
+            background: rgba(15, 23, 42, 0.7);
+            color: #e2e8f0;
+        }
+        
+        #video-product-category {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            border-right: none;
+        }
+        
+        #video-product-select {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+        }
+        
+        /* 视频预览区域样式 */
+        #video-image-preview {
+            background: rgba(15, 23, 42, 0.5);
+            transition: all 0.3s;
+        }
+        
+        #video-image-preview:hover {
+            border-color: rgba(94, 234, 212, 0.5);
+        }
+        
+        /* 生成日志样式 */
+        #video-generation-log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-family: monospace;
+            font-size: 13px;
+        }
+    </style>
+
+</head>
+<body>
+<div id="particles-js"></div>
+<!-- Start Page Loading -->
+<div class="loading"><img src="{{ url_for('static', filename='images/loading.gif') }}" alt="loading-img"></div>
+<!-- End Page Loading -->
+<!-- START TOP -->
+<div id="top" class="clearfix">
+    <!-- Logo -->
+    <div class="applogo">
+        <a href="index_main.html" class="logo">
+            <span class="logo-text">智创电商营销系统</span>
+            <span class="logo-glow"></span>
+        </a>
+    </div>
+        <!-- 菜单按钮  -->
+        <a href="#" class="sidebar-open-button-mobile"><i class="fa fa-bars"></i></a>
+        <a href="#" class="sidebar-open-button"><i class="fa fa-bars"></i></a>
+    <!-- 搜索框 -->
+    <form class="searchform">
+        <input type="text" class="searchbox" id="searchbox" placeholder="搜索">
+        <span class="searchbutton"><i class="fa fa-search"></i></span>
+    </form>
+    
+    <!-- 用户菜单 -->
+    <ul class="top-right">
+        <li class="dropdown link">
+            <a href="#" data-toggle="dropdown" class="dropdown-toggle profilebox"><img
+                    src="static/images/用户头像.jpg" alt="img"><b>模拟用户</b><span
+                    class="caret"></span></a>
+            <ul class="dropdown-menu dropdown-menu-list dropdown-menu-right">
+                <li role="presentation" class="dropdown-header">更多</li>
+                <li><a href="#"><i class="fa falist fa-wrench"></i>设置</a></li>
+                <li><a href="#"><i class="fa falist fa-lock"></i> 修改密码</a></li>
+                <li><a href="#"><i class="fa falist fa-power-off"></i> 退出登录</a></li>
+                <li class="divider"></li>
+                <li><a href="#">更多功能更新中......</a></li>
+            </ul>
+        </li>
+    </ul>
+</div>
+<!-- END TOP -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- START SIDEBAR -->
+<div class="sidebar clearfix">
+    <ul class="sidebar-panel nav">
+        <li><a href="/home"><span class="icon color5"><i class="fa fa-home"></i></span>首页</a></li>
+        <li><a href="#"><span class="icon color10"><i class="fa fa-th"></i></span>商品信息管理<span class="caret"></span></a>
+            <ul>
+                <li><a href="/product_management">商品基础信息库</a></li>
+                <li><a href="/product_marketing">商品营销素材库</a></li>
+            </ul>
+        </li>
+        <li><a href="test1"><span class="icon color5"><i class="fa fa-comment-o"></i></span>文案智造器</a></li>
+        <li><a href="test2"><span class="icon color11"><i class="fa fa-photo"></i></span>营销图创作</a></li>
+        <li><a href="test3" class="active"><span class="icon color8"><i class="fa fa-film"></i></span>短视频智造</a></li>
+        <li><a href="http://127.0.0.1:5000/setting"><span class="icon color12"><i class="fa fa-smile-o"></i></span>数字直播大厅</a></li>
+        <li><a href="calendar"><span class="icon color8"><i class="fa fa-calendar-o"></i></span>营销日程规划<span class="label label-danger">NEW</span></a></li>
+        <li><a href="note"><span class="icon color8"><i class="fa fa-bullhorn"></i></span>营销笔记发布</a></li>
+        <li><a href="http://127.0.0.1:5000"><span class="icon color5"><i class="fa fa-desktop"></i></span>登录</a></li>
+    </ul>
+</div>
+<!-- END SIDEBAR -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- START CONTENT -->
+<div class="content">
+    <!-- Start Page Header -->
+    <div class="page-header">
+        <h1 class="title">视频生成</h1>
+        <ol class="breadcrumb">
+            <li><a href="/">首页</a></li>
+            <li class="active">视频生成</li>
+        </ol>
+    </div>
+    <!-- End Page Header -->
+    <!-- START CONTAINER -->
+    <div class="container-padding">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-border-animated">
+                    <div class="panel-title">
+                        <i class="fa fa-film"></i> 视频生成设置
+                    </div>
+                    <div class="panel-body">
+                        <form class="form-horizontal" id="videoForm">
+                            <div class="form-group">
+                                <label class="form-label">选择商品素材</label>
+                                <div class="input-group mb-3">
+                                    <select class="form-select" id="video-product-category" style="max-width: 150px;">
+                                        <option value="">所有分类</option>
+                                    </select>
+                                    <select class="form-select" id="video-product-select">
+                                        <option value="">请先选择分类</option>
+                                    </select>
+                                </div>
+                                <input type="hidden" id="video-selected-image-url">
+                                <div id="video-image-preview" class="mt-3 border rounded p-2" style="min-height: 150px; display: flex; justify-content: center; align-items: center;">
+                                    <span class="text-muted">视频将基于此图片生成</span>
+                                </div>
+                            </div>
+                            
+                            <!-- 新增文本描述输入框 -->
+                            <div class="form-group">
+                                <label for="video-description" class="form-label">视频描述文本</label>
+                                <textarea class="form-control" id="video-description" rows="3" 
+                                          placeholder="请输入视频描述内容，例如：视频是一个洗发露，背景出现花朵"></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <div class="col-sm-offset-2 col-sm-10">
+                                    <button type="button" class="btn btn-primary" id="generateBtn">
+                                        <i class="fa fa-magic"></i> 生成视频
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 结果展示区域 -->
+                <div class="panel panel-border-animated" id="resultPanel" style="display:none;">
+                    <div class="panel-title">
+                        <i class="fa fa-video-camera"></i> 生成结果
+                    </div>
+                    <div class="panel-body">
+                        <div id="progressBar" class="progress" style="margin-bottom:15px;">
+                            <div class="progress-bar progress-bar-striped active" role="progressbar" style="width:0%"></div>
+                        </div>
+                        <div id="statusLog" style="height:100px;overflow-y:auto;margin-bottom:15px;background:#1a1a1a;padding:10px;border-radius:4px;"></div>
+                        
+                        <div class="row" id="resultContainer" style="display:none;">
+                            <div class="col-md-6">
+                                <div class="panel panel-border-animated">
+                                    <div class="panel-title">输入图片</div>
+                                    <div class="panel-body">
+                                        <img id="inputImage" src="" style="max-width:100%;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="panel panel-border-animated">
+                                    <div class="panel-title">生成视频</div>
+                                    <div class="panel-body">
+                                        <video id="outputVideo" controls style="max-width:100%;"></video>
+                                        <div class="mt-3">
+                                            <a id="downloadBtn" href="#" class="btn btn-success">
+                                                <i class="fa fa-download"></i> 下载视频
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 页脚 -->
+    <div class="row footer">
+        <div class="col-md-12 text-center">
+            智行合一团队 - 智创电商营销系统 © 2025
+        </div>
+    </div>
+</div>
+<!-- End Content -->
+
+<!-- 先加载jQuery（如果前面没加载成功） -->
+<script type="text/javascript" src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+
+<!-- 然后加载其他依赖 -->
+<script src="{{ url_for('static', filename='js/bootstrap/bootstrap.min.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/plugins.js') }}"></script>
+
+<!-- 保留您的视频生成脚本 -->
+<script>
+$(document).ready(function() {
+    // 初始化加载所有分类
+    loadVideoCategories();
+
+    // 分类选择变化时加载商品
+    $('#video-product-category').change(function() {
+        const category = $(this).val();
+        loadVideoProductsByCategory(category);
+    });
+
+    // 商品选择变化时显示预览
+    $('#video-product-select').change(function() {
+        updateVideoImagePreview();
+    });
+
+    // 生成视频按钮点击事件
+    $('#generateBtn').click(function() {
+        const imageUrl = $('#video-selected-image-url').val();
+        
+        if (!imageUrl) {
+            alert('请先选择商品图片');
+            return;
+        }
+        
+        generateVideoFromImage(imageUrl);
+    });
+});
+
+// 加载视频生成可用的商品分类
+function loadVideoCategories() {
+    $.get('/api/oss/categories')
+    .done(function(response) {
+        if (response.status === 'success') {
+            const $categorySelect = $('#video-product-category');
+            $categorySelect.empty().append('<option value="">所有分类</option>');
+            
+            response.data.forEach(category => {
+                $categorySelect.append(`<option value="${category}">${category}</option>`);
+            });
+        }
+    })
+    .fail(function() {
+        console.error('加载分类失败');
+    });
+}
+
+// 从OSS加载商品数据（视频专用）
+function loadVideoProductsByCategory(category) {
+    const $productSelect = $('#video-product-select');
+    $productSelect.empty().append('<option value="">加载中...</option>');
+    
+    $.get('/api/oss/products', { 
+        category: category,
+        has_images: true  // 只返回有图片的商品
+    })
+    .done(function(response) {
+        $productSelect.empty();
+        
+        if (response.data && response.data.length > 0) {
+            $productSelect.append('<option value="">选择商品</option>');
+            
+            response.data.forEach(product => {
+                // 确保商品有图片才显示
+                if (product.images && product.images.length > 0) {
+                    $productSelect.append(`
+                        <option 
+                            value="${product.id}" 
+                            data-main-image="${product.images[0]}"
+                            data-product-name="${product.name}">
+                            ${product.name} (${product.images.length}张图片)
+                        </option>
+                    `);
+                }
+            });
+        } else {
+            $productSelect.append('<option value="">该分类下无可用商品</option>');
+        }
+    })
+    .fail(function() {
+        $productSelect.empty().append('<option value="">加载失败</option>');
+    });
+}
+
+// 更新视频生成预览图
+function updateVideoImagePreview() {
+    const selectedOption = $('#video-product-select option:selected');
+    const mainImage = selectedOption.data('main-image');
+    const productName = selectedOption.data('product-name') || '未命名商品';
+    
+    $('#video-selected-image-url').val(mainImage || '');
+    const $preview = $('#video-image-preview');
+    
+    $preview.empty();
+    
+    if (mainImage) {
+        $preview.html(`
+            <div class="text-center">
+                <img src="${mainImage}" class="img-fluid rounded mb-2" 
+                     style="max-height: 180px;">
+                <div class="text-truncate" title="${productName}">
+                    <small>${productName}</small>
+                </div>
+            </div>
+        `);
+    } else {
+        $preview.html('<span class="text-muted">该商品暂无可用图片</span>');
+    }
+}
+
+// 视频生成函数
+function generateVideoFromImage(imageUrl) {
+    // 获取文本描述内容
+    const textDescription = $('#video-description').val() || '';
+    
+    // 显示加载状态
+    $('#resultPanel').show();
+    $('#resultContainer').hide();
+    $('.progress-bar').css('width', '0%').addClass('active');
+    $('#statusLog').html('');
+
+    function logStatus(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        $('#statusLog').append(`<div>[${timestamp}] ${message}</div>`);
+        $('#statusLog').scrollTop($('#statusLog')[0].scrollHeight);
+    }
+
+    logStatus('开始视频生成任务...');
+    logStatus(`使用描述文本: ${textDescription || '无描述文本'}`);
+    
+    $.ajax({
+        url: '/api/generate_video',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            image_url: imageUrl,
+            text_description: textDescription  // 添加文本描述参数
+        }),
+        success: function(response) {
+            if (response.status === 'success') {
+                // 更新进度和日志
+                response.log.forEach(log => logStatus(log));
+                logStatus(`视频URL: ${response.video_url}`);
+                logStatus(`封面图: ${response.cover_url}`);
+                
+                // 显示结果
+                $('#inputImage').attr('src', response.cover_url);
+                $('#outputVideo').attr('src', response.video_url);
+                $('#downloadBtn').attr('href', response.video_url);
+                
+                $('.progress-bar').css('width', '100%').removeClass('active');
+                $('#resultContainer').show();
+                
+                // 自动保存到OSS
+                const productId = $('#video-product-select').val();
+                if (productId) {
+                    saveGeneratedVideo(productId, response.video_url);
+                }
+            } else {
+                throw new Error(response.error || '视频生成失败');
+            }
+        },
+        error: function(xhr) {
+            const errorMsg = xhr.responseJSON && xhr.responseJSON.error ? 
+                            xhr.responseJSON.error : '请求失败';
+            logStatus(`生成失败: ${errorMsg}`);
+            $('.progress-bar').css('width', '100%').removeClass('active');
+        }
+    });
+}
+
+// 保存生成的视频到OSS
+function saveGeneratedVideo(productId, videoUrl) {
+    // 显示保存状态
+    const $statusLog = $('#statusLog');
+    function logSaveStatus(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        $statusLog.append(`<div>[${timestamp}] ${message}</div>`);
+        $statusLog.scrollTop($statusLog[0].scrollHeight);
+    }
+
+    logSaveStatus('开始保存视频到OSS...');
+    
+    $.ajax({
+        url: '/api/save_generated_content',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            product_id: productId,
+            type: 'video',
+            file_url: videoUrl,
+            // 添加自定义路径参数
+            custom_path: `products/${productId}/generated_content/videos/`
+        }),
+        success: function(response) {
+            if (response.status === 'success') {
+                logSaveStatus(`视频已保存到OSS: ${response.oss_url}`);
+                logSaveStatus(`保存路径: ${response.save_path}`);
+                
+                // 更新下载按钮链接为OSS URL
+                $('#downloadBtn').attr('href', response.oss_url);
+            } else {
+                logSaveStatus(`保存失败: ${response.error || '未知错误'}`);
+            }
+        },
+        error: function(xhr) {
+            const errorMsg = xhr.responseJSON && xhr.responseJSON.error ? 
+                            xhr.responseJSON.error : '请求失败';
+            logSaveStatus(`保存失败: ${errorMsg}`);
+        }
+    });
+}
+</script>
+
+<!-- ================================================
+Bootstrap Select
+================================================ -->
+<script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap-select/bootstrap-select.js') }}"></script>
+
+<!-- ================================================
+Bootstrap Toggle
+================================================ -->
+<script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap-toggle/bootstrap-toggle.min.js') }}"></script>
+<script src="/static/js/particles.min.js"></script>
+<script src="/static/js/particles-init.js"></script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description"
+          content="Kode is a Premium Bootstrap Admin Template, It's responsive, clean coded and mobile friendly">
+    <meta name="keywords" content="bootstrap, admin, dashboard, flat admin template, responsive,"/>
+    <title>营销日程规划</title>
+
+    <!-- ========== Css Files ========== -->
+    <link href="{{ url_for('static', filename='css/root.css') }}" rel="stylesheet">
+</head>
+<body>
+<div id="particles-js"></div>
+<!-- Start Page Loading -->
+<div class="loading">
+    <img src="{{ url_for('static', filename='images/loading.gif') }}" alt="loading-img">
+</div>
+<!-- End Page Loading -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- START TOP -->
+<div id="top" class="clearfix">
+    <!-- Logo -->
+    <div class="applogo">
+        <a href="index_main.html" class="logo">
+            <span class="logo-text">智创电商营销系统</span>
+            <span class="logo-glow"></span>
+        </a>
+    </div>
+        <!-- 菜单按钮  -->
+        <a href="#" class="sidebar-open-button-mobile"><i class="fa fa-bars"></i></a>
+        <a href="#" class="sidebar-open-button"><i class="fa fa-bars"></i></a>
+    <!-- 搜索框 -->
+    <form class="searchform">
+        <input type="text" class="searchbox" id="searchbox" placeholder="搜索">
+        <span class="searchbutton"><i class="fa fa-search"></i></span>
+    </form>
+    
+    <!-- 用户菜单 -->
+    <ul class="top-right">
+        <li class="dropdown link">
+            <a href="#" data-toggle="dropdown" class="dropdown-toggle profilebox">
+    <img src="{{ url_for('static', filename='images/用户头像.jpg') }}" alt="img">
+    <b>模拟用户</b>
+    <span class="caret"></span>
+</a>
+                <li role="presentation" class="dropdown-header">更多</li>
+                <li><a href="#"><i class="fa falist fa-wrench"></i>设置</a></li>
+                <li><a href="#"><i class="fa falist fa-lock"></i> 修改密码</a></li>
+                <li><a href="#"><i class="fa falist fa-power-off"></i> 退出登录</a></li>
+                <li class="divider"></li>
+                <li><a href="#">更多功能更新中......</a></li>
+            </ul>
+        </li>
+    </ul>
+</div>
+<!-- END TOP -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- START SIDEBAR -->
+<div class="sidebar clearfix">
+    <ul class="sidebar-panel nav">
+        <li><a href="/home"><span class="icon color5"><i class="fa fa-home"></i></span>首页</a></li>
+        <li><a href="#"><span class="icon color10"><i class="fa fa-th"></i></span>商品信息管理<span class="caret"></span></a>
+            <ul>
+                <li><a href="/product_management">商品基础信息库</a></li>
+                <li><a href="/product_marketing">商品营销素材库</a></li>
+            </ul>
+        </li>
+       <li><a href="http://127.0.0.1:5000/test1"><span class="icon color5"><i class="fa fa-comment-o"></i></span>文案智造器</a></li>
+<li><a href="http://127.0.0.1:5000/test2"><span class="icon color11"><i class="fa fa-photo"></i></span>营销图创作</a></li>
+<li><a href="http://127.0.0.1:5000/test3"><span class="icon color8"><i class="fa fa-film"></i></span>短视频智造</a></li>
+
+<li><a href="http://127.0.0.1:5000/setting"><span class="icon color12"><i class="fa fa-smile-o"></i></span>数字直播大厅</a></li>
+
+<li><a href="http://127.0.0.1:5000/calendar"><span class="icon color8"><i class="fa fa-calendar-o"></i></span>营销日程规划<span class="label label-danger">NEW</span></a></li>
+<li><a href="http://127.0.0.1:5000/note"><span class="icon color8"><i class="fa fa-bullhorn"></i></span>营销笔记发布</a></li>
+
+<li><a href="http://127.0.0.1:5000"><span class="icon color5"><i class="fa fa-desktop"></i></span>登录</a></li>
+    </ul>
+</div>
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- START CONTENT -->
+<div class="content">
+
+    <!-- //////////////////////////////////////////////////////////////////////////// -->
+    <!-- START CONTAINER -->
+    <div class="calendar-layout clearfix">
+
+        <div class="col-md-2">
+
+            <div id='external-events'>
+                <h6 class="font-title"><i class="fa fa-arrows"></i> 可选择事件</h6>
+                <p>拖入日历中</p>
+                <div class='fc-event'>团队开会</div>
+                <div class='fc-event'>发布广告图片</div>
+                <div class='fc-event'>发布广告视频</div>
+                <div class='fc-event'>直播</div>
+            </div>
+
+        </div>
+
+        <div class="col-md-10">
+            <div id='calendar'></div>
+        </div>
+
+
+    </div>
+    <!-- END CONTAINER -->
+    <!-- //////////////////////////////////////////////////////////////////////////// -->
+
+
+    <!-- Start Footer -->
+    <div class="row footer">
+        <div class="col-md-6 text-left">
+            智行合一团队-智创电商营销系统
+        </div>
+    </div>
+    <!-- End Footer -->
+
+
+</div>
+<!-- End Content -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- START SIDEPANEL -->
+<div role="tabpanel" class="sidepanel">
+
+    <!-- Nav tabs -->
+    <ul class="nav nav-tabs" role="tablist">
+        <li role="presentation" class="active"><a href="#today" aria-controls="today" role="tab"
+                                                  data-toggle="tab">TODAY</a></li>
+        <li role="presentation"><a href="#tasks" aria-controls="tasks" role="tab" data-toggle="tab">TASKS</a></li>
+        <li role="presentation"><a href="#chat" aria-controls="chat" role="tab" data-toggle="tab">CHAT</a></li>
+    </ul>
+
+    <!-- Tab panes -->
+    <div class="tab-content">
+
+        <!-- Start Today -->
+        <div role="tabpanel" class="tab-pane active" id="today">
+
+            <div class="sidepanel-m-title">
+                Today
+                <span class="left-icon"><a href="#"><i class="fa fa-refresh"></i></a></span>
+                <span class="right-icon"><a href="#"><i class="fa fa-file-o"></i></a></span>
+            </div>
+
+            <div class="gn-title">NEW</div>
+
+        </div>
+        <!-- End Today -->
+    </div>
+
+</div>
+<!-- END SIDEPANEL -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+
+
+<!-- ================================================
+jQuery Library
+================================================ -->
+<script type="text/javascript" src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+
+<!-- ================================================
+Bootstrap Core JavaScript File
+================================================ -->
+<script src="../static/js/bootstrap/bootstrap.min.js"></script>
+
+<!-- ================================================
+Plugin.js - Some Specific JS codes for Plugin Settings
+================================================ -->
+<script type="text/javascript" src="../static/js/plugins.js"></script>
+
+<!-- ================================================
+jQuery UI
+================================================ -->
+<script type="text/javascript" src="../static/js/jquery-ui/jquery-ui.min.js"></script>
+
+<!-- ================================================
+Moment.js
+================================================ -->
+<script type="text/javascript" src="../static/js/moment/moment.min.js"></script>
+
+<!-- ================================================
+Full Calendar
+================================================ -->
+<script type="text/javascript" src="../static/js/full-calendar/fullcalendar.js"></script>
+
+
+<script>
+
+    $(document).ready(function () {
+
+
+        /* initialize the external events
+				-----------------------------------------------------------------*/
+        $('#external-events .fc-event').each(function () {
+
+            // store data so the calendar knows to render an event upon drop
+            $(this).data('event', {
+                title: $.trim($(this).text()), // use the element's text as the event title
+                stick: true // maintain when user navigates (see docs on the renderEvent method)
+            });
+
+            // make the event draggable using jQuery UI
+            $(this).draggable({
+                zIndex: 999,
+                revert: true,      // will cause the event to go back to its
+                revertDuration: 0  //  original position after the drag
+            });
+
+        });
+
+
+        /* initialize the calendar
+				-----------------------------------------------------------------*/
+        $('#calendar').fullCalendar({
+            header: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'month,basicWeek,basicDay'
+            },
+            defaultDate: '2025-4-8',
+            editable: true,
+            droppable: true, // this allows things to be dropped onto the calendar
+            eventLimit: true, // allow "more" link when too many events
+            events: [
+                {
+                    title: '重要事件',
+                    start: '2025-4-4',
+                    color: '#EF4836'
+                },
+                {
+                    title: '产品发布',
+                    start: '2025-4-12',
+                    end: '2025-4-13',
+                    color: '#9A80B9'
+                },
+                {
+                    id: 999,
+                    title: '直播',
+                    start: '2025-4-11T16:00:00'
+                },
+                {
+                    id: 999,
+                    title: '直播',
+                    start: '2025-4-11T16:00:00'
+                },
+                {
+                    title: '团队培训',
+                    start: '2025-4-8',
+                    end: '2025-4-9',
+                    color: '#E99844'
+                },
+                {
+                    title: '宣传图发布',
+                    start: '2025-4-21T10:30:00',
+                    end: '2025-4-21T12:30:00'
+                },
+                {
+                    title: '宣传视频发布',
+                    start: '2025-4-22T12:00:00'
+                },
+                {
+                    title: '会议',
+                    start: '2025-4-16T14:30:00'
+                },
+                {
+                    title: '数字人直播',
+                    start: '2025-4-25T17:30:00'
+                },
+                {
+                    title: '团队活动',
+                    start: '2025-4-20T07:00:00',
+                    color: '#26A65B'
+                },
+            ]
+        });
+
+    });
+
+
+</script>
+<script src="{{ url_for('static', filename='js/particles.min.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/particles-init.js') }}"></script>
+</body>
+</html>

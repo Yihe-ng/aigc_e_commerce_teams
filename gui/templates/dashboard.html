@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="用户数据看板--销售利润可视化">
+    <meta name="keywords" content="用户数据看板,销售额,利润"/>
+    <title>用户数据看板</title>
+
+    <!-- CSS 文件 -->
+    <link href="../static/css/root.css" rel="stylesheet">
+    <link href="../static/css/index.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Montserrat&display=swap" rel="stylesheet">
+    <!-- 引入Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- 引入ECharts图表库 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- 引入SheetJS库用于导出Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+
+    <style>
+        /* 所有原始样式保持不变 */
+        /* 新增样式 - 确保统计卡片均匀分布 */
+        .stats-container {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+
+        /* 收入利润图占满整行 */
+        .charts-row-2 {
+            grid-template-columns: 1fr !important;
+        }
+
+        /* 添加滚动功能 */
+        .content-wrapper {
+            position: fixed;
+            top: 60px; /* 顶部导航高度 */
+            left: 250px; /* 侧边栏宽度 */
+            right: 0;
+            bottom: 0;
+            overflow-y: auto;
+            background: #f5f7fa;
+            /* 增加底部内边距 */
+            padding: 20px 20px 80px;
+        }
+
+        /* 优化图表布局 */
+        .chart-container {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #eaeaea;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .chart-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .chart-update {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .chart-content {
+            height: 300px;
+        }
+
+        /* 统计卡片优化 */
+        .stat-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eaeaea;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            font-size: 22px;
+        }
+
+        /* 表格优化 */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .data-table th {
+            background-color: #f8f9fa;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .data-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-table tr:hover td {
+            background-color: #f8f9fa;
+        }
+
+        /* 进度条样式 */
+
+        /* 响应式调整 */
+        @media (max-width: 1200px) {
+            .content-wrapper {
+                left: 200px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .content-wrapper {
+                left: 60px;
+            }
+        }
+
+        /* 新增：筛选控件布局优化 */
+        .filter-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .filter-item {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-item label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .filter-item select {
+            width: 100%;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            background: #f9fbff;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.5; /* 文字垂直居中，避免截断 */
+            padding-top: 6px; /* 微调内边距，给文字留空间 */
+            padding-bottom: 8px;
+            font-family: "Microsoft YaHei", sans-serif; /* 明确字体，避免 fallback 乱码 */
+        }
+
+        /* 新增：卡片布局优化 */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        @media (max-width: 1200px) {
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 保持原有列数配置，仅补充居中 */
+        .charts-row-2 {
+            grid-template-columns: 2fr 1fr;
+        }
+
+        /* 小窗口适配（768px以下） */
+        @media (max-width: 768px) {
+            /* 图表容器在小窗口时占满可用宽度，保持居中 */
+            .chart-container {
+                width: 100%;
+                max-width: 500px; /* 限制最大宽度，避免拉伸变形 */
+            }
+        }
+
+        /* 新增：加载动画 */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(47, 128, 237, 0.2);
+            border-top: 4px solid #2f80ed;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 状态消息样式 */
+        .status-message {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            text-align: center;
+            color: #666;
+        }
+
+        .status-message i {
+            font-size: 48px;
+            color: #2f80ed;
+            margin-bottom: 15px;
+        }
+
+        /* 新增：关键数字醒目样式 - 改为蓝色 */
+        .stat-highlight {
+            color: #3498db !important; /* 蓝色 */
+            font-weight: 700;
+            font-size: 2.2rem;
+            text-shadow: 0 0 8px rgba(52, 152, 219, 0.3); /* 蓝色发光效果 */
+        }
+
+        @media (max-width: 992px) {
+            .footer {
+                left: 60px;
+            }
+        }
+
+        /* 新增：活跃度表格搜索和分页样式 */
+        /* 确保表格不会溢出 */
+        .chart-content table {
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        .chart-content th,
+        .chart-content td {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 固定表格列宽 */
+        .chart-content th:nth-child(1),
+        .chart-content td:nth-child(1) {
+            width: 10%;
+        }
+
+        .chart-content th:nth-child(2),
+        .chart-content td:nth-child(2) {
+            width: 25%;
+        }
+
+        .chart-content th:nth-child(3),
+        .chart-content td:nth-child(3) {
+            width: 15%;
+        }
+
+        .chart-content th:nth-child(4),
+        .chart-content td:nth-child(4) {
+            width: 15%;
+        }
+
+        .chart-content th:nth-child(5),
+        .chart-content td:nth-child(5) {
+            width: 35%;
+        }
+
+        .chart-container {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #eaeaea;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            width: 100%; /* 新增：占满父容器宽度 */
+            box-sizing: border-box; /* 新增：确保padding不影响总宽度 */
+        }
+
+        .chart-content {
+            height: 300px;
+            width: 100%; /* 新增：图表内容占满容器宽度 */
+        }
+
+        /* 新增：饼图容器布局 */
+        .pie-charts-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* 新增：授权按钮样式 */
+        .auth-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .auth-btn:hover {
+            background-color: #45a049;
+        }
+
+        .auth-btn i {
+            font-size: 14px;
+        }
+
+        /* 新增：授权状态指示器 */
+        .auth-status {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            gap: 5px;
+            color: #28a745;
+        }
+
+        .auth-status.unauthorized {
+            color: #dc3545;
+        }
+
+        /* 新增：平台选择器样式 */
+        .platform-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .platform-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-width: 200px;
+            padding: 5px;
+        }
+
+        /* 新增：平台筛选区域 */
+        .platform-filter-container {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+
+    </style>
+</head>
+
+<body>
+<div id="particles-js"></div>
+<div class="loading"><img src="../static/images/loading.gif" alt="loading-img"></div>
+
+<!-- START TOP -->
+<div id="top" class="clearfix">
+    <!-- Logo -->
+    <div class="applogo">
+        <a href="index_main.html" class="logo">
+            <span class="logo-text">智创电商营销系统</span>
+            <span class="logo-glow"></span>
+        </a>
+    </div>
+    <!-- 菜单按钮  -->
+    <a href="#" class="sidebar-open-button-mobile"><i class="fa fa-bars"></i></a>
+    <a href="#" class="sidebar-open-button"><i class="fa fa-bars"></i></a>
+    <!-- 搜索框 -->
+    <form class="searchform">
+        <label for="searchbox"></label><input type="text" class="searchbox" id="searchbox" placeholder="搜索">
+        <span class="searchbutton"><i class="fa fa-search"></i></span>
+    </form>
+
+    <!-- 用户菜单 -->
+    <ul class="top-right">
+        <li class="dropdown link">
+            <a href="#" data-toggle="dropdown" class="dropdown-toggle profilebox"><img
+                    src="../static/images/用户头像.jpg" alt="img"><b>模拟用户</b><span
+                    class="caret"></span></a>
+            <ul class="dropdown-menu dropdown-menu-list dropdown-menu-right">
+                <li role="presentation" class="dropdown-header">更多</li>
+                <li><a href="#"><i class="fa falist fa-wrench"></i>设置</a></li>
+                <li><a href="#"><i class="fa falist fa-lock"></i> 修改密码</a></li>
+                <li><a href="#"><i class="fa falist fa-power-off"></i> 退出登录</a></li>
+                <li class="divider"></li>
+                <li><a href="#">更多功能更新中......</a></li>
+            </ul>
+        </li>
+    </ul>
+</div>
+<!-- END TOP -->
+
+<!-- START SIDEBAR -->
+<div class="sidebar clearfix">
+    <ul class="sidebar-panel nav">
+        <li><a href="/home"><span class="icon color5"><i class="fa fa-home"></i></span>首页</a></li>
+        <li><a href="#"><span class="icon color10"><i class="fa fa-th"></i></span>商品信息管理<span
+                class="caret"></span></a>
+            <ul>
+                <li><a href="product_management.html">商品基础信息库</a></li>
+                <li><a href="product_marketing.html">商品营销素材库</a></li>
+            </ul>
+        </li>
+        <li><a href="test1.html"><span class="icon color5"><i class="fa fa-comment-o"></i></span>文案智造器</a></li>
+        <li><a href="test2.html"><span class="icon color11"><i class="fa fa-photo"></i></span>营销图创作</a></li>
+        <li><a href="test3.html"><span class="icon color8"><i class="fa fa-film"></i></span>短视频智造</a></li>
+        <li><a href="http://127.0.0.1:5000/setting"><span class="icon color12"><i class="fa fa-smile-o"></i></span>数字直播大厅</a>
+        </li>
+        <li><a href="calendar.html"><span class="icon color8"><i class="fa fa-calendar-o"></i></span>营销日程规划<span
+                class="label label-danger">NEW</span></a></li>
+        <li><a href="note.html"><span class="icon color8"><i class="fa fa-bullhorn"></i></span>营销笔记发布</a></li>
+        <li><a href="#" class="active"><span class="icon color8"><i class="fa fa-mortar-board"></i></span>数据统计<span
+                class="caret"></span></a>
+            <ul style="display: block;">
+                <li><a href="sign_up.html">商家来源统计</a></li>
+                <li><a href="dashboard_internal.html">程序员数据看板</a></li>
+                <li><a href="dashboard.html" class="active">用户数据看板</a></li>
+            </ul>
+        </li>
+        <li><a href="http://127.0.0.1:3000"><span class="icon color5"><i class="fa fa-desktop"></i></span>登录</a></li>
+    </ul>
+</div>
+<!-- END SIDEBAR -->
+
+<!-- START CONTENT -->
+<div class="content-wrapper">
+    <!-- Start Page Header -->
+    <div class="page-header">
+        <h1 class="title">用户数据看板</h1>
+        <ol class="breadcrumb">
+            <li><a href="/">首页</a></li>
+            <li class="active">用户数据看板</li>
+            <li><a href="#" onclick="fetchAndUpdateDashboardData()">刷新</a></li>
+        </ol>
+    </div>
+
+    <!-- 1. 筛选控件区域 -->
+    <div class="filter-container">
+        <div class="filter-item">
+            <label for="global-time-range">时间范围</label>
+            <select id="global-time-range" class="text-xs px-2 py-1 border border-gray-300 rounded">
+                <option value="month">近30天</option>
+                <option value="quarter">近90天</option>
+                <option value="year">近1年</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- 平台筛选和授权区域 -->
+    <div class="platform-filter-container">
+        <h3 style="margin-bottom: 15px;">平台筛选</h3>
+        <div class="platform-selector">
+            <div class="platform-option">
+                <input type="checkbox" id="platform-jd" name="platform" value="京东" checked>
+                <label for="platform-jd">京东</label>
+                <div id="jd-auth-status" class="auth-status unauthorized">
+                    <i class="fas fa-times-circle"></i>未授权
+                </div>
+                <button id="jd-auth-btn" class="auth-btn">
+                    <i class="fas fa-key"></i>授权
+                </button>
+            </div>
+
+            <div class="platform-option">
+                <input type="checkbox" id="platform-douyin" name="platform" value="抖音" checked>
+                <label for="platform-douyin">抖音</label>
+                <div id="douyin-auth-status" class="auth-status unauthorized">
+                    <i class="fas fa-times-circle"></i>未授权
+                </div>
+                <button id="douyin-auth-btn" class="auth-btn">
+                    <i class="fas fa-key"></i>授权
+                </button>
+            </div>
+
+            <div class="platform-option">
+                <input type="checkbox" id="platform-xiaohongshu" name="platform" value="小红书" checked>
+                <label for="platform-xiaohongshu">小红书</label>
+                <div id="xiaohongshu-auth-status" class="auth-status unauthorized">
+                    <i class="fas fa-times-circle"></i>未授权
+                </div>
+                <button id="xiaohongshu-auth-btn" class="auth-btn">
+                    <i class="fas fa-key"></i>授权
+                </button>
+            </div>
+
+            <div class="platform-option">
+                <input type="checkbox" id="platform-taobao" name="platform" value="淘宝" checked>
+                <label for="platform-taobao">淘宝</label>
+                <div id="taobao-auth-status" class="auth-status unauthorized">
+                    <i class="fas fa-times-circle"></i>未授权
+                </div>
+                <button id="taobao-auth-btn" class="auth-btn">
+                    <i class="fas fa-key"></i>授权
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 统计卡片区 - 只保留用户关注的指标 -->
+    <div class="stats-container">
+        <!-- 总销售额 -->
+        <div class="stat-card">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">总销售额</p>
+                    <p class="stat-highlight" id="total-revenue">--</p>
+                    <div class="mt-3 flex items-center">
+                <span class="text-sm font-medium text-green-600">
+                    <i class="fa fa-arrow-up mr-1"></i> <span id="revenueGrowth">--</span>
+                </span>
+                        <span class="text-xs text-gray-500 ml-2" id="revenueComparisonText">较上月</span>
+                    </div>
+                </div>
+                <div class="stat-icon bg-yellow-100">
+                    <i class="fa fa-money text-yellow-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 总利润 -->
+        <div class="stat-card">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">总利润</p>
+                    <p class="stat-highlight" id="total-profit">--</p>
+                    <div class="mt-3 flex items-center">
+                <span class="text-sm font-medium text-green-600">
+                    <i class="fa fa-arrow-up mr-1"></i> <span id="profit-growth">--</span>
+                </span>
+                        <span class="text-xs text-gray-500 ml-2" id="profitComparisonText">较上月</span>
+                    </div>
+                </div>
+                <div class="stat-icon bg-yellow-100">
+                    <i class="fa fa-money text-yellow-500"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 平台来源分布图 - 新增 -->
+    <div class="pie-charts-container">
+        <!-- 销售额来源分布 -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3 class="chart-title">销售额来源分布</h3>
+                <span class="chart-update" id="revenue-distribution-update">更新于: --</span>
+            </div>
+            <div class="chart-content" id="revenue-distribution-chart">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 利润来源分布 -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3 class="chart-title">利润来源分布</h3>
+                <span class="chart-update" id="profit-distribution-update">更新于: --</span>
+            </div>
+            <div class="chart-content" id="profit-distribution-chart">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 核心图表区 - 第二行 -->
+    <div class="charts-row-2">
+        <!-- 收入-利润散点图 -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3 class="chart-title">收入-利润关系</h3>
+                <div class="flex items-center gap-2">
+                    <span class="chart-update" id="revenue-chart-update">更新于: --</span>
+                    <button id="simulate-sale" class="btn btn-sm btn-success">
+                        <i class="fa fa-plus mr-1"></i>模拟新销售
+                    </button>
+                </div>
+            </div>
+            <div class="chart-content" id="revenue-profit-chart">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. 明细数据区 - 改为商品数据表格 -->
+    <div class="grid grid-cols-1 gap-6 mb-6">
+        <!-- 商品数据表格 -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3 class="chart-title">商品销售数据</h3>
+                <button onclick="exportProductData()" class="btn btn-primary">
+                    <i class="fa fa-download mr-1"></i>导出数据
+                </button>
+            </div>
+            <div class="chart-content">
+                <table class="data-table">
+                    <thead>
+                    <tr>
+                        <th>商品名称</th>
+                        <th>平台</th>
+                        <th>销量</th>
+                        <th>销售额</th>
+                        <th>利润</th>
+                    </tr>
+                    </thead>
+                    <tbody id="product-sales-table">
+                    <tr>
+                        <td colspan="5" class="text-center">加载中...</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-white border-t border-gray-200 py-6 mt-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-gray-500">商家渠道分析系统 · 数据更新时间：<span id="update-time">-</span>
+            </p>
+        </div>
+    </footer>
+    <!-- Start Footer -->
+    <div class="row footer">
+        <div class="col-md-6 text-left">
+            智行合一团队-智创电商营销系统
+        </div>
+    </div>
+</div>
+<!-- END CONTENT -->
+
+<!-- JS 脚本 -->
+<script src="../static/js/jquery.min.js"></script>
+<script src="../static/js/bootstrap/bootstrap.min.js"></script>
+<script type="text/javascript" src="../static/js/plugins.js"></script>
+<!-- 粒子效果JS -->
+<script src="../static/js/particles.min.js"></script>
+
+<script>
+
+    /* global echarts:readonly, XLSX:readonly, $:readonly */
+    let autoRefreshEnabled = false; // 初始化自动刷新开关（原代码未定义，导致未解析）
+    let refreshTimer = null; // 初始化刷新定时器（原代码未定义，导致未解析）
+    // 初始化图表
+    let revenueProfitChart;
+    let revenueDistributionChart;
+    let profitDistributionChart;
+    // 存储当前商品数据用于导出
+    let currentProductData = [];
+
+
+    // 图表基础配置
+    const chartBaseOptions = {
+        backgroundColor: '#fff',
+        tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            borderColor: '#ddd',
+            borderWidth: 1,
+            textStyle: {
+                color: '#333'
+            }
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+        },
+        textStyle: {
+            fontFamily: 'Microsoft YaHei, Arial, sans-serif'
+        }
+    };
+
+    // 初始化所有图表
+    function initAllCharts() {
+        // 检查echarts是否已加载
+        if (typeof echarts === 'undefined') {
+            console.error('ECharts未加载，请检查网络连接');
+            displayChartError();
+            return;
+        }
+        // 初始化收入-利润散点图
+        revenueProfitChart = echarts.init(document.getElementById('revenue-profit-chart'));
+        revenueProfitChart.setOption({
+            ...chartBaseOptions,
+            title: {
+                text: '收入-利润关系',
+                left: 'center',
+                textStyle: {
+                    fontSize: 16
+                }
+            },
+            xAxis: {
+                type: 'value',
+                name: '收入',
+                nameLocation: 'middle',
+                nameGap: 30
+            },
+            yAxis: {
+                type: 'value',
+                name: '利润',
+                nameLocation: 'middle',
+                nameGap: 30
+            },
+            series: [{
+                type: 'scatter',
+                symbolSize: 10,
+                itemStyle: {
+                    color: '#10b981'
+                },
+                data: []
+            }]
+        });
+
+        // 初始化销售额来源分布饼图
+        revenueDistributionChart = echarts.init(document.getElementById('revenue-distribution-chart'));
+        revenueDistributionChart.setOption({
+            ...chartBaseOptions,
+            title: {
+                text: '销售额来源分布',
+                left: 'center',
+                textStyle: {
+                    fontSize: 16
+                }
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: '{a} <br/>{b}: ¥{c} ({d}%)'
+            },
+            legend: {
+                orient: 'vertical',
+                right: 10,
+                top: 'center'
+            },
+            series: [{
+                name: '销售额来源',
+                type: 'pie',
+                radius: ['40%', '70%'],
+                avoidLabelOverlap: false,
+                itemStyle: {
+                    borderRadius: 10,
+                    borderColor: '#fff',
+                    borderWidth: 2
+                },
+                label: {
+                    show: false,
+                    position: 'center'
+                },
+                emphasis: {
+                    label: {
+                        show: true,
+                        fontSize: '18',
+                        fontWeight: 'bold'
+                    }
+                },
+                labelLine: {
+                    show: false
+                },
+                data: []
+            }]
+        });
+
+        // 初始化利润来源分布饼图
+        profitDistributionChart = echarts.init(document.getElementById('profit-distribution-chart'));
+        profitDistributionChart.setOption({
+            ...chartBaseOptions,
+            title: {
+                text: '利润来源分布',
+                left: 'center',
+                textStyle: {
+                    fontSize: 16
+                }
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: '{a} <br/>{b}: ¥{c} ({d}%)'
+            },
+            legend: {
+                orient: 'vertical',
+                right: 10,
+                top: 'center'
+            },
+            series: [{
+                name: '利润来源',
+                type: 'pie',
+                radius: ['40%', '70%'],
+                avoidLabelOverlap: false,
+                itemStyle: {
+                    borderRadius: 10,
+                    borderColor: '#fff',
+                    borderWidth: 2
+                },
+                label: {
+                    show: false,
+                    position: 'center'
+                },
+                emphasis: {
+                    label: {
+                        show: true,
+                        fontSize: '18',
+                        fontWeight: 'bold'
+                    }
+                },
+                labelLine: {
+                    show: false
+                },
+                data: []
+            }]
+        });
+    }
+
+    // 图表错误显示
+    function displayChartError() {
+        const chartContainers = [
+            'revenue-profit-chart',
+            'revenue-distribution-chart',
+            'profit-distribution-chart'
+        ];
+
+        chartContainers.forEach(id => {
+            const container = document.getElementById(id);
+            if (container) {
+                container.innerHTML = `
+                    <div class="status-message">
+                        <i class="fa fa-exclamation-triangle"></i>
+                        <p>图表加载失败，请检查网络连接</p>
+                        <p class="text-sm">确保您有互联网访问权限</p>
+                    </div>
+                `;
+            }
+        });
+    }
+
+    // 导出功能实现 - 导出为Excel
+    function exportProductData() {
+        // 新增：检查XLSX是否加载成功
+        if (typeof XLSX === 'undefined') {
+            alert('Excel导出库未加载，请检查CDN链接');
+            return;
+        }
+        if (currentProductData.length === 0) {
+            alert('没有数据可导出');
+            return;
+        }
+        try {
+            const wb = XLSX.utils.book_new();
+            const wsData = [
+                ['商品名称', '平台', '销量', '销售额', '利润']
+            ];
+
+            currentProductData.forEach(product => {
+                wsData.push([
+                    product.name,
+                    product.platform,
+                    product.sales,
+                    product.revenue,
+                    product.profit
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, ws, '商品销售数据');
+            XLSX.writeFile(wb, '商品销售数据.xlsx');
+            console.log('导出成功');
+        } catch (error) {
+            console.error('导出失败:', error);
+            alert('导出失败: ' + error.message);
+        }
+    }
+
+    // 更新比较标签的函数
+    function updateComparisonLabels(timeRange) {
+        const label = getComparisonLabel(timeRange);
+        document.getElementById('revenueComparisonText').textContent = label;
+        document.getElementById('profitComparisonText').textContent = label;
+    }
+
+    // 根据时间范围获取对比标签
+    function getComparisonLabel(timeRange) {
+        switch (timeRange) {
+            case 'month':
+                return '较上月';
+            case 'quarter':
+                return '较上季度';
+            case 'year':
+                return '较去年';
+            default:
+                return '较上月';
+        }
+    }
+
+    /**
+     * 更新仪表盘数据
+     * @param {Object} data - 后台返回的仪表盘数据
+     * @param {string} data.update_time - 数据更新时间
+     * @param {number} data.total_revenue - 总销售额
+     * @param {number} data.total_profit - 总利润
+     * @param {number} data.revenue_growth - 销售额增长率
+     * @param {number} data.profit_growth - 利润增长率
+     * @param {Array<{revenue: number, profit: number}>} data.revenue_profit - 收入利润散点数据
+     * @param {Array<{name: string, value: number}>} data.revenue_distribution - 销售额分布数据
+     * @param {Array<{name: string, value: number}>} data.profit_distribution - 利润分布数据
+     * @param {Array<{name: string, platform: string, sales: number, revenue: number, profit: number}>} data.product_sales - 商品销售数据
+     * @param {string} timeRange - 当前选择的时间范围（month/quarter/year）
+     */
+        // 更新图表和数据
+    const updateDashboardWithData = (data, timeRange) => {
+            // 更新最后更新时间
+            const updateTime = data.update_time || '未获取时间';
+            document.getElementById('update-time').textContent = updateTime;
+            document.getElementById('revenue-chart-update').textContent = `更新于: ${updateTime}`;
+            document.getElementById('revenue-distribution-update').textContent = `更新于: ${updateTime}`;
+            document.getElementById('profit-distribution-update').textContent = `更新于: ${updateTime}`;
+
+            // 更新统计卡片
+            const totalRevenue = data.total_revenue || 0;
+            const totalProfit = data.total_profit || 0;
+            document.getElementById('total-revenue').textContent = `¥${totalRevenue.toLocaleString()}`;
+            document.getElementById('total-profit').textContent = `¥${totalProfit.toLocaleString()}`;
+
+            // 更新增长数据显示
+            document.getElementById('revenueGrowth').textContent =
+                data.revenue_growth !== undefined ? `${data.revenue_growth}%` : '0%';
+            document.getElementById('profit-growth').textContent =
+                data.profit_growth !== undefined ? `${data.profit_growth}%` : '0%';
+
+            // 更新比较标签
+            updateComparisonLabels(timeRange);
+
+            // 更新收入-利润散点图
+            if (revenueProfitChart && data.revenue_profit) {
+                revenueProfitChart.setOption({
+                    series: [{
+                        data: data.revenue_profit.map(item => [item.revenue, item.profit])
+                    }]
+                });
+            }
+
+            // 更新销售额来源分布饼图
+            if (revenueDistributionChart && data.revenue_distribution) {
+                revenueDistributionChart.setOption({
+                    series: [{
+                        data: data.revenue_distribution
+                    }]
+                });
+            }
+
+            // 更新利润来源分布饼图
+            if (profitDistributionChart && data.profit_distribution) {
+                profitDistributionChart.setOption({
+                    series: [{
+                        data: data.profit_distribution
+                    }]
+                });
+            }
+
+            // 更新商品销售数据表格
+            const productSalesTable = document.getElementById('product-sales-table');
+            productSalesTable.innerHTML = '';
+
+            // 存储当前商品数据用于导出
+            currentProductData = [];
+
+            if (data.product_sales && data.product_sales.length > 0) {
+                data.product_sales.forEach((product) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                    <td>${product.name}</td>
+                    <td>${product.platform}</td>
+                    <td>${product.sales}</td>
+                    <td>¥${product.revenue.toLocaleString()}</td>
+                    <td>¥${product.profit.toLocaleString()}</td>
+                `;
+                    productSalesTable.appendChild(row);
+
+                    // 保存数据用于导出
+                    currentProductData.push({
+                        name: product.name,
+                        platform: product.platform,
+                        sales: product.sales,
+                        revenue: product.revenue,
+                        profit: product.profit
+                    });
+                });
+            } else {
+                productSalesTable.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center">暂无商品销售数据</td>
+                </tr>
+            `;
+            }
+        };
+
+    // 绑定平台选择变化事件
+    document.querySelectorAll('input[name="platform"]').forEach(checkbox => {
+        checkbox.addEventListener('change', function () {
+            // 添加500ms防抖
+            clearTimeout(window.platformChangeTimer);
+            window.platformChangeTimer = setTimeout(() => {
+                fetchAndUpdateDashboardData();
+            }, 500);
+        });
+    });
+
+    // 检查授权状态
+    function checkAuthStatus(platform) {
+        fetch(`/api/check_auth/${platform}`)
+            .then(response => response.json())
+            .then(data => {
+                const statusElement = document.getElementById(`${platform}-auth-status`);
+                if (data.authorized) {
+                    statusElement.innerHTML = '<i class="fas fa-check-circle"></i>已授权';
+                    statusElement.classList.remove('unauthorized');
+                } else {
+                    statusElement.innerHTML = '<i class="fas fa-times-circle"></i>未授权';
+                    statusElement.classList.add('unauthorized');
+                }
+            });
+    }
+
+    // 页面加载时检查所有平台授权状态
+    document.addEventListener('DOMContentLoaded', () => {
+        ['jd', 'douyin', 'xiaohongshu', 'taobao'].forEach(platform => {
+            checkAuthStatus(platform);
+        });
+    });
+
+    // 定时刷新授权状态（每30秒）
+    setInterval(() => {
+        ['jd', 'douyin', 'xiaohongshu', 'taobao'].forEach(platform => {
+            checkAuthStatus(platform);
+        });
+    }, 30000);
+
+    // 添加全局变量存储最后更新时间
+    let lastUpdateTime = null;
+
+    // 获取数据并更新图表，调用后台api
+    async function fetchAndUpdateDashboardData() {
+        // 构建请求参数
+        const params = new URLSearchParams();
+        params.append('timeRange', document.getElementById('global-time-range').value);
+        params.append('type', 'external');
+
+        // 添加最后更新时间（如果存在）
+        if (lastUpdateTime) {
+            params.append('last_update', lastUpdateTime);
+        }
+
+        // 添加平台参数
+        const selectedPlatforms = [];
+        document.querySelectorAll('input[name="platform"]:checked').forEach(checkbox => {
+            selectedPlatforms.push(checkbox.value);
+        });
+        params.append('platforms', selectedPlatforms.join(','));
+
+        try {
+            const response = await fetch(`/api/dashboard/data?${params.toString()}`);
+            if (!response.ok) {
+                // 明确错误信息，确保被后续catch捕获
+                const errorMsg = `网络请求失败（状态码：${response.status}）`;
+                console.error(errorMsg);
+                throw new Error(errorMsg); // 此throw会被下方catch捕获
+            }
+            const data = await response.json();
+            // 更新最后更新时间
+            if (data.last_update) {
+                lastUpdateTime = data.last_update;
+            }
+            // 新增：传递时间范围参数
+            const currentTimeRange = document.getElementById('global-time-range').value;
+            updateDashboardWithData(data, currentTimeRange);
+        } catch (error) {
+            console.error('获取数据失败:', error);
+            // 显示错误信息
+            document.getElementById('product-sales-table').innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center">数据加载失败，请稍后重试</td>
+                </tr>
+            `;
+        } finally {
+            // 递归调用实现连续刷新
+            if (autoRefreshEnabled) {
+                refreshTimer = setTimeout(fetchAndUpdateDashboardData, 30000); // 30秒刷新间隔
+            }
+        }
+    }
+
+    // 控制定时刷新
+    function startAutoRefresh() {
+        autoRefreshEnabled = true;
+        fetchAndUpdateDashboardData(); // 启动第一次更新
+    }
+
+    function stopAutoRefresh() {
+        autoRefreshEnabled = false;
+        if (refreshTimer) {
+            clearTimeout(refreshTimer);
+        }
+    }
+
+    // 页面可见性监听
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            startAutoRefresh();
+        } else {
+            stopAutoRefresh();
+        }
+    });
+
+    // 防抖后的刷新函数
+    const debouncedFetch = debounce(fetchAndUpdateDashboardData, 300);
+
+    // 防抖函数
+    function debounce(func, wait = 300) {
+        let timeout;
+        return function (...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    // 绑定筛选器变化事件
+    document.getElementById('global-time-range').addEventListener('change', function () {
+        // 更新比较标签
+        const timeRange = this.value;
+        updateComparisonLabels(timeRange);
+        debouncedFetch();
+    });
+
+    // 授权按钮事件
+    document.querySelectorAll('.auth-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            const platform = this.id.replace('-auth-btn', '');
+
+            // 调用后端API获取授权链接
+            fetch(`/api/auth/${platform}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('获取授权链接失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.auth_url) {
+                        // 保存当前平台信息到sessionStorage
+                        sessionStorage.setItem('authorizing_platform', platform);
+                        // 在新窗口打开授权链接
+                        window.open(data.auth_url, '_blank');
+                    }
+                })
+                .catch(error => {
+                    console.error('授权处理失败:', error);
+                    alert('获取授权链接失败，请稍后重试');
+                });
+        });
+    });
+
+    // 定时检查授权状态
+    setInterval(() => {
+        const platform = sessionStorage.getItem('authorizing_platform');
+        if (platform) {
+            fetch(`/api/check_auth/${platform}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.authorized) {
+                        // 更新UI
+                        const statusElement = document.getElementById(`${platform}-auth-status`);
+                        statusElement.innerHTML = '<i class="fas fa-check-circle"></i>已授权';
+                        statusElement.classList.remove('unauthorized');
+
+                        // 清除标记并刷新数据
+                        sessionStorage.removeItem('authorizing_platform');
+                        fetchAndUpdateDashboardData();
+                    }
+                });
+        }
+    }, 3000); // 每3秒检查一次
+
+    // 页面加载时初始化
+    document.addEventListener('DOMContentLoaded', function () {
+        // 初始化图表
+        initAllCharts();
+
+        const initialTimeRange = document.getElementById('global-time-range').value;
+        updateComparisonLabels(initialTimeRange);
+        startAutoRefresh();
+    });
+
+    // 窗口resize事件
+    window.addEventListener('resize', function () {
+        // 延迟重绘，避免频繁触发（防抖）
+        clearTimeout(window.resizeTimer);
+        window.resizeTimer = setTimeout(function () {
+            // 确保图表实例被重绘
+            if (revenueProfitChart) revenueProfitChart.resize();
+            if (revenueDistributionChart) revenueDistributionChart.resize();
+            if (profitDistributionChart) profitDistributionChart.resize();
+        }, 100);
+    });
+
+    // 新增模拟销售功能
+    document.getElementById('simulate-sale').addEventListener('click', function () {
+        // 更新总销售额
+        const totalRevenue = document.getElementById('total-revenue');
+        const revenueText = totalRevenue.textContent.replace(/[^0-9.]/g, '');
+        const currentRevenue = parseFloat(revenueText) || 0;
+        const newRevenue = currentRevenue + Math.floor(Math.random() * 10000) + 5000;
+        totalRevenue.textContent = `¥${newRevenue.toLocaleString()}`;
+
+        // 更新总利润
+        const totalProfit = document.getElementById('total-profit');
+        const profitText = totalProfit.textContent.replace(/[^0-9.]/g, '');
+        const currentProfit = parseFloat(profitText) || 0;
+        const newProfit = currentProfit + Math.floor(Math.random() * 3000) + 1000;
+        totalProfit.textContent = `¥${newProfit.toLocaleString()}`;
+
+        // 更新增长百分比
+        document.getElementById('revenueGrowth').textContent =
+            ((Math.random() * 5) + 1).toFixed(1) + '%';
+
+        document.getElementById('profit-growth').textContent =
+            ((Math.random() * 8) + 2).toFixed(1) + '%';
+
+        // 更新图表
+        if (revenueProfitChart) {
+            const option = revenueProfitChart.getOption();
+            const data = option.series[0].data;
+
+            // 添加新数据点
+            data.push([
+                Math.floor(Math.random() * 40000) + 10000,
+                Math.floor(Math.random() * 10000) + 2000
+            ]);
+
+            // 更新图表
+            revenueProfitChart.setOption({
+                series: [{
+                    data: data
+                }]
+            });
+        }
+    });
+</script>
+</body>
+</html>

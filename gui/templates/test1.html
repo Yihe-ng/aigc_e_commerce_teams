@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="文案智造器 - 智能AI营销文案生成平台">
+    <meta name="keywords" content="AI文案,营销文案,内容生成,智能助手"/>
+    <title>文案智造器</title>
+
+    <!-- CSS 文件 -->
+    <link href="{{ url_for('static', filename='css/root.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/index.css') }}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Montserrat&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3a7bd5;
+            --secondary-color: #00d2ff;
+            --dark-color: #121b2a;
+            --light-color: #f0f5ff;
+            --accent-color: #6c63ff;
+        }
+        .container-widget {
+            padding: 0;
+            min-height: calc(100vh + 1px); /* 确保内容可滚动 */
+            position: relative;
+            z-index: 1;
+        }
+        /* 面板样式 */
+        .panel {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(58, 123, 213, 0.2);
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        .panel-transparent {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+        }
+
+        .panel-title {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: 500;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+
+        .panel-body {
+            padding: 20px;
+        }
+
+        /* 标签页样式 */
+        .nav-pills > li > a {
+            border-radius: 20px;
+            padding: 10px 20px;
+            color: #ffffff;
+            background: rgba(30, 41, 59, 0.5);
+            margin-right: 5px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .nav-pills > li.active > a,
+        .nav-pills > li.active > a:hover,
+        .nav-pills > li.active > a:focus {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            box-shadow: 0 5px 15px rgba(58, 123, 213, 0.3);
+        }
+
+        .nav-pills > li > a:hover {
+            background: rgba(58, 123, 213, 0.2);
+            color: var(--secondary-color);
+        }
+
+        .tab-content {
+            padding: 0 0;
+        }
+
+        /* 表单样式 */
+        .form-control {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(58, 123, 213, 0.3);
+            border-radius: 6px;
+            color: #e0e0e0;
+            padding: 12px 15px;
+            height: auto;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            background: rgba(15, 23, 42, 0.7);
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 2px rgba(0, 210, 255, 0.2);
+        }
+
+        .form-label {
+            color: #b0b7c3;
+            font-weight: 500;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .btn {
+            border-radius: 6px;
+            padding: 12px 20px;
+            font-weight: 500;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-default {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            color: white;
+            box-shadow: 0 5px 15px rgba(58, 123, 213, 0.3);
+        }
+
+        .btn-default:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(58, 123, 213, 0.4);
+            background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+            color: white;
+        }
+
+        /* 聊天界面样式 */
+        .chat {
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .conv {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 8px;
+            border: 1px solid rgba(58, 123, 213, 0.2);
+            list-style: none;
+            padding: 15px !important;
+            margin: 0;
+            overflow-y: auto;
+            height: calc(100% - 80px);
+        }
+
+        .conv li {
+            display: flex;
+            margin-bottom: 20px;
+            align-items: flex-start;
+        }
+
+        .conv .img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary-color);
+            box-shadow: 0 0 10px rgba(58, 123, 213, 0.5);
+        }
+
+        .conv .ballon {
+            margin-left: 15px;
+            padding: 15px;
+            border-radius: 18px;
+            max-width: 80%;
+            position: relative;
+        }
+
+        .conv .ballon.color1 {
+            background: rgba(58, 123, 213, 0.2);
+            border: 1px solid rgba(58, 123, 213, 0.3);
+            border-top-left-radius: 2px;
+        }
+
+        .conv .ballon.color2 {
+            background: rgba(0, 210, 255, 0.1);
+            border: 1px solid rgba(0, 210, 255, 0.3);
+            border-top-left-radius: 2px;
+        }
+
+        .write {
+            margin-top: 20px;
+            display: flex;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 30px;
+            padding: 5px;
+            border: 1px solid rgba(58, 123, 213, 0.3);
+        }
+
+        .write form {
+            display: flex;
+            width: 100%;
+        }
+
+        .write input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 12px 20px;
+            color: #e0e0e0;
+            outline: none;
+        }
+
+        .write button {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            color: white;
+            border-radius: 30px;
+            padding: 10px 25px;
+            margin-right: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .write button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(58, 123, 213, 0.4);
+        }
+
+        /* 高亮标记样式 */
+        mark {
+            background: linear-gradient(90deg, rgba(58, 123, 213, 0.2), rgba(0, 210, 255, 0.2));
+            color: var(--secondary-color);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        /* 标签样式 */
+        .hashtags {
+            margin-top: 10px;
+        }
+
+        .hashtags span {
+            display: inline-block;
+            background: rgba(58, 123, 213, 0.2);
+            color: var(--secondary-color);
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+
+        /* 页脚样式 */
+        .footer {
+            margin-top: 30px;
+            padding: 15px 0;
+            border-top: 1px solid rgba(58, 123, 213, 0.2);
+            color: #b0b7c3;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 992px) {
+            .content {
+                margin-left: 0;
+            }
+
+            .sidebar {
+                width: 70px;
+                transition: all 0.3s;
+            }
+
+            .sidebar-panel a span:not(.icon) {
+                display: none;
+            }
+
+            .sidebar-panel a .icon {
+                margin-right: 0;
+            }
+
+            .applogo .logo {
+                font-size: 18px;
+            }
+        }
+
+        /* 添加科技感元素 */
+        .tech-dots {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.1;
+            background-image:
+                radial-gradient(var(--secondary-color) 1px, transparent 1px),
+                radial-gradient(var(--primary-color) 1px, transparent 1px);
+            background-size: 30px 30px;
+            background-position: 0 0, 15px 15px;
+        }
+
+        .glow-effect {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
+            opacity: 0.1;
+            filter: blur(40px);
+            z-index: -1;
+            animation: float 15s infinite ease-in-out;
+        }
+
+        .glow-effect:nth-child(2) {
+            background: radial-gradient(circle, var(--secondary-color) 0%, transparent 70%);
+            width: 200px;
+            height: 200px;
+            right: 10%;
+            top: 30%;
+            animation-delay: -5s;
+            animation-duration: 20s;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(10px, 10px); }
+            50% { transform: translate(20px, 0); }
+            75% { transform: translate(10px, -10px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        /* 数据可视化装饰 */
+        .data-viz {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 300px;
+            height: 100px;
+            opacity: 0.2;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* 添加动态边框效果 */
+        .panel-border-animated {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel-border-animated::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--secondary-color), transparent);
+            animation: border-flow 3s infinite;
+        }
+
+        @keyframes border-flow {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .panel-body > p {
+            color: white;
+        }
+
+        .panel-body > p mark {
+            background-color: #FBDDAC;
+            color: #000;
+        }
+
+        /* 强制显示滚动条（避免内容跳动） */
+        .conv {
+            overflow-y: scroll;
+        }
+
+        @media (max-width: 768px) {
+            .tab-pane.active {
+                height: calc(100vh - 80px); /* 移动设备调整高度 */
+            }
+
+            ::-webkit-scrollbar {
+                width: 4px; /* 更细的滚动条 */
+            }
+        }
+
+        /* 添加到您的CSS文件中 */
+        html {
+            scrollbar-width: thin; /* Firefox */
+            scrollbar-color: #399bff #f5f5f5; /* Firefox */
+        }
+
+        /* Chrome/Safari/Edge 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #399bff;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #33577b;
+        }
+
+        /* 主滚动容器 */
+        #main-scroll-container {
+            scrollbar-width: thin; /* Firefox */
+            scrollbar-color: #399bff #3d464d; /* 滑块颜色 | 轨道颜色 */
+
+            /* 隐藏横向滚动 */
+            overflow-x: hidden;
+
+            /* 平滑滚动 */
+            scroll-behavior: smooth;
+        }
+
+        /* 移除.message-time相关样式 */
+        .message-content {
+            padding: 12px 16px; /* 调整内边距 */
+        }
+
+        /* 添加到您的CSS文件或style标签中 */
+        .ballon {
+            color: white !important; /* 强制白色文字 */
+        }
+
+        /* 用户气泡 */
+        .user-message .ballon {
+            background: #399bff;
+            color: white !important;
+            border-top-right-radius: 4px;
+        }
+
+        /* AI气泡 */
+        .ballon.color2 {
+            background: #58666e;
+            color: white !important;
+            border-top-left-radius: 4px;
+        }
+
+        /* 聊天容器全屏适配 */
+        .chat-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #3d464d;
+        }
+
+        /* 消息区域 */
+        .conv {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            margin: 0;
+            list-style: none;
+        }
+
+        /* 消息项 */
+        .conv li {
+            display: flex;
+            margin-bottom: 15px;
+            max-width: 80%;
+        }
+
+        /* 用户消息（右侧） */
+        .user-message {
+            margin-left: auto;
+            flex-direction: row-reverse;
+        }
+
+        /* 头像样式 */
+        .img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 0 10px;
+        }
+
+        /* 输入区域 */
+        .write {
+            padding: 15px;
+            background: #3d464d;
+            border-top: 1px solid #58666e;
+        }
+
+        /* 添加固定定位样式 */
+        #top {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 60px; /* 与顶部导航栏高度匹配 */
+            left: 0;
+            bottom: 0;
+            width: 220px; /* 侧边栏宽度 */
+            overflow-y: auto; /* 允许侧边栏内容滚动 */
+            z-index: 999;
+        }
+
+        .content {
+            margin-left: 220px; /* 与侧边栏宽度相同 */
+            margin-top: 60px; /* 与顶部导航栏高度相同 */
+            padding: 20px;
+            min-height: calc(100vh - 60px);
+        }
+    </style>
+</head>
+
+<body style="margin: 0; overflow: hidden;">
+    <div id="particles-js"></div>
+
+    <div id="main-scroll-container" style="height: 100vh; overflow-y: auto;">
+        <!-- 科技感装饰元素 -->
+        <div class="tech-dots"></div>
+        <div class="glow-effect"></div>
+        <div class="glow-effect"></div>
+        <!-- 加载动画 -->
+        <div class="loading"></div>
+        <!-- 顶部导航栏 -->
+        <!-- START TOP -->
+<div id="top" class="clearfix">
+    <div class="applogo">
+        <a href="{{ url_for('home') }}" class="logo">
+            <span class="logo-text">智创电商营销系统</span>
+            <span class="logo-glow"></span>
+        </a>
+    </div>
+    <a href="#" class="sidebar-open-button-mobile"><i class="fa fa-bars"></i></a>
+    <a href="#" class="sidebar-open-button"><i class="fa fa-bars"></i></a>
+
+    <form class="searchform">
+        <input type="text" class="searchbox" id="searchbox" placeholder="搜索">
+        <span class="searchbutton"><i class="fa fa-search"></i></span>
+    </form>
+
+    <ul class="top-right">
+        <li class="dropdown  ">
+            <a href="#" data-toggle="dropdown" class="dropdown-toggle profilebox">
+                <img src="{{ url_for('static', filename='images/用户头像.jpg') }}" alt="img"><b>模拟用户</b><span class="caret"></span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-list dropdown-menu-right">
+                <li><a href="#"><i class="fa falist fa-power-off"></i> 退出登录</a></li>
+            </ul>
+        </li>
+    </ul>
+</div>
+<!-- END TOP -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- 侧边栏 -->
+<div class="sidebar clearfix">
+    <ul class="sidebar-panel nav">
+        <li><a href="{{ url_for('home') }}"><span class="icon color5"><i class="fa fa-home"></i></span>首页</a></li>
+
+        <li><a href="#"><span class="icon color10"><i class="fa fa-th"></i></span>商品信息管理<span class="caret"></span></a>
+            <ul>
+                <li><a href="{{ url_for('product_management') }}">商品基础信息库</a></li>
+                <li><a href="{{ url_for('product_marketing') }}">商品营销素材库</a></li>
+            </ul>
+        </li>
+
+        <li><a href="{{ url_for('test1') }}" class="active"><span class="icon color5"><i class="fa fa-comment-o"></i></span>文案智造器</a></li>
+
+        <li><a href="{{ url_for('test2') }}"><span class="icon color11"><i class="fa fa-photo"></i></span>营销图创作</a></li>
+        <li><a href="{{ url_for('test3') }}"><span class="icon color8"><i class="fa fa-film"></i></span>短视频智造</a></li>
+        <li><a href="{{ url_for('setting') }}"><span class="icon color12"><i class="fa fa-smile-o"></i></span>数字直播大厅</a></li>
+        <li><a href="{{ url_for('calendar') }}"><span class="icon color8"><i class="fa fa-calendar-o"></i></span>营销日程规划<span class="label label-danger">NEW</span></a></li>
+        <li><a href="{{ url_for('note') }}"><span class="icon color8"><i class="fa fa-bullhorn"></i></span>营销笔记发布</a></li>
+        <li><a href="/"><span class="icon color5"><i class="fa fa-desktop"></i></span>登录</a></li>
+    </ul>
+</div>
+
+<!-- 内容区域 -->
+<div class="content">
+    <!-- 页面标题 -->
+    <div class="page-header">
+        <h1 class="title">文案智造器</h1>
+        <ol class="breadcrumb">
+            <li><a href="/">首页</a></li>
+            <li class="active">文案智造器</li>
+        </ol>
+    </div>
+    <!-- End Page Header -->
+<!-- 主要内容容器 -->
+<div class="container-widget">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-transparent">
+                <div class="panel-body" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                    <div role="tabpanel">
+                        <!-- 标签页导航 -->
+                        <ul class="nav nav-pills" role="tablist">
+                            <li role="presentation" class="active">
+                                <a href="#home1" aria-controls="home1" role="tab" data-toggle="tab" aria-expanded="true" class="active">
+                                    <i class="fa fa-magic"></i> 营销文案生成
+                                </a>
+                            </li>
+                            <li role="presentation" class="">
+                                <a href="#home3" aria-controls="home3" role="tab" data-toggle="tab" class="" aria-expanded="false">
+                                    <i class="fa fa-shopping-cart"></i> 导购文案生成
+                                </a>
+                            </li>
+                            <li role="presentation" class="">
+                                <a href="#home2" aria-controls="home2" role="tab" data-toggle="tab" class="" aria-expanded="false">
+                                    <i class="fa fa-pencil"></i> 产品信息输入
+                                </a>
+                            </li>
+                            <li role="presentation" class="">
+                                <a href="#messages2" aria-controls="messages2" role="tab" data-toggle="tab" class="" aria-expanded="false">
+                                    <i class="fa fa-save"></i> 最佳方案保存
+                                </a>
+                            </li>
+                        </ul>
+
+                        <!-- 标签页内容 -->
+                        <div class="tab-content">
+                            <!-- 产品信息输入标签页 -->
+                            <div role="tabpanel" class="tab-pane" id="home2">
+                                <div class="panel panel-border-animated">
+                                    <div class="panel-title">
+                                        <i class="fa fa-info-circle"></i> 产品基础信息
+                                    </div>
+                                    <div class="panel-body">
+                                        <div class="form-group">
+                                            <label for="input1" class="form-label">商品名称</label>
+                                            <input type="text" class="form-control" id="input1" placeholder="输入您的商品名称...">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="input2" class="form-label">产品特点</label>
+                                            <input type="text" class="form-control" id="input2" placeholder="描述产品的主要特点和卖点...">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="input3" class="form-label">广告类型</label>
+                                            <input type="text" class="form-control" id="input3" placeholder="如：小红书、抖音、朋友圈等...">
+                                        </div>
+                                        <button type="button" class="btn btn-default btn-block" id="saveBtn">
+                                            <i class="fa fa-check-circle"></i> 基础设定确认
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 营销文案生成标签页 -->
+                            <div role="tabpanel" class="tab-pane active" id="home1">
+                                <div class="panel panel-border-animated">
+                                    <div class="panel-title">
+                                        <i class="fa fa-rocket"></i> 文案智造器
+                                    </div>
+                                    <div class="panel-body" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                                        <p style="color: white; margin-bottom: 15px;">
+                                            在此提问你想要生成的
+                                            <mark style="background-color: #FBDDAC; color: #000;">营销文案/营销笔记</mark>
+                                            ,并选择
+                                            <mark style="background-color: #FBDDAC; color: #000;">最佳方案</mark>
+                                            保存在"最佳方案"中。
+                                        </p>
+
+                                        <div class="chat-container" style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+                                            <ul class="conv" id="conv" style="flex: 1; overflow-y: auto; padding: 15px; margin: 0;">
+                                                <!-- 消息将在这里动态插入 -->
+                                            </ul>
+                                            <div class="write" style="padding: 15px; background: #3d464d;">
+                                                <form id="chat-form" style="display: flex;">
+                                                    <input type="text" id="chat-input" placeholder="输入你的问题..."
+                                                           style="flex: 1; padding: 10px; border: none; border-radius: 4px; background: #58666e; color: white;">
+                                                    <button type="submit" style="margin-left: 10px; padding: 0 20px; background: #399bff; color: white; border: none; border-radius: 4px;">
+                                                        发送
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 导购文案生成标签页 -->
+                            <div role="tabpanel" class="tab-pane" id="home3">
+                                <div class="panel panel-border-animated">
+                                    <div class="panel-title">
+                                        <i class="fa fa-shopping-cart"></i> 导购文案生成
+                                    </div>
+                                    <div class="panel-body" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                                        <p style="color: white; margin-bottom: 15px;">
+                                            在此提问你想要生成的
+                                            <mark style="background-color: #FBDDAC; color: #000;">导购文案</mark>
+                                            ,并选择
+                                            <mark style="background-color: #FBDDAC; color: #000;">你喜欢的导购方案</mark>
+                                            保存在"最佳方案"中。
+                                        </p>
+                                        <div class="chat-container" style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+                                            <ul class="conv" id="guide-conv" style="flex: 1; overflow-y: auto; padding: 15px; margin: 0;">
+                                                <!-- 导购对话内容将在这里动态插入 -->
+                                            </ul>
+                                            <div class="write" style="padding: 15px; background: #3d464d; border-top: 1px solid #58666e;">
+                                                <form id="guide-chat-form" style="display: flex;">
+                                                    <input type="text" id="guide-chat-input" placeholder="输入你的导购问题..."
+                                                           style="flex: 1; padding: 10px; border: none; border-radius: 4px; background: #58666e; color: white;">
+                                                    <button type="submit" style="margin-left: 10px; padding: 0 20px; background: #399bff; color: white; border: none; border-radius: 4px;">
+                                                        发送
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 最佳方案保存标签页 -->
+                            <div role="tabpanel" class="tab-pane" id="messages2">
+                                <div class="panel panel-border-animated">
+                                    <div class="panel-title">
+                                        <i class="fa fa-save"></i> 最终方案确认
+                                    </div>
+                                    <div class="panel-body">
+                                        <div class="form-group">
+                                            <label class="form-label">最终确定广告词</label>
+                                            <textarea class="form-control" id="input4" rows="5" placeholder="请将您满意的文案复制到这里..."></textarea>
+                                        </div>
+                                        <button type="button" class="btn btn-default btn-block" id="write_xls">
+                                            <i class="fa fa-check"></i> 最终方案保存
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <div class="row footer">
+        <div class="col-md-12 text-center">
+            智行合一团队 - 智创电商营销系统 © 2025
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+
+<!-- ================================================
+kimi api
+================================================ -->
+<script>
+    document.getElementById('chat-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const input = document.getElementById('chat-input');
+        const message = input.value.trim();
+        if (!message) return;
+
+        const conv = document.getElementById('conv');
+
+        // 1. 添加用户消息（右侧）
+        const userMsg = document.createElement('li');
+        userMsg.className = 'user-message';
+        userMsg.innerHTML = `
+            <p class="ballon">${message}</p>
+            <img src="../static/images/用户头像.jpg" class="img">`;
+        conv.appendChild(userMsg);
+
+        // 2. 添加AI生成中消息（左侧）
+        const loadingMsg = document.createElement('li');
+        loadingMsg.className = 'loading-msg';
+        loadingMsg.innerHTML = `
+            <img src="../static/images/智行合一logo.png" class="img">
+            <p class="ballon color2">生成中...</p>`;
+        conv.appendChild(loadingMsg);
+
+        conv.scrollTop = conv.scrollHeight;
+
+        // 3. 调用API（使用原有可用端点）
+        fetch('/generate_xiaohongshu', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({query: message})
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('请求失败: ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            // 4. 替换生成中消息为AI回复
+            loadingMsg.outerHTML = `
+                <li>
+                    <img src="../static/images/智行合一logo.png" class="img">
+                    <p class="ballon color2">
+                        ${data.content.replace(/\n/g, '<br>')}
+                        ${data.hashtags ? '<div class="hashtags">'+data.hashtags.replace(/#(\w+)/g, '<span>#$1</span>')+'</div>' : ''}
+                    </p>
+                </li>`;
+        })
+        .catch(error => {
+            // 5. 错误处理
+            loadingMsg.querySelector('.ballon').innerHTML =
+                `❌ 生成失败: ${error.message || '未知错误'}`;
+            console.error('API错误:', error);
+        })
+        .finally(() => {
+            input.value = '';
+            conv.scrollTop = conv.scrollHeight;
+        });
+    });
+
+    // 监听基础设定保存按钮的点击事件
+    document.getElementById('saveBtn').addEventListener('click', function () {
+        var formData = getFormData();
+        var message = `我的商品名是 ${formData.product_name}，产品特点有 ${formData.product_features}，我希望生成的广告类型为 ${formData.ad_type}`;
+        addMessageToChat(message, 'user');
+        chatWithKimi(message);
+    });
+
+    // 获取表单数据
+    function getFormData() {
+        return {
+            product_name: document.getElementById('input1').value,
+            product_features: document.getElementById('input2').value,
+            ad_type: document.getElementById('input3').value
+        };
+    }
+
+    // 调用问答助手
+    function chatWithKimi(message) {
+        fetch('/chat_response', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({query: message}),
+        })
+            .then(response => response.json())
+            .then(data => {
+                addMessageToChat(data.response, 'kimi');
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+    }
+
+    // 滚动到底部
+    function scrollToBottom() {
+        var chat = document.getElementById('conv');
+        chat.scrollTop = chat.scrollHeight;
+    }
+</script>
+
+
+<!-- ================================================
+写入到数字人模块
+================================================ -->
+<script>
+    document.getElementById('write_xls').addEventListener('click', function () {
+        // 获取表单数据
+        var productName = document.getElementById('input1').value;
+        var productFeatures = document.getElementById('input2').value;
+        var adType = document.getElementById('input3').value;
+        var adbest = document.getElementById('input4').value;
+
+        // 将数据打包成对象
+        var formData = {
+            product_name: productName,
+            product_features: productFeatures,
+            ad_type: adType,
+            ad_best: adbest
+        };
+
+        // 发送AJAX请求到服务器
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/submit-form-data', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify(formData));
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                console.log('Data saved successfully');
+            } else {
+                console.error('Error saving data');
+            }
+        };
+    });
+</script>
+
+<!-- ================================================
+jQuery Library
+================================================ -->
+<script type="text/javascript" src="../static/js/jquery.min.js"></script>
+
+<!-- ================================================
+Bootstrap Core JavaScript File
+================================================ -->
+<script src="../static/js/bootstrap/bootstrap.min.js"></script>
+
+<!-- ================================================
+Plugin.js - Some Specific JS codes for Plugin Settings
+================================================ -->
+<script type="text/javascript" src="../static/js/plugins.js"></script>
+
+<!-- ================================================
+Bootstrap Select
+================================================ -->
+<script type="text/javascript" src="../static/js/bootstrap-select/bootstrap-select.js"></script>
+
+<!-- ================================================
+Bootstrap Toggle
+================================================ -->
+<script type="text/javascript" src="../static/js/bootstrap-toggle/bootstrap-toggle.min.js"></script>
+
+<!-- ================================================
+Below codes are only for index widgets
+================================================ -->
+<!-- Today Sales -->
+<script>
+
+    // set up our data series with 50 random data points
+
+    var seriesData = [[], [], []];
+    var random = new Rickshaw.Fixtures.RandomData(20);
+
+    for (var i = 0; i < 110; i++) {
+        random.addData(seriesData);
+    }
+
+    // instantiate our graph!
+
+    var graph = new Rickshaw.Graph({
+        element: document.getElementById("todaysales"),
+        renderer: 'bar',
+        series: [
+            {
+                color: "#33577B",
+                data: seriesData[0],
+                name: 'Photodune'
+            }, {
+                color: "#77BBFF",
+                data: seriesData[1],
+                name: 'Themeforest'
+            }, {
+                color: "#C1E0FF",
+                data: seriesData[2],
+                name: 'Codecanyon'
+            }
+        ]
+    });
+
+    graph.render();
+
+    var hoverDetail = new Rickshaw.Graph.HoverDetail({
+        graph: graph,
+        formatter: function (series, x, y) {
+            var date = '<span class="date">' + new Date(x * 1000).toUTCString() + '</span>';
+            var swatch = '<span class="detail_swatch" style="background-color: ' + series.color + '"></span>';
+            var content = swatch + series.name + ": " + parseInt(y) + '<br>' + date;
+            return content;
+        }
+    });
+
+</script>
+
+<!-- Today Activity -->
+<script>
+    // set up our data series with 50 random data points
+
+    var seriesData = [[], [], []];
+    var random = new Rickshaw.Fixtures.RandomData(20);
+
+    for (var i = 0; i < 50; i++) {
+        random.addData(seriesData);
+    }
+
+    // instantiate our graph!
+
+    var graph = new Rickshaw.Graph({
+        element: document.getElementById("todayactivity"),
+        renderer: 'area',
+        series: [
+            {
+                color: "#9A80B9",
+                data: seriesData[0],
+                name: 'London'
+            }, {
+                color: "#CDC0DC",
+                data: seriesData[1],
+                name: 'Tokyo'
+            }
+        ]
+    });
+
+    graph.render();
+
+    var hoverDetail = new Rickshaw.Graph.HoverDetail({
+        graph: graph,
+        formatter: function (series, x, y) {
+            var date = '<span class="date">' + new Date(x * 1000).toUTCString() + '</span>';
+            var swatch = '<span class="detail_swatch" style="background-color: ' + series.color + '"></span>';
+            var content = swatch + series.name + ": " + parseInt(y) + '<br>' + date;
+            return content;
+        }
+    });
+</script>
+
+<!-- 导购文案生成的聊天处理 -->
+<script>
+    document.getElementById('guide-chat-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const input = document.getElementById('guide-chat-input');
+        const message = input.value.trim();
+        if (!message) return;
+
+        const conv = document.getElementById('guide-conv');
+
+        // 添加用户消息
+        conv.innerHTML += `
+            <li class="user-message">
+                <p class="ballon">${message}</p>
+                <img src="../static/images/用户头像.jpg" class="img">
+            </li>`;
+
+        // 添加生成中状态
+        const loadingId = 'loading-' + Date.now();
+        conv.innerHTML += `
+            <li class="loading-msg" id="${loadingId}">
+                <img src="../static/images/智行合一logo.png" class="img">
+                <p class="ballon color2">生成中...</p>
+            </li>`;
+
+        conv.scrollTop = conv.scrollHeight;
+
+        try {
+            // 调用Dify.ai API
+            const response = await fetch('https://api.dify.ai/v1/chat-messages', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer app-SBvChHqxwwb8fPmPDiZjbQ6U',
+                    'Content-Type': 'application/json',
+                    'Accept': 'text/event-stream'
+                },
+                body: JSON.stringify({
+                    inputs: {},
+                    query: message,
+                    response_mode: "streaming",
+                    conversation_id: "",
+                    user: "abc-123"
+                })
+            });
+
+            if (!response.ok) throw new Error(`API请求失败: ${response.status}`);
+
+            // 创建AI消息容器
+            const botMessage = document.createElement('li');
+            botMessage.className = 'bot-message';
+            botMessage.innerHTML = `
+                <img src="../static/images/智行合一logo.png" class="img">
+                <p class="ballon color2"></p>`;
+
+            // 移除加载状态并添加AI消息容器
+            document.getElementById(loadingId).remove();
+            conv.appendChild(botMessage);
+            const contentElement = botMessage.querySelector('.ballon');
+
+            // 处理流式响应
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullResponse = '';
+            let isFirstMessage = true;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n\n').filter(line => line.trim());
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+
+                    try {
+                        const jsonStr = line.replace('data: ', '').trim();
+                        if (jsonStr === '[DONE]') continue;
+
+                        const eventData = JSON.parse(jsonStr);
+
+                        // 只处理message事件
+                        if (eventData.event === 'message') {
+                            if (isFirstMessage) {
+                                fullResponse = eventData.answer;
+                                isFirstMessage = false;
+                            } else {
+                                fullResponse += eventData.answer;
+                            }
+                            contentElement.innerHTML = fullResponse.replace(/\n/g, '<br>');
+                            conv.scrollTop = conv.scrollHeight;
+                        }
+
+                        // 处理工作流完成事件
+                        if (eventData.event === 'workflow_finished') {
+                            console.log('工作流完成:', eventData);
+                        }
+
+                    } catch (e) {
+                        console.warn('解析事件数据失败:', e, '原始数据:', line);
+                    }
+                }
+            }
+
+        } catch (error) {
+            const errorElement = document.querySelector(`#${loadingId} p`);
+            if (errorElement) {
+                errorElement.innerHTML = `❌ 生成失败: ${error.message}`;
+            }
+            console.error('API错误:', error);
+        } finally {
+            input.value = '';
+            conv.scrollTop = conv.scrollHeight;
+        }
+    });
+</script>
+<script src="../static/js/particles.min.js"></script>
+<script src="../static/js/particles-init.js"></script>
+</div>
+</body>
+</html>

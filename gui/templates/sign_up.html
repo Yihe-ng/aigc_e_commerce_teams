@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- 保持原有head部分不变 -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="商家来源统计--行业，地域分布一览无余！">
+    <meta name="keywords" content="来源统计，地域分布，行业分布"/>
+    <title>商家来源统计</title>
+
+    <!-- CSS 文件 -->
+    <link href="../static/css/root.css" rel="stylesheet">
+    <link href="../static/css/index.css" rel="stylesheet">
+    <link href="../static/css/style.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Montserrat&display=swap" rel="stylesheet">
+    <!-- 引入Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- 引入ECharts图表库 -->
+    <script src="https://cdn.tcharts.cn/echarts/5.4.3/echarts.min.js"></script>
+    <!-- 引入SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        /* 添加滚动功能 */
+        .content-wrapper {
+            position: fixed;
+            top: 60px; /* 顶部导航高度 */
+            left: 250px; /* 侧边栏宽度 */
+            right: 0;
+            bottom: 0;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            background: #f9fbff;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.5; /* 文字垂直居中，避免截断 */
+            padding-top: 6px; /* 微调内边距，给文字留空间 */
+            padding-bottom: 8px;
+            font-family: "Microsoft YaHei", sans-serif; /* 明确字体，避免 fallback 乱码 */
+        }
+
+        .form-input:focus {
+            border-color: #2f80ed;
+            box-shadow: 0 0 8px rgba(47, 128, 237, 0.3);
+            outline: none;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 12px; /* 左右内边距 */
+            background: #2f80ed;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .submit-btn:hover {
+            background: #4a90e2;
+        }
+
+        /* 菜单高亮样式 */
+        .sidebar-panel > li > a.active,
+        .sidebar-panel > li > ul > li > a.active {
+            background-color: rgba(47, 128, 237, 0.1);
+            border-left: 4px solid #2f80ed;
+            color: #2f80ed;
+            font-weight: 600;
+        }
+
+
+        .progress-bar {
+            height: 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 1200px) {
+            .content-wrapper {
+                left: 200px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .content-wrapper {
+                left: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+<!-- 保持原有顶部导航栏和侧边栏不变 -->
+<div id="particles-js"></div>
+<div class="loading"><img src="../static/images/loading.gif" alt="loading-img"></div>
+
+<!-- START TOP -->
+<div id="top" class="clearfix">
+    <!-- Logo -->
+    <div class="applogo">
+        <a href="index_main.html" class="logo">
+            <span class="logo-text">智创电商营销系统</span>
+            <span class="logo-glow"></span>
+        </a>
+    </div>
+    <!-- 菜单按钮  -->
+    <a href="#" class="sidebar-open-button-mobile"><i class="fa fa-bars"></i></a>
+    <a href="#" class="sidebar-open-button"><i class="fa fa-bars"></i></a>
+    <!-- 搜索框 -->
+    <form class="searchform">
+        <input type="text" class="searchbox" id="searchbox" placeholder="搜索">
+        <span class="searchbutton"><i class="fa fa-search"></i></span>
+    </form>
+
+    <!-- 用户菜单 -->
+    <ul class="top-right">
+        <li class="dropdown link">
+            <a href="#" data-toggle="dropdown" class="dropdown-toggle profilebox"><img
+                    src="../static/images/用户头像.jpg" alt="img"><b>模拟用户</b><span
+                    class="caret"></span></a>
+            <ul class="dropdown-menu dropdown-menu-list dropdown-menu-right">
+                <li role="presentation" class="dropdown-header">更多</li>
+                <li><a href="#"><i class="fa falist fa-wrench"></i>设置</a></li>
+                <li><a href="#"><i class="fa falist fa-lock"></i> 修改密码</a></li>
+                <li><a href="#"><i class="fa falist fa-power-off"></i> 退出登录</a></li>
+                <li class="divider"></li>
+                <li><a href="#">更多功能更新中......</a></li>
+            </ul>
+        </li>
+    </ul>
+</div>
+<!-- END TOP -->
+
+<!-- START SIDEBAR -->
+<div class="sidebar clearfix">
+    <ul class="sidebar-panel nav">
+        <li><a href="/home"><span class="icon color5"><i class="fa fa-home"></i></span>首页</a></li>
+        <li><a href="#"><span class="icon color10"><i class="fa fa-th"></i></span>商品信息管理<span
+                class="caret"></span></a>
+            <ul>
+                <li><a href="product_management">商品基础信息库</a></li>
+                <li><a href="product_marketing">商品营销素材库</a></li>
+            </ul>
+        </li>
+        <li><a href="test1"><span class="icon color5"><i class="fa fa-comment-o"></i></span>文案智造器</a></li>
+        <li><a href="test2"><span class="icon color11"><i class="fa fa-photo"></i></span>营销图创作</a></li>
+        <li><a href="test3"><span class="icon color8"><i class="fa fa-film"></i></span>短视频智造</a></li>
+        <li><a href="http://127.0.0.1:5000/setting"><span class="icon color12"><i class="fa fa-smile-o"></i></span>数字直播大厅</a>
+        </li>
+        <li><a href="calendar"><span class="icon color8"><i class="fa fa-calendar-o"></i></span>营销日程规划<span
+                class="label label-danger">NEW</span></a></li>
+        <li><a href="note"><span class="icon color8"><i class="fa fa-bullhorn"></i></span>营销笔记发布</a></li>
+        <li class="active"><a href="dashboard"><span class="icon color8"><i class="fa fa-mortar-board"></i></span>数据统计<span
+                class="caret"></span></a>
+            <ul style="display: block;">
+                <li><a href="sign_up" class="active">商家来源统计</a></li>
+                <li><a href="dashboard_internal">程序员数据看板</a></li>
+                <li><a href="dashboard">用户数据看板</a></li>
+            </ul>
+        </li>
+        <li><a href="http://127.0.0.1:3000"><span class="icon color5"><i class="fa fa-desktop"></i></span>登录</a></li>
+    </ul>
+</div>
+<!-- END SIDEBAR -->
+
+<!-- START CONTENT -->
+<div class="content-wrapper">
+    <!-- Start Page Header -->
+
+    <div class="page-header">
+        <h1 class="title">商家来源统计</h1>
+        <ol class="breadcrumb">
+            <li><a href="/">首页</a></li>
+            <li><a href="#">数据统计看板</a></li>
+            <li class="active">商家来源统计</li>
+            <li><a href="#" onclick="location.reload()">刷新</a></li>
+        </ol>
+    </div>
+
+    <!-- 表单区域：使用系统网格布局 -->
+    <div class="row">
+        <div class="col-md-6 col-md-offset-3"> <!-- 居中布局 -->
+            <div class="form-section">
+                <h2 class="text-center mb-4">商家来源统计</h2>
+                <p class="text-center text-muted mb-6">请填写信息，帮助我们分析您的来源渠道</p>
+
+                <form id="merchantForm" method="POST">
+
+                    <div class="form-group">
+                        <label class="form-label" for="merchant_name">商家名称</label>
+                        <input type="text" id="merchant_name" name="merchant_name"
+                               class="form-input" placeholder="请输入您的商家名称" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">来源渠道</label>
+                        <select name="source" class="form-input" required>
+                            <option value="">请选择来源渠道</option>
+                            <option value="线上推广">线上推广</option>
+                            <option value="线下活动">线下活动</option>
+                            <option value="合作伙伴">合作伙伴</option>
+                            <option value="自然流量">自然流量</option>
+                            <option value="客户推荐">客户推荐</option>
+                            <option value="搜索引擎">搜索引擎</option>
+                            <option value="社交媒体">社交媒体</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">行业类别</label>
+                        <select name="category" class="form-input" required>
+                            <option value="">请选择行业类别</option>
+                            <option value="餐饮">餐饮</option>
+                            <option value="零售">零售</option>
+                            <option value="服务">服务</option>
+                            <option value="制造">制造</option>
+                            <option value="科技">科技</option>
+                            <option value="教育">教育</option>
+                            <option value="医疗">医疗</option>
+                            <option value="物流">物流</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">所在区域</label>
+                        <select name="region" class="form-input" required>
+                            <option value="">请选择所在区域</option>
+                            <option value="华东">华东</option>
+                            <option value="华北">华北</option>
+                            <option value="华南">华南</option>
+                            <option value="西南">西南</option>
+                            <option value="西北">西北</option>
+                            <option value="东北">东北</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="submit-btn">
+                        <i class="fa fa-check"></i> 提交注册信息
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-gray-200 py-6 mt-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-gray-500">© 2025 商家渠道分析系统 · 数据更新时间：<span
+                    id="update-time">-</span></p>
+        </div>
+    </footer>
+    <!-- Start Footer -->
+    <div class="row footer">
+        <div class="col-md-6 text-left">
+            智行合一团队-智创电商营销系统
+        </div>
+    </div>
+    <!-- End Footer -->
+</div>
+<!-- END CONTENT -->
+
+<!-- JS 脚本 -->
+<script src="../static/js/jquery.min.js"></script>
+<script src="../static/js/bootstrap/bootstrap.min.js"></script>
+<script type="text/javascript" src="../static/js/plugins.js"></script>
+<!-- 粒子效果JS -->
+<script src="../static/js/particles.js"></script>
+<script src="../static/js/particles-init.js"></script>
+
+<script>
+    // 侧边栏折叠逻辑（主页面同款）
+    $(document).ready(function () {
+        // 初始化菜单
+        $('.sidebar-panel a').has('span.caret').click(function (e) {
+            e.preventDefault();
+            $(this).next('ul').toggle();
+        });
+
+        // 确保当前菜单展开
+        $('.sidebar-panel li.active').children('ul').show();
+    });
+
+    // 表单提交处理
+    <!-- 修改提交成功后的跳转处理 -->
+    $('#merchantForm').on('submit', function (e) {
+        e.preventDefault();
+
+        // 添加CSRF令牌到请求头
+        const csrf_token = $('input[name="csrf_token"]').val();
+
+        fetch('/sign_up', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+
+            },
+            body: JSON.stringify({
+                merchant_name: $('#merchant_name').val(),
+                source: $('select[name="source"]').val(),
+                category: $('select[name="category"]').val(),
+                region: $('select[name="region"]').val()
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    window.location.href = data.redirect;  // 正确跳转
+                } else {
+                    Swal.fire('错误', data.message || '提交失败，请重试', 'error');
+                }
+            });
+    });
+
+
+    // 全局商家跟踪
+    function initMerchantTracking() {
+        // 尝试获取商家ID
+        let merchantId = sessionStorage.getItem('merchant_id') || localStorage.getItem('merchant_id');
+        // 如果没有商家ID，检查是否有注册后返回的ID
+        if (!merchantId) {
+            const urlParams = new URLSearchParams(window.location.search);
+            merchantId = urlParams.get('merchant_id');
+        }
+
+        if (merchantId) {
+            // 保存商家ID
+            sessionStorage.setItem('merchant_id', merchantId);
+            localStorage.setItem('merchant_id', merchantId);
+
+            // 设置会话开始时间
+            if (!sessionStorage.getItem('session_start')) {
+                sessionStorage.setItem('session_start', Date.now());
+            }
+
+            // 每5分钟发送一次更新
+            setInterval(() => {
+                const sessionStart = parseInt(sessionStorage.getItem('session_start'));
+                const duration = (Date.now() - sessionStart) / 1000; // 秒
+
+                // 重置会话时间
+                sessionStorage.setItem('session_start', Date.now());
+
+                // 发送更新到后端
+                fetch('/api/update_usage', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        merchant_id: merchantId,
+                        duration: duration
+                    })
+                });
+            }, 300000); // 5分钟
+
+            // 页面关闭时发送更新
+            window.addEventListener('beforeunload', () => {
+                const sessionStart = parseInt(sessionStorage.getItem('session_start'));
+                const duration = (Date.now() - sessionStart) / 1000;
+
+                navigator.sendBeacon('/api/update_usage', JSON.stringify({
+                    merchant_id: merchantId,
+                    duration: duration
+                }));
+            });
+        }
+    }
+
+    // 页面加载时初始化跟踪
+    document.addEventListener('DOMContentLoaded', initMerchantTracking);
+
+</script>
+
+<div id="alertContainer"></div>
+<div id="uploadProgressContainer" style="display: none;">
+    <div class="progress">
+        <div id="uploadProgressBar" class="progress-bar"></div>
+    </div>
+</div>
+<div id="uploadedImages" class="row"></div>
+</body>
+</html>

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>营销图创作 - 智创电商营销系统</title>
+
+    <link href="{{ url_for('static', filename='css/root.css') }}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Montserrat&display=swap" rel="stylesheet">
+
+    <style>
+    /* 样式保持不变 */
+    .panel-border-animated {
+        background: linear-gradient(135deg,  #37a1ff 0%, #1b5787 100%);
+        border: 1px solid #4d8cff;
+        box-shadow: 0 0 15px rgba(77, 140, 255, 0.5);
+        border-radius: 5px;
+        color: white;
+        margin-bottom: 20px;
+    }
+    .panel-border-animated .panel-title {
+        padding: 12px 15px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        font-size: 16px;
+        color: #fff;
+        background: rgba(0,0,0,0.2);
+    }
+    .panel-border-animated .panel-body {
+        padding: 15px;
+        background: rgba(0,0,0,0.1);
+    }
+    .progress-bar {
+        background-color: #4d8cff;
+        transition: width 0.6s ease;
+    }
+    .btn-primary {
+        background-color: #4d8cff;
+        border-color: #3a7cff;
+    }
+    #product-category, #product-select {
+        background: rgba(15, 23, 42, 0.7);
+        color: #e2e8f0;
+        border: 1px solid rgba(94, 234, 212, 0.3);
+    }
+    #image-preview {
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid #444;
+        transition: all 0.3s;
+    }
+    /* 修复 Bootstrap select 样式 */
+    #product-select {
+        -webkit-appearance: menulist !important;
+        appearance: menulist !important;
+        opacity: 1 !important;
+        display: block !important;
+    }
+    /* 隐藏可能冲突的第三方样式 */
+    .select2-container { display: none !important; }
+    </style>
+</head>
+<body>
+<div id="particles-js"></div>
+
+<div class="loading"><img src="{{ url_for('static', filename='images/loading.gif') }}" alt="loading-img"></div>
+
+<div id="top" class="clearfix">
+    <div class="applogo">
+        <a href="{{ url_for('home') }}" class="logo">
+            <span class="logo-text">智创电商营销系统</span>
+            <span class="logo-glow"></span>
+        </a>
+    </div>
+    <a href="#" class="sidebar-open-button-mobile"><i class="fa fa-bars"></i></a>
+    <a href="#" class="sidebar-open-button"><i class="fa fa-bars"></i></a>
+
+    <form class="searchform">
+        <input type="text" class="searchbox" id="searchbox" placeholder="搜索">
+        <span class="searchbutton"><i class="fa fa-search"></i></span>
+    </form>
+</div>
+
+<div class="sidebar clearfix">
+    <ul class="sidebar-panel nav">
+        <li><a href="{{ url_for('home') }}"><span class="icon color5"><i class="fa fa-home"></i></span>首页</a></li>
+        <li><a href="#"><span class="icon color10"><i class="fa fa-th"></i></span>商品信息管理<span class="caret"></span></a>
+            <ul>
+                <li><a href="{{ url_for('product_management') }}">商品基础信息库</a></li>
+                <li><a href="{{ url_for('product_marketing') }}">商品营销素材库</a></li>
+            </ul>
+        </li>
+        <li><a href="{{ url_for('test1') }}"><span class="icon color5"><i class="fa fa-comment-o"></i></span>文案智造器</a></li>
+        <li><a href="{{ url_for('test2') }}" class="active"><span class="icon color11"><i class="fa fa-photo"></i></span>营销图创作</a></li>
+        <li><a href="{{ url_for('test3') }}"><span class="icon color8"><i class="fa fa-film"></i></span>短视频智造</a></li>
+        <li><a href="{{ url_for('setting') }}"><span class="icon color12"><i class="fa fa-smile-o"></i></span>数字直播大厅</a></li>
+        <li><a href="{{ url_for('calendar') }}"><span class="icon color8"><i class="fa fa-calendar-o"></i></span>营销日程规划</a></li>
+        <li><a href="{{ url_for('note') }}"><span class="icon color8"><i class="fa fa-bullhorn"></i></span>营销笔记发布</a></li>
+        <li><a href="http://127.0.0.1:5000"><span class="icon color5"><i class="fa fa-desktop"></i></span>登录</a></li>
+    </ul>
+</div>
+
+<div class="content">
+    <div class="page-header">
+        <h1 class="title">营销图创作</h1>
+        <ol class="breadcrumb">
+            <li><a href="{{ url_for('home') }}">首页</a></li>
+            <li class="active">营销图创作</li>
+        </ol>
+    </div>
+
+    <div class="container-padding">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="panel panel-border-animated">
+                    <div class="panel-title"><i class="fa fa-image"></i> 图像生成预览</div>
+                    <div class="panel-body" style="min-height:400px;display:flex;align-items:center;justify-content:center;">
+                        <img src="{{ url_for('static', filename='images/智行合一logo.png') }}"
+                             alt="生成的图片" id="generated-image"
+                             style="max-width:100%;max-height:380px;object-fit:contain;"
+                             onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/image-error.png') }}';">
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="panel panel-border-animated">
+                    <div class="panel-title"><i class="fa fa-cogs"></i> 图片生成设定</div>
+                    <div class="panel-body">
+                        <form id="image-gen-form">
+                            <div class="form-group">
+                                <label class="form-label">选择商品</label>
+                                <div class="input-group">
+                                    <select class="form-control" id="product-category"><option value="">选择分类</option></select>
+                                    <select class="form-control" id="product-select"><option value="">请先选择分类</option></select>
+                                </div>
+                                <input type="hidden" id="selected-image-url">
+                                <div id="image-preview" class="mt-3 border rounded p-2" style="min-height: 150px; display: flex; justify-content: center; align-items: center;">
+                                    <span class="text-muted">预览图将显示在这里</span>
+                                </div>
+                            </div>
+                            <div class="form-group text-right">
+                                <button type="submit" class="btn btn-primary" id="submit-btn">
+                                    <i class="fa fa-magic"></i> 生成图片
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="panel panel-border-animated" id="progress-panel" style="display:none;">
+                    <div class="panel-title"><i class="fa fa-spinner fa-spin"></i> 生成进度</div>
+                    <div class="panel-body">
+                        <div class="progress" style="height:25px;">
+                            <div id="gen-progress" class="progress-bar progress-bar-striped active" role="progressbar" style="width:0%;">
+                                <span id="progress-text">0%</span>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-6"><small>已用时: <span id="time-elapsed">0秒</span></small></div>
+                            <div class="col-md-6 text-right"><small>状态: <span id="status-text">初始化...</span></small></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel panel-border-animated mt-3 d-none" id="upload-confirm-panel"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/bootstrap/bootstrap.min.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/plugins.js') }}"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+<script>
+const OSS_CONFIG = {
+    CUSTOM_DOMAIN: 'oceanedgen.oss-cn-shenzhen.aliyuncs.com'
+};
+
+$(document).ready(function() {
+    loadCategories();
+
+    // 级联选择逻辑
+    $('#product-category').change(function() {
+        const category = $(this).val();
+        if (category) {
+            loadProductsByCategory(category);
+        } else {
+            $('#product-select').empty().append('<option value="">请选择分类</option>');
+            $('#image-preview').html('<span class="text-muted">请先选择商品分类</span>');
+        }
+    });
+
+    $('#product-select').change(updateImagePreview);
+
+    // 核心生成逻辑
+    $('#image-gen-form').submit(async function(e) {
+        e.preventDefault();
+
+        // UI重置
+        $('#submit-btn').prop('disabled', true);
+        $('#progress-panel').show();
+        $('#gen-progress').css('width', '0%').removeClass('bg-danger');
+        $('#progress-text').text('0%');
+        $('#upload-confirm-panel').addClass('d-none');
+
+        const startTime = Date.now();
+        const imageUrl = $('#selected-image-url').val();
+
+        if (!imageUrl) {
+            alert('请先选择商品图片');
+            $('#submit-btn').prop('disabled', false);
+            $('#progress-panel').hide();
+            return;
+        }
+
+        try {
+            // 1. 提交任务
+            const genResponse = await $.ajax({
+                url: '/api/generate_img2img', // 确保后端路由已改名避免冲突
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ image_url: imageUrl }),
+                timeout: 30000
+            });
+
+            if (genResponse.code !== 0) throw new Error(genResponse.msg || '任务提交失败');
+
+            const taskId = genResponse.data.generateUuid;
+            let retryCount = 0;
+            const maxRetries = 60; // 【修复】最大轮询次数 (60次 * 2秒 = 2分钟超时)
+
+            // 2. 轮询状态
+            while (retryCount < maxRetries) {
+                const statusResponse = await $.ajax({
+                    url: '/api/check_img2img_status',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ generateUuid: taskId }),
+                    timeout: 10000
+                });
+
+                if (statusResponse.code !== 0) throw new Error('状态查询失败: ' + statusResponse.msg);
+
+                const status = statusResponse.data.generateStatus;
+                const percent = Math.floor((statusResponse.data.percentCompleted || 0) * 100);
+
+                // 更新UI
+                $('#gen-progress').css('width', `${percent}%`);
+                $('#progress-text').text(`${percent}%`);
+                $('#time-elapsed').text(Math.floor((Date.now() - startTime) / 1000) + '秒');
+
+                // 成功 (Status 5)
+                if (status === 5) {
+                    if (statusResponse.data.images?.length > 0) {
+                        const imgData = statusResponse.data.images[0];
+                        // 【修复】添加时间戳防止浏览器缓存旧图片
+                        const finalUrl = imgData.imageUrl + '?t=' + Date.now();
+
+                        $('#generated-image').attr('src', finalUrl);
+                        $('#progress-panel').hide();
+                        $('#submit-btn').prop('disabled', false);
+
+                        // 调用成功处理函数显示上传按钮
+                        handleImageGenerationSuccess({
+                            status: 'success',
+                            image_url: imgData.imageUrl // 这里传原始URL给后端，显示用finalUrl
+                        });
+                        alert('图片生成成功！');
+                    } else {
+                        throw new Error('未返回有效图片数据');
+                    }
+                    break;
+                }
+
+                // 失败 (假设 6 是失败状态，根据您的后端逻辑调整)
+                if (status === 6 || status === -1) {
+                    throw new Error('后端返回任务失败状态');
+                }
+
+                retryCount++;
+                await new Promise(r => setTimeout(r, 2000)); // 等待2秒
+            }
+
+            if (retryCount >= maxRetries) {
+                throw new Error('生成超时，请稍后重试');
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            $('#gen-progress').css('width', '100%').addClass('bg-danger');
+            $('#progress-text').text('失败');
+            alert('错误: ' + (error.message || '未知错误'));
+            $('#submit-btn').prop('disabled', false);
+        }
+    });
+});
+
+// 处理生成成功逻辑
+function handleImageGenerationSuccess(response) {
+    if (response.status === 'success' && response.image_url) {
+        const rawUrl = response.image_url;
+
+        $('#upload-confirm-panel').removeClass('d-none').html(`
+            <div class="panel-title"><i class="fa fa-cloud-upload"></i> 后续操作</div>
+            <div class="panel-body">
+                <div class="alert alert-success">
+                    <strong>图片已生成！</strong>
+                    <p class="mt-2">您可以选择将其上传到营销素材库，或直接下载。</p>
+                    <div class="d-flex justify-content-between mt-3">
+                        <button id="confirm-upload" class="btn btn-success"><i class="fa fa-upload"></i> 上传到素材库</button>
+                        <a href="${rawUrl}" target="_blank" class="btn btn-info"><i class="fa fa-download"></i> 查看原图</a>
+                    </div>
+                </div>
+            </div>
+        `);
+
+        // 绑定上传事件
+        $('#confirm-upload').off('click').on('click', function() {
+            uploadToOSS(rawUrl);
+        });
+    }
+}
+
+// 加载分类
+function loadCategories() {
+    $.get('/api/oss/categories', function(res) {
+        if(res.code === 200 || res.status === 'success') {
+            const list = res.data || [];
+            list.forEach(c => $('#product-category').append(`<option value="${c}">${c}</option>`));
+        }
+    });
+}
+
+// 加载商品
+function loadProductsByCategory(cat) {
+    $('#product-select').empty().append('<option>加载中...</option>');
+    $.get('/api/oss/products_by_category', { category: cat }, function(res) {
+        $('#product-select').empty().append('<option value="">-- 选择商品 --</option>');
+        if(res.status === 'success' && res.data) {
+            res.data.forEach(p => {
+                const opt = $('<option>').val(p.product_id).text(p.name);
+                opt.data('img', p.main_image ? `https://${OSS_CONFIG.CUSTOM_DOMAIN}/${p.main_image}` : '');
+                $('#product-select').append(opt);
+            });
+        }
+    });
+}
+
+// 更新预览
+function updateImagePreview() {
+    const img = $('#product-select option:selected').data('img');
+    $('#image-preview').empty();
+    if(img) {
+        $('#image-preview').html(`<img src="${img}" class="img-fluid" style="max-height:150px;">`);
+        $('#selected-image-url').val(img);
+    } else {
+        $('#image-preview').html('<span class="text-muted">该商品无主图</span>');
+        $('#selected-image-url').val('');
+    }
+}
+
+// 上传逻辑
+function uploadToOSS(url) {
+    const pid = $('#product-select').val();
+    if(!pid) return alert('请先选择归属商品');
+
+    $('#upload-confirm-panel .panel-body').html('<div class="alert alert-warning">正在上传...</div>');
+
+    $.ajax({
+        url: '/api/save_generated_content',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            product_id: pid,
+            type: 'image',
+            file_url: url,
+            metadata: { generated_at: new Date().toISOString() }
+        }),
+        success: function(res) {
+            if(res.status === 'success') {
+                $('#upload-confirm-panel .panel-body').html('<div class="alert alert-success">上传成功！</div>');
+            } else {
+                alert('上传失败: ' + res.error);
+            }
+        }
+    });
+}
+</script>
+
+<script src="{{ url_for('static', filename='js/particles.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/particles-init.js') }}"></script>
+</body>
+</html>

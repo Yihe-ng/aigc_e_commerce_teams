@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>数字直播大厅</title>
+    <link rel="stylesheet" href="{{ url_for('static',filename='css/index.css') }}"/>
+    <link rel="stylesheet" href="{{ url_for('static',filename='css/setting.css') }}"/>
+
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="{{ url_for('static',filename='css/element/index.css') }}">
+    <link href="../static/css/root.css" rel="stylesheet">
+</head>
+
+<body>
+<div id="particles-js"></div>
+<!-- Start Page Loading -->
+<div class="loading"><img src="../static/images/loading.gif" alt="loading-img"></div>
+<!-- End Page Loading -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- START TOP -->
+<div id="top" class="clearfix">
+    <!-- Logo -->
+    <div class="applogo">
+        <a href="/home" class="logo">
+            <span class="logo-text">智创电商营销系统</span>
+            <span class="logo-glow"></span>
+        </a>
+    </div>
+        <!-- 菜单按钮  -->
+        <a href="#" class="sidebar-open-button-mobile"><i class="fa fa-bars"></i></a>
+        <a href="#" class="sidebar-open-button"><i class="fa fa-bars"></i></a>
+    <!-- 搜索框 -->
+    <form class="searchform">
+        <input type="text" class="searchbox" id="searchbox" placeholder="搜索">
+        <span class="searchbutton"><i class="fa fa-search"></i></span>
+    </form>
+    
+    <!-- 用户菜单 -->
+    <ul class="top-right">
+        <li class="dropdown link">
+            <a href="#" data-toggle="dropdown" class="dropdown-toggle profilebox"><img
+                    src="../static/images/用户头像.jpg" alt="img"><b>模拟用户</b><span
+                    class="caret"></span></a>
+            <ul class="dropdown-menu dropdown-menu-list dropdown-menu-right">
+                <li role="presentation" class="dropdown-header">更多</li>
+                <li><a href="#"><i class="fa falist fa-wrench"></i>设置</a></li>
+                <li><a href="#"><i class="fa falist fa-lock"></i> 修改密码</a></li>
+                <li><a href="#"><i class="fa falist fa-power-off"></i> 退出登录</a></li>
+                <li class="divider"></li>
+                <li><a href="#">更多功能更新中......</a></li>
+            </ul>
+        </li>
+    </ul>
+</div>
+<!-- END TOP -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+
+
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- START SIDEBAR -->
+<div class="sidebar clearfix">
+    <ul class="sidebar-panel nav">
+        <li><a href="/home"><span class="icon color5"><i class="fa fa-home"></i></span>首页</a></li>
+        <li><a href="#"><span class="icon color10"><i class="fa fa-th"></i></span>商品信息管理<span class="caret"></span></a>
+            <ul>
+                <li><a href="/product_management">商品基础信息库</a></li>
+                <li><a href="/product_marketing">商品营销素材库</a></li>
+            </ul>
+        </li>
+        <li><a href="/test1"><span class="icon color5"><i class="fa fa-comment-o"></i></span>文案智造器</a></li>
+        <li><a href="/test2"><span class="icon color11"><i class="fa fa-photo"></i></span>营销图创作</a></li>
+        <li><a href="/test3"><span class="icon color8"><i class="fa fa-film"></i></span>短视频智造</a></li>
+        <li><a href="/setting" class="active"><span class="icon color12"><i class="fa fa-smile-o"></i></span>数字直播大厅</a></li>
+        <li><a href="/calendar"><span class="icon color8"><i class="fa fa-calendar-o"></i></span>营销日程规划<span class="label label-danger">NEW</span></a></li>
+        <li><a href="/note"><span class="icon color8"><i class="fa fa-bullhorn"></i></span>营销笔记发布</a></li>
+        <li><a href="/"><span class="icon color5"><i class="fa fa-desktop"></i></span>登录</a></li>
+    </ul>
+</div>
+<!-- END SIDEBAR -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+
+
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- START CONTENT -->
+<div class="content">
+    <!-- Start Page Header -->
+    <div class="page-header">
+        <h1 class="title">数字直播大厅</h1>
+        <ol class="breadcrumb">
+            <li><a href="/home">首页</a></li>
+            <li class="active">数字直播大厅</li>
+        </ol>
+    </div>
+    <!-- End Page Header -->
+    <!-- //////////////////////////////////////////////////////////////////////////// -->
+    <div id="app" class="container" v-cloak>
+    
+    <div class="row">
+
+        <div class="col-md-12">
+            <div class="panel panel-default">
+
+                <div class="panel-title">数字人-人设</div>
+                <!-- START FAY设置-->
+                <div class="main_bg" id="app">
+                    <div class="main_right">
+                        <!-- 以上是即时信息显示 -->
+
+                        <div class="setting_fay">
+                            <div class="setting_name">
+                                <ul>
+                                    <li><span class="font_name">姓&nbsp;&nbsp;&nbsp;名:</span><input class="section_1"
+                                                                                                     :disabled="!configEditable"
+                                                                                                     v-model="attribute_name"
+                                                                                                     placeholder="请输入内容">
+                                    </li>
+                                    <li><span class="font_name">性&nbsp;&nbsp;&nbsp;别:</span><input class="section_1"
+                                                                                                     :disabled="!configEditable"
+                                                                                                     v-model="attribute_gender"
+                                                                                                     placeholder="请输入内容"/>
+                                    </li>
+                                    <li><span class="font_name">年&nbsp;&nbsp;&nbsp;龄:</span><input class="section_1"
+                                                                                                     :disabled="!configEditable"
+                                                                                                     v-model="attribute_age"
+                                                                                                     placeholder="请输入内容"/>
+                                    </li>
+                                    <li><span class="font_name">出生地:</span><input class="section_1"
+                                                                                     :disabled="!configEditable"
+                                                                                     v-model="attribute_birth"
+                                                                                     placeholder="请输入内容"/></li>
+                                    <li><span class="font_name">生&nbsp;&nbsp;&nbsp;肖:</span><input class="section_1"
+                                                                                                     :disabled="!configEditable"
+                                                                                                     v-model="attribute_zodiac"
+                                                                                                     placeholder="请输入内容"/>
+                                    </li>
+                                    <li><span class="font_name">星&nbsp;&nbsp;&nbsp;座:</span><input class="section_1"
+                                                                                                     :disabled="!configEditable"
+                                                                                                     v-model="attribute_constellation"
+                                                                                                     placeholder="请输入内容"/>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="setting_work">
+                                <ul>
+                                    <li><span
+                                            class="font_name">职&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;业:</span><input
+                                            class="section_1" :disabled="!configEditable" v-model="attribute_job"
+                                            placeholder="请输入内容"/></li>
+                                    <li><span class="font_name">&nbsp;联系方式:</span><input class="section_1"
+                                                                                             :disabled="!configEditable"
+                                                                                             v-model="attribute_contact"
+                                                                                             placeholder="请输入内容"/>
+                                    </li>
+                                    <li><span class="font_name">Q&A文件:</span><input class="section_1"
+                                                                                      :disabled="!configEditable"
+                                                                                      v-model="QnA"
+                                                                                      placeholder="请输入内容"/>
+                                    </li>
+                                    <li><span
+                                            class="font_name">补&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;充:</span><textarea
+                                            class="section_1" style="height: 100px;vertical-align: middle;"></textarea>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="setting_rup">
+                                <div class="setting_wakeup">
+                                    <ul>
+                                        <li><span class="font_name">唤醒模式:</span>
+                                            <el-switch :disabled="!configEditable"
+                                                       v-model="wake_word_enabled"
+                                                       active-color="#13ce66"
+                                                       inactive-color="#ff4949">
+                                            </el-switch>
+                                        </li>
+                                        <li><span class="font_name">&nbsp;唤&nbsp;醒&nbsp;词:</span>
+                                            <input v-model="wake_word" placeholder="请输入内容（以,隔开）"
+                                                   :disabled="!configEditable"
+                                                   class="section_1"/></li>
+                                        <li><span class="font_name">唤醒方式:</span>
+                                            <select class="section_1" v-model="wake_word_type"
+                                                    :disabled="!configEditable">
+                                                <option v-for="item in wake_word_type_options" :key="item.value"
+                                                        :label="item.label" :value="item.value">[[ item.label ]]</option>
+                                            </select></li>
+                                    </ul>
+                                </div>
+
+                                <div class="microphone">
+                                    <div class="microphone_group1">
+                                        <span class="font_name">扬&nbsp;声&nbsp;器&nbsp;:</span>
+                                        <el-switch v-model="play_sound_enabled" active-color="#13ce66"
+                                                   inactive-color="#ff4949"
+                                                   :disabled="!configEditable"></el-switch>
+                                    </div>
+                                    <div class="microphone_group1">
+                                        <span class="font_name">&nbsp;麦&nbsp;克&nbsp;风&nbsp;:</span>
+                                        <el-switch v-model="source_record_enabled" active-color="#13ce66"
+                                                   inactive-color="#ff4949"
+                                                   :disabled="!configEditable"></el-switch>
+                                    </div>
+                                </div>
+
+                                <div class="setting_wakeup">
+                                    <ul>
+                                        <li><span class="font_name">声音选择:</span>
+                                            <select v-model="attribute_voice" placeholder="请选择" class="section_1"
+                                                    style="height: 39px;" :disabled="!configEditable">
+                                                <option v-for="item in voiceList" :key="item.value"
+                                                        :label="item.label" :value="item.value">[[ item.label ]]</option>
+                                            </select></li>
+                                        <li style="display: flex;"><span class="font_name" style="line-height: 36px;">&nbsp;敏&nbsp;感&nbsp;度&nbsp;:</span>
+                                            <el-slider style="width: 150px;" v-model="interact_perception_follow"
+                                                       :disabled="!configEditable"></el-slider>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="setting_autoplay">
+                            <div>
+                                <el-switch
+                                        v-model="automatic_player_status" @change=saveConfig()
+                                        active-color="#13ce66"
+                                        inactive-color="#ff4949">
+                                </el-switch>
+                                <span class="font_name" style="margin-left: 0px;">自动播放：</span>
+                                <input class="section_2" v-model="automatic_player_url"
+                                       placeholder="http://127.0.0.1:5000"
+                                       :disabled="!configEditable"/>
+                            </div>
+                        </div>
+                        <div style="margin-top: 25px; margin-left: 280px;">
+                            <el-button style="width: 120px;height: 40px;margin-left: -100px;"
+                                       :disabled="!configEditable"
+                                       @click=saveConfig()>保存配置
+                            </el-button>
+
+
+                            <!-- <el-button type="primary" style="width: 160px;height: 50px;margin-left: 100px;background-color: #007aff;">开 启</el-button> -->
+                            <el-button v-if="liveState == 1" type="success" class="btn_close"
+                                       style="width: 120px;height: 40px;margin-left: 40px;background-color: #007aff;"
+                                       @click=stopLive()>关闭（运行中）
+                            </el-button>
+                            <el-button v-else-if="liveState == 2" type="primary" plain disabled
+                                       style="width: 120px;height: 40px;margin-left: 40px;background-color: #007aff;">
+                                正在开启...
+                            </el-button>
+                            <el-button v-else-if="liveState == 3" type="success" plain disabled
+                                       style="width: 120px;height: 40px;margin-left: 40px;background-color: #007aff;">
+                                正在关闭...
+                            </el-button>
+                            <el-button v-else type="primary"
+                                       style="width: 120px;height: 40px;margin-left: 40px;background-color: #007aff;"
+                                       @click=startLive()>开启
+                            </el-button>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- End FAY设置-->
+
+            </div>
+        </div>
+        <!-- 按钮用于启动数字人平台 -->
+        <button id="run-exe-btn" type="button" class="btn btn-danger">
+            <i class="fa fa-caret-square-o-right"></i> 启动数字人平台
+        </button>
+
+    </div>
+
+    <!-- END CONTAINER -->
+    <!-- //////////////////////////////////////////////////////////////////////////// -->
+
+    <!-- Start Footer -->
+    <div class="row footer">
+        <div class="col-md-6 text-left">
+            智行合一团队-智创电商营销系统
+        </div>
+    </div>
+    <!-- End Footer -->
+
+</div>
+<!-- End Content -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+
+<!-- import Vue before Element -->
+<script src="{{ url_for('static',filename='js/vue.js') }}"></script>
+<script src="{{ url_for('static',filename='js/element.js') }}"></script> <!-- 这里需要确保先引入 Element -->
+<script src="{{ url_for('static',filename='js/setting.js') }}"></script>
+
+
+<!-- ================================================
+jQuery Library
+================================================ -->
+<script type="text/javascript" src="../static/js/jquery.min.js"></script>
+
+<!-- ================================================
+Bootstrap Core JavaScript File
+================================================ -->
+<script src="../static/js/bootstrap/bootstrap.min.js"></script>
+
+<!-- ================================================
+Plugin.js - Some Specific JS codes for Plugin Settings
+================================================ -->
+<script type="text/javascript" src="../static/js/plugins.js"></script>
+
+<!-- ================================================
+Bootstrap Select
+================================================ -->
+<script type="text/javascript" src="../static/js/bootstrap-select/bootstrap-select.js"></script>
+
+<!-- ================================================
+Bootstrap Toggle
+================================================ -->
+<script type="text/javascript" src="../static/js/bootstrap-toggle/bootstrap-toggle.min.js"></script>
+
+<!-- ================================================
+Below codes are only for index widgets
+================================================ -->
+<!-- Today Sales -->
+<script>
+
+    // set up our data series with 50 random data points
+
+    var seriesData = [[], [], []];
+    var random = new Rickshaw.Fixtures.RandomData(20);
+
+    for (var i = 0; i < 110; i++) {
+        random.addData(seriesData);
+    }
+
+    // instantiate our graph!
+
+    var graph = new Rickshaw.Graph({
+        element: document.getElementById("todaysales"),
+        renderer: 'bar',
+        series: [
+            {
+                color: "#33577B",
+                data: seriesData[0],
+                name: 'Photodune'
+            }, {
+                color: "#77BBFF",
+                data: seriesData[1],
+                name: 'Themeforest'
+            }, {
+                color: "#C1E0FF",
+                data: seriesData[2],
+                name: 'Codecanyon'
+            }
+        ]
+    });
+
+    graph.render();
+
+    var hoverDetail = new Rickshaw.Graph.HoverDetail({
+        graph: graph,
+        formatter: function (series, x, y) {
+            var date = '<span class="date">' + new Date(x * 1000).toUTCString() + '</span>';
+            var swatch = '<span class="detail_swatch" style="background-color: ' + series.color + '"></span>';
+            var content = swatch + series.name + ": " + parseInt(y) + '<br>' + date;
+            return content;
+        }
+    });
+
+</script>
+
+<!-- Today Activity -->
+<script>
+    // set up our data series with 50 random data points
+
+    var seriesData = [[], [], []];
+    var random = new Rickshaw.Fixtures.RandomData(20);
+
+    for (var i = 0; i < 50; i++) {
+        random.addData(seriesData);
+    }
+
+    // instantiate our graph!
+
+    var graph = new Rickshaw.Graph({
+        element: document.getElementById("todayactivity"),
+        renderer: 'area',
+        series: [
+            {
+                color: "#9A80B9",
+                data: seriesData[0],
+                name: 'London'
+            }, {
+                color: "#CDC0DC",
+                data: seriesData[1],
+                name: 'Tokyo'
+            }
+        ]
+    });
+
+    graph.render();
+
+    var hoverDetail = new Rickshaw.Graph.HoverDetail({
+        graph: graph,
+        formatter: function (series, x, y) {
+            var date = '<span class="date">' + new Date(x * 1000).toUTCString() + '</span>';
+            var swatch = '<span class="detail_swatch" style="background-color: ' + series.color + '"></span>';
+            var content = swatch + series.name + ": " + parseInt(y) + '<br>' + date;
+            return content;
+        }
+    });
+</script>
+
+<script>
+    // 为按钮添加点击事件监听器
+    document.getElementById('run-exe-btn').addEventListener('click', function () {
+        // 定义exe文件的路径
+        var exePath = 'D:/aigc/AIGC_E_COMMERCE/fay/Fay5_4_Oct.exe'; // 替换为你的exe文件实际路径
+        // 发送AJAX请求到服务器
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/run_exe', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({
+            exe_path: exePath,
+        }));
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                console.log('Executable started successfully');
+                alert('数字人平台已启动');
+            } else {
+                console.error('Error starting executable');
+                alert('启动失败');
+            }
+        };
+    });
+</script>
+<script src="/static/js/particles.min.js"></script>
+<script src="/static/js/particles-init.js"></script>
+</body>
+</html>

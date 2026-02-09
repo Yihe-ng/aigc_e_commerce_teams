@@ -1,0 +1,139 @@
+/*================================================================================
+	Item Name: Kode
+	Description: Premium Bootstrap Admin Template
+	Author: Egemen Kapusuz
+	Author URL: http://www.themeforest.net/user/egemem
+================================================================================*/
+
+/* ================================================
+Google Web Fonts
+================================================ */
+/* Montserrat */
+@import url(http://fonts.googleapis.com/css?family=Montserrat:400,700);
+/* Open Sans */
+@import url(http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,600,700,800,300);
+
+/* === Icons === */
+/* Font Awesome */
+@import url('font-awesome.min.css');
+
+/* ================================================
+Main Css
+================================================ */
+/* Bootstrap Main Css File (unedited) */
+@import url('bootstrap.css');
+
+/* Theme Style */
+@import url('style.css');
+
+/* Responsive Style */
+@import url('responsive.css');
+
+/* Shortcuts Css Codes */
+@import url('shortcuts.css');
+
+/* ================================================
+Plugin Css
+================================================ */
+/* Awesome Bootstrap Checkbox */
+@import url('plugin/awesome-bootstrap-checkbox/awesome-bootstrap-checkbox.css');
+
+/* Bootstrap Select */
+@import url('plugin/bootstrap-select/bootstrap-select.css');
+
+/* Bootstrap Select */
+@import url('plugin/bootstrap-toggle/bootstrap-toggle.min.css');
+
+/* Bootstrap wysihtml5 */
+@import url('plugin/bootstrap-wysihtml5/bootstrap-wysihtml5.css');
+
+/* Summernote */
+@import url('plugin/summernote/summernote.css');
+@import url('plugin/summernote/summernote-bs3.css');
+
+/* Sweet Alert */
+@import url('plugin/sweet-alert/sweet-alert.css');
+
+/* Data Tables */
+@import url('plugin/datatables/datatables.css');
+
+/* Chartist */
+@import url('plugin/chartist/chartist.min.css');
+
+/* Rickshaw */
+@import url('plugin/rickshaw/rickshaw.css');
+@import url('plugin/rickshaw/detail.css');
+@import url('plugin/rickshaw/graph.css');
+@import url('plugin/rickshaw/legend.css');
+
+/* Date Range Picker */
+@import url('plugin/date-range-picker/daterangepicker-bs3.css');
+
+/* Full Calendar */
+@import url('plugin/fullcalendar/fullcalendar.css');
+
+/* 加载动画 */
+.loading-dots:after {
+    content: '...';
+    animation: dots 1.5s steps(5, end) infinite;
+}
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+/* 时间显示 */
+.time-info, .time-counter {
+    display: block;
+    font-size: 0.8em;
+    color: #999;
+    margin-top: 5px;
+}
+
+/* 话题标签样式 */
+.hashtag {
+    color: #ff2442;
+    font-weight: bold;
+}
+
+/* 加载状态 */
+.ballon.loading {
+    position: relative;
+}
+.ballon.loading:after {
+    content: "...";
+    position: absolute;
+    animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: "."; }
+    40% { content: ".."; }
+    60%, 100% { content: "..."; }
+}
+
+/* 错误提示 */
+.ballon.error {
+    color: #ff4444;
+}
+
+#image-url {
+    margin-bottom: 15px;
+    padding: 10px;
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+#image-gen-form button {
+    margin-top: 10px;
+    padding: 8px 20px;
+    background: #399bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+

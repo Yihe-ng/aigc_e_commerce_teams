@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>商品营销库</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="/static/css/root.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Montserrat&display=swap" rel="stylesheet">
+    <style>
+        /* 营销素材表格样式 */
+        .marketing-text {
+            max-width: 300px;
+            max-height: 120px;
+            overflow-y: auto;
+            padding-right: 8px;
+            line-height: 1.4;
+            font-size: 13px;
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .marketing-text::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .marketing-text::-webkit-scrollbar-thumb {
+            background: rgba(94, 234, 212, 0.5);
+            border-radius: 2px;
+        }
+
+        .marketing-text::-webkit-scrollbar-track {
+            background: rgba(94, 234, 212, 0.1);
+        }
+
+        .poster-thumbnail {
+            max-width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+            border-radius: 4px;
+            border: 1px solid rgba(94, 234, 212, 0.3);
+            transition: all 0.3s;
+        }
+
+        .poster-thumbnail:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(94, 234, 212, 0.5);
+        }
+
+        .video-item {
+            text-align: center;
+        }
+
+        .video-item video {
+            max-width: 150px;
+        }
+
+        .actions {
+            text-align: center;
+        }
+
+        /* 图片加载失败样式 */
+        img[src*="data:image/svg"] {
+            background: #f5f5f5;
+            padding: 10px;
+            border: 1px dashed #ddd;
+        }
+
+        /* 科技感面板 */
+        .tech-panel {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(94, 234, 212, 0.3);
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(94, 234, 212, 0.1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 浮动动画 */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* 网格背景 */
+        .tech-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(rgba(94, 234, 212, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(94, 234, 212, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            z-index: -1;
+        }
+
+        /* 悬浮效果 */
+        .tech-card {
+            background: rgba(15, 23, 42, 0.7);
+            transition: all 0.3s ease;
+            color: #e2e8f0;
+            border: 1px solid rgba(94, 234, 212, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tech-card:hover {
+            transform: none;
+            box-shadow: 0 0 15px rgba(94, 234, 212, 0.3);
+            border-color: rgba(94, 234, 212, 0.5);
+        }
+
+        .tech-card:after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #5eead4, transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tech-card:hover:after {
+            opacity: 0.8;
+        }
+
+        .tech-card:before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #5eead4, transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tech-card:hover:before {
+            opacity: 0.8;
+        }
+
+        /* 霓虹按钮 */
+        .btn-neon {
+            background: transparent;
+            border: 1px solid #5eead4;
+            color: #5eead4;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .btn-neon:hover {
+            color: #0f172a;
+            background: #5eead4;
+            box-shadow: 0 0 10px #5eead4, 0 0 20px #5eead4;
+        }
+
+        /* 视频播放器样式 */
+        .video-item video {
+            transition: all 0.3s;
+            border-radius: 4px;
+            border: 1px solid rgba(94, 234, 212, 0.3);
+        }
+
+        .video-item video:hover {
+            box-shadow: 0 0 15px rgba(94, 234, 212, 0.4);
+        }
+
+        /* 表格滚动条始终显示 */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 5px;
+        }
+
+        .table-responsive::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: rgba(94, 234, 212, 0.7);
+            border-radius: 3px;
+        }
+
+        .table-responsive::-webkit-scrollbar-track {
+            background: rgba(94, 234, 212, 0.1);
+        }
+
+        /* 表格单元格优化 */
+        #marketingTable td {
+            vertical-align: middle;
+            padding: 12px 15px;
+            border-top: 1px solid rgba(94, 234, 212, 0.1);
+        }
+
+        /* 操作按钮居中 */
+        #marketingTable td.actions {
+            text-align: center;
+        }
+
+        /* 图片视频内容居中 */
+        #marketingTable td.posters,
+        #marketingTable td.videos {
+            padding: 8px;
+            min-width: 150px;
+        }
+
+        /* 确保媒体内容居中 */
+        .media-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+
+        /* 文案内容区域 */
+        .text-content {
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.4;
+            max-height: 100px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        /* 图片视频容器 */
+        .poster-thumbnail, .video-item {
+            margin-bottom: 8px;
+        }
+
+        /* 按钮间距调整 */
+        .actions .btn {
+            margin: 2px;
+            min-width: 60px;
+        }
+
+        /* 表格头部优化 */
+        #marketingTable thead th {
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 12px 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #5eead4;
+            border: none;
+            white-space: nowrap; /* 防止文字换行 */
+            min-width: 120px; /* 设置最小列宽 */
+        }
+
+        /* 表格列宽调整 */
+        #marketingTable {
+            table-layout: fixed;
+            width: 100%;
+        }
+
+        #marketingTable th:nth-child(1) { width: 10%; }  /* 商品名称 */
+        #marketingTable th:nth-child(2) { width: 30%; }  /* 营销文案 */
+        #marketingTable th:nth-child(3) { width: 25%; }  /* 商品海报 */
+        #marketingTable th:nth-child(4) { width: 25%; }  /* 营销视频 */
+        #marketingTable th:nth-child(5) { width: 10%; }  /* 操作 */
+
+        /* 单元格悬停效果 */
+        #marketingTable td:hover {
+            background: rgba(94, 234, 212, 0.05);
+        }
+
+        /* 图片视频缩略图效果 */
+        .poster-thumbnail:hover img, 
+        .video-item:hover video {
+            box-shadow: 0 0 10px rgba(94, 234, 212, 0.5);
+            transform: scale(1.02);
+        }
+
+        /* 霓虹按钮效果增强 */
+        .btn-neon:hover {
+            text-shadow: 0 0 5px #5eead4;
+            box-shadow: 0 0 10px #5eead4, 
+                        0 0 20px rgba(94, 234, 212, 0.5);
+        }
+
+        @media (max-width: 1200px) {
+            #marketingTable th:nth-child(1) { width: 20%; }
+            #marketingTable th:nth-child(2) { width: 30%; }
+            #marketingTable th:nth-child(3), 
+            #marketingTable th:nth-child(4) { width: 20%; }
+            #marketingTable th:nth-child(5) { width: 10%; }
+        }
+
+        @media (max-width: 768px) {
+            #marketingTable th:nth-child(2) { width: 25%; }
+            #marketingTable th:nth-child(3), 
+            #marketingTable th:nth-child(4) { width: 20%; }
+        }
+
+        /* 视频缩略图样式 */
+        .video-thumbnail {
+            max-width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+            background: #000;
+            border-radius: 4px;
+        }
+
+        /* 数量角标 */
+        .badge {
+            position: relative;
+            top: -2px;
+            margin-left: 5px;
+            font-size: 10px;
+            padding: 2px 5px;
+        }
+
+        /* 加载动画 */
+        .spinner-border {
+            width: 2rem;
+            height: 2rem;
+            border-width: 0.2em;
+            color: #5eead4;
+        }
+
+        /* 空状态提示 */
+        .text-muted {
+            color: #64748b !important;
+            font-style: italic;
+        }
+
+        /* 错误提示 */
+        .alert-danger {
+            background-color: rgba(220, 38, 38, 0.1);
+            border-color: rgba(220, 38, 38, 0.3);
+            color: #fca5a5;
+        }
+
+        /* 表格列宽调整 */
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        #marketingTable {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        #marketingTable thead th {
+            position: sticky;
+            top: 0;
+            background: rgba(15, 23, 42, 0.8);
+            z-index: 10;
+            padding: 12px 8px;
+            white-space: nowrap;
+        }
+
+        /* 修正后的列宽设置 */
+        #marketingTable thead th:nth-child(1) { /* 商品名称 */
+            width: 20%;
+            min-width: 180px;
+        }
+        #marketingTable thead th:nth-child(2) { /* 营销文案 */
+            width: 30%;
+            min-width: 250px;
+        }
+        #marketingTable thead th:nth-child(3) { /* 商品海报 */
+            width: 20%;
+            min-width: 150px;
+        }
+        #marketingTable thead th:nth-child(4) { /* 营销视频 */
+            width: 15%;
+            min-width: 120px;
+        }
+        #marketingTable thead th:nth-child(5) { /* 操作 */
+            width: 15%;
+            min-width: 100px;
+        }
+
+        /* 单元格内容对齐 */
+        #marketingTable td {
+            vertical-align: middle;
+            padding: 10px 8px;
+            border-bottom: 1px solid rgba(94, 234, 212, 0.1);
+        }
+
+        /* 商品名称列样式 */
+        .product-name {
+            max-width: 300px;
+        }
+
+        .name-wrapper {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-block;
+            max-width: 100%;
+            padding-right: 10px;
+            position: relative;
+        }
+
+        .name-wrapper:hover {
+            white-space: normal;
+            overflow: visible;
+            z-index: 20;
+            background: rgba(15, 23, 42, 0.95);
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            position: absolute;
+            min-width: 200px;
+        }
+
+        /* 确保表格布局固定 */
+        #marketingTable {
+            table-layout: fixed;
+            width: 100%;
+        }
+
+        /* 表头和内容单元格强制对齐 */
+        #marketingTable th, 
+        #marketingTable td {
+            box-sizing: border-box;
+        }
+
+        /* 特别处理第一列偏移问题 */
+        #marketingTable td:first-child {
+            padding-left: 15px; /* 与表头对齐 */
+            position: relative;
+        }
+
+        /* 调试用边框（解决问题后可移除） */
+        #marketingTable th {
+            border: 1px solid red;
+        }
+        #marketingTable td {
+            border: 1px solid blue;
+        }
+
+        /* 强制表格布局 */
+        #marketingTable {
+            table-layout: fixed;
+            width: 100%;
+        }
+
+        /* 单元格边界可视化（调试后可移除） */
+        #marketingTable td {
+            border: 1px solid rgba(255,0,0,0.3);
+            position: relative;
+        }
+
+        /* 操作列固定宽度 */
+        #marketingTable td:nth-child(5) {
+            width: 150px;
+            min-width: 150px;
+        }
+
+        /* 操作按钮图标化 */
+        .btn-icon {
+            background: transparent;
+            border: none;
+            color: #5eead4;
+            font-size: 18px;
+            padding: 5px 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-icon:hover {
+            color: #fff;
+            transform: scale(1.2);
+        }
+
+        .btn-icon.delete {
+            color: #f87171;
+        }
+
+        /* 文字省略显示 */
+        .text-ellipsis {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            display: inline-block;
+        }
+
+        /* 无内容提示样式 */
+        .text-muted {
+            color: #64748b;
+            font-style: italic;
+        }
+
+        /* 悬停效果增强 */
+        .poster-thumbnail:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(94, 234, 212, 0.5);
+        }
+
+        /* 表格标题居中 */
+        #marketingTable th {
+            text-align: center;
+            vertical-align: middle;
+            background: rgba(15, 23, 42, 0.9);
+            color: #5eead4;
+            font-weight: 500;
+            padding: 12px 5px;
+        }
+
+        /* 调整后的列宽分配 */
+        #marketingTable th:nth-child(1) { width: 12%; }  /* 商品名称 */
+        #marketingTable th:nth-child(2) { width: 28%; }  /* 营销文案 */
+        #marketingTable th:nth-child(3) { width: 25%; }  /* 商品海报 */
+        #marketingTable th:nth-child(4) { width: 25%; }  /* 营销视频 */
+        #marketingTable th:nth-child(5) { width: 10%; }  /* 操作 */
+
+        /* 去除所有调试边框 */
+        #marketingTable td, 
+        #marketingTable th {
+            border: none !important;
+        }
+
+        /* 修复按钮样式 */
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: 1px solid rgba(94, 234, 212, 0.3);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .btn-icon:hover {
+            background: rgba(94, 234, 212, 0.2);
+            border-color: #5eead4;
+        }
+
+        .btn-icon.delete:hover {
+            background: rgba(248, 113, 113, 0.2);
+            border-color: #f87171;
+        }
+
+        /* 单元格内容居中 */
+        #marketingTable td {
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        /* 商品名称单独左对齐 */
+        #marketingTable td:nth-child(1) {
+            text-align: left;
+            padding-left: 15px;
+        }
+    </style>
+</head>
+<body>
+<!-- ... existing header/sidebar code from index_main.html ... -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- START TOP -->
+<div id="top" class="clearfix">
+    <!-- Logo -->
+    <div class="applogo">
+        <a href="index_main.html" class="logo">
+            <span class="logo-text">智创电商营销系统</span>
+            <span class="logo-glow"></span>
+        </a>
+    </div>
+        <!-- 菜单按钮  -->
+        <a href="#" class="sidebar-open-button-mobile"><i class="fa fa-bars"></i></a>
+        <a href="#" class="sidebar-open-button"><i class="fa fa-bars"></i></a>
+    <!-- 搜索框 -->
+    <form class="searchform">
+        <input type="text" class="searchbox" id="searchbox" placeholder="搜索">
+        <span class="searchbutton"><i class="fa fa-search"></i></span>
+    </form>
+    
+    <!-- 用户菜单 -->
+    <ul class="top-right">
+        <li class="dropdown link">
+            <a href="#" data-toggle="dropdown" class="dropdown-toggle profilebox"><img
+                    src="static/images/用户头像.jpg" alt="img"><b>模拟用户</b><span
+                    class="caret"></span></a>
+            <ul class="dropdown-menu dropdown-menu-list dropdown-menu-right">
+                <li role="presentation" class="dropdown-header">更多</li>
+                <li><a href="#"><i class="fa falist fa-wrench"></i>设置</a></li>
+                <li><a href="#"><i class="fa falist fa-lock"></i> 修改密码</a></li>
+                <li><a href="#"><i class="fa falist fa-power-off"></i> 退出登录</a></li>
+                <li class="divider"></li>
+                <li><a href="#">更多功能更新中......</a></li>
+            </ul>
+        </li>
+    </ul>
+</div>
+<!-- END TOP -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- START SIDEBAR -->
+<div class="sidebar clearfix">
+    <ul class="sidebar-panel nav">
+        <li><a href="/home"><span class="icon color5"><i class="fa fa-home"></i></span>首页</a></li>
+        <li><a href="#" class="active"><span class="icon color10"><i class="fa fa-th"></i></span>商品信息管理<span
+                class="caret"></span></a>
+            <ul style="display: block;">
+                <li><a href="/product_management">商品基础信息库</a></li>
+                <li><a href="/product_marketing">商品营销素材库</a></li>
+            </ul>
+        </li>
+        <li><a href="test1"><span class="icon color5"><i class="fa fa-comment-o"></i></span>文案智造器</a></li>
+        <li><a href="test2"><span class="icon color11"><i class="fa fa-photo"></i></span>营销图创作</a></li>
+        <li><a href="test3"><span class="icon color8"><i class="fa fa-film"></i></span>短视频智造</a></li>
+        <li><a href="http://127.0.0.1:5000/setting"><span class="icon color12"><i class="fa fa-smile-o"></i></span>数字直播大厅</a>
+        </li>
+        <li><a href="calendar"><span class="icon color8"><i class="fa fa-calendar-o"></i></span>营销日程规划<span
+                class="label label-danger">NEW</span></a></li>
+        <li><a href="note"><span class="icon color8"><i class="fa fa-bullhorn"></i></span>营销笔记发布</a></li>
+        <li><a href="http://127.0.0.1:5000"><span class="icon color5"><i class="fa fa-desktop"></i></span>登录</a></li>
+    </ul>
+
+</div>
+<!-- END SIDEBAR -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<div class="content">
+    <div class="page-header">
+        <h1 class="title">商品营销素材库</h1>
+        <ol class="breadcrumb">
+            <li><a href="/home">首页</a></li>
+            <li class="active">商品营销素材库</li>
+        </ol>
+    </div>
+
+    <div class="container-padding">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="tech-panel">
+                    <div class="tech-bg"></div>
+                    <div class="panel-body table-responsive">
+                        <table id="marketingTable" class="table">
+                            <thead>
+                                <tr>
+                                    <th>商品名称</th>
+                                    <th>营销文案</th>
+                                    <th>商品海报</th>
+                                    <th>营销视频</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="marketingTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editMarketingModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">编辑营销素材</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="marketingForm">
+                        <input type="hidden" id="editProductName">
+                        <div class="form-group">
+                            <label>营销文案</label>
+                            <textarea class="form-control" id="marketingCopy" rows="5" 
+                                      placeholder="请输入营销文案内容..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>营销图片</label>
+                            <input type="file" class="form-control" id="marketingImages" 
+                                   accept="image/*" multiple>
+                            <div class="mt-3" id="imagePreviewArea"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>营销视频</label>
+                            <input type="file" class="form-control" id="marketingVideos" 
+                                   accept="video/*">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="saveMarketingBtn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 页脚 -->
+    <div class="row footer">
+        <div class="col-md-12 text-center">
+            智行合一团队 - 智创电商营销系统 © 2025
+        </div>
+    </div>
+</div>
+
+<!-- ... existing footer/scripts from index_main.html ... -->
+
+<script>
+// 定义所有函数
+function showError(message) {
+    $('#marketingTableBody').html(`
+        <tr>
+            <td colspan="5" class="text-center text-danger">
+                ${message}
+                <button onclick="location.reload()" class="btn btn-sm btn-warning ml-2">刷新页面</button>
+            </td>
+        </tr>
+    `);
+}
+
+function loadMarketingProducts() {
+    // 显示加载骨架屏
+    $('#marketingTableBody').html(`
+        <tr>
+            <td colspan="5" class="text-center py-4">
+                <div class="spinner-border text-primary"></div>
+                <p class="mt-2">正在加载商品数据...</p>
+            </td>
+        </tr>
+    `);
+
+    $.get('/get_all_marketing_products', function(response) {
+        if (response.status !== 'success' || !response.data || response.data.length === 0) {
+            showEmptyMessage();
+            return;
+        }
+        console.log(response.data[0]); 
+        // 确保数据结构包含: product_name, marketing_text, posters, videos
+        renderTable(response.data);
+    }).fail(function() {
+        showError('加载失败，请刷新重试');
+    });
+}
+
+function showEmptyMessage(message = '暂无营销素材数据') {
+    $('#marketingTableBody').html(`
+        <tr>
+            <td colspan="5" class="text-center text-muted">
+                <i class="fa fa-box-open"></i> ${message}
+            </td>
+        </tr>
+    `);
+}
+
+// 科技感粒子背景
+function initTechParticles() {
+    const canvas = document.createElement('canvas');
+    canvas.style.position = 'fixed';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.zIndex = '-1';
+    canvas.style.opacity = '0.3';
+    document.body.appendChild(canvas);
+    
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    const particles = [];
+    const particleCount = 50;
+    
+    // 创建粒子
+    for (let i = 0; i < particleCount; i++) {
+        particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 3 + 1,
+            speedX: Math.random() * 1 - 0.5,
+            speedY: Math.random() * 1 - 0.5
+        });
+    }
+    
+    // 动画循环
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#5eead4';
+        
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            
+            // 更新位置
+            p.x += p.speedX;
+            p.y += p.speedY;
+            
+            // 边界检查
+            if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
+            if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
+            
+            // 绘制粒子
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绘制连接线
+            for (let j = i + 1; j < particles.length; j++) {
+                const p2 = particles[j];
+                const distance = Math.sqrt(Math.pow(p.x - p2.x, 2) + Math.pow(p.y - p2.y, 2));
+                
+                if (distance < 100) {
+                    ctx.strokeStyle = `rgba(94, 234, 212, ${1 - distance/100})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        requestAnimationFrame(animate);
+    }
+    
+    animate();
+    
+    // 窗口大小调整
+    window.addEventListener('resize', function() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+}
+
+// 初始化
+$(document).ready(function() {
+    initTechParticles();
+    loadMarketingProducts();
+});
+
+// 编辑按钮事件
+$(document).on('click', '.btn-icon.edit', function() {
+    const productId = $(this).closest('tr').data('product-id');
+    // 编辑逻辑...
+});
+
+// 删除按钮事件
+$(document).on('click', '.btn-icon.delete', function() {
+    const productId = $(this).closest('tr').data('product-id');
+    // 删除确认逻辑...
+});
+
+// 修改渲染函数确保列宽一致
+function renderTable(products) {
+    let html = products.map(product => `
+        <tr>
+            <td class="product-name">
+                <div class="text-ellipsis">${product.product_name || '未命名'}</div>
+            </td>
+            <td class="marketing-text">${product.marketing_text || '暂无文案'}</td>
+            <td class="posters">
+                <div class="media-container">
+                ${product.posters?.length ? 
+                    `<img src="${product.posters[0].url}" class="poster-thumbnail" 
+                         onerror="this.src='placeholder.jpg'">` : 
+                    '<span class="text-muted">无海报</span>'}
+                </div>
+            </td>
+            <td class="videos">
+                <div class="media-container">
+                ${product.videos?.length ? 
+                    `<video controls class="video-thumbnail" preload="metadata">
+                        <source src="${product.videos[0].url}" type="video/mp4">
+                    </video>` : 
+                    '<span class="text-muted">无视频</span>'}
+                </div>
+            </td>
+            <td class="actions">
+                <button class="btn-icon edit" title="编辑">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-icon delete" title="删除">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    $('#marketingTableBody').html(html);
+}
+
+// 辅助函数：渲染媒体项
+function renderMediaItems(items, type) {
+    if (!items || items.length === 0) {
+        return '<span class="text-muted">无' + (type === 'poster' ? '海报' : '视频') + '</span>';
+    }
+    
+    const maxShow = type === 'poster' ? 3 : 1;
+    let html = items.slice(0, maxShow).map(item => {
+        return type === 'poster' 
+            ? `<img src="${item.url}" class="poster-thumbnail" onerror="this.src='placeholder.jpg'">`
+            : `<video controls class="video-thumbnail"><source src="${item.url}" type="video/mp4"></video>`;
+    }).join('');
+    
+    if (items.length > maxShow) {
+        html += `<span class="badge bg-primary">+${items.length - maxShow}</span>`;
+    }
+    
+    return html;
+}
+
+// 辅助函数保持内容一致
+function formatText(text) {
+    if (!text) return '<span class="text-muted">暂无文案</span>';
+    return `<div class="text-content">${text.replace(/\n/g, '<br>')}</div>`;
+}
+
+// 悬浮粒子效果
+document.addEventListener('DOMContentLoaded', function() {
+    // 创建科技感背景点阵
+    const techDots = document.createElement('div');
+    techDots.className = 'tech-dots';
+    document.body.appendChild(techDots);
+    
+    // 创建发光效果
+    const glow1 = document.createElement('div');
+    glow1.className = 'glow-effect';
+    glow1.style.top = '20%';
+    glow1.style.left = '10%';
+    document.body.appendChild(glow1);
+    
+    const glow2 = document.createElement('div');
+    glow2.className = 'glow-effect';
+    glow2.style.width = '200px';
+    glow2.style.height = '200px';
+    glow2.style.right = '10%';
+    glow2.style.top = '30%';
+    glow2.style.background = 'radial-gradient(circle, var(--secondary-color) 0%, transparent 70%)';
+    glow2.style.animationDelay = '-5s';
+    glow2.style.animationDuration = '20s';
+    document.body.appendChild(glow2);
+    
+    // 创建动态粒子
+    for (let i = 0; i < 30; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        
+        const size = Math.random() * 5 + 2;
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+        
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.top = `${Math.random() * 100}%`;
+        
+        particle.style.animationDelay = `${Math.random() * 20}s`;
+        particle.style.animationDuration = `${Math.random() * 10 + 10}s`;
+        
+        document.body.appendChild(particle);
+    }
+});
+</script>
+</body>
+</html> 

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Kode is a Premium Bootstrap Admin Template, It's responsive, clean coded and mobile friendly">
+  <meta name="keywords" content="bootstrap, admin, dashboard, flat admin template, responsive," />
+  <title>登录</title>
+
+  <!-- ========== Css Files ========== -->
+  <link href="static/css/root.css" rel="stylesheet">
+  <style type="text/css">
+    body{background: #F5F5F5;}
+  </style>
+  </head>
+  <body>
+
+    <div class="login-form">
+      <form action="home" onsubmit="return validateLogin()">
+        <div class="top">
+          <img src="../static/images/zxhy.jpg" alt="icon" class="icon">
+          <h1>智创电商营销系统</h1>
+          <h4>智行合一团队</h4>
+        </div>
+        <div class="form-area">
+          <div class="group">
+            <input type="text" id="username" class="form-control" placeholder="Username">
+            <i class="fa fa-user"></i>
+          </div>
+          <div class="group">
+            <input type="password" id="password" class="form-control" placeholder="Password">
+            <i class="fa fa-key"></i>
+          </div>
+          <div class="checkbox checkbox-primary">
+            <input id="checkbox101" type="checkbox" checked>
+            <label for="checkbox101"> Remember Me</label>
+          </div>
+          <button type="submit" class="btn btn-default btn-block">LOGIN</button>
+        </div>
+      </form>
+    </div>
+
+</body>z
+<script>
+  function validateLogin() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    
+    if(username !== 'zxhy') {
+      alert('该用户不存在');
+      return false;
+    }
+    
+    if(password !== '12345678') {
+      alert('密码错误');
+      return false;
+    }
+    
+    return true;
+  }
+</script>
+</html>

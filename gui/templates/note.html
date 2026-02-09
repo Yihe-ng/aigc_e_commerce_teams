@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="淘宝商品管理 - 一键式商品发布与管理">
+    <meta name="keywords" content="淘宝商品管理,商品发布,商品编辑"/>
+    <title>淘宝商品管理</title>
+
+    <!-- CSS 文件 -->
+    <link href="../static/css/root.css" rel="stylesheet">
+    <link href="../static/css/index.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Montserrat&display=swap" rel="stylesheet">
+    <!-- 新增淘宝商品管理CSS -->
+    <link href="../static/css/taobao.css" rel="stylesheet">
+</head>
+
+<body>
+    <!-- 保持原有顶部导航栏和侧边栏不变 -->
+    <div id="particles-js"></div>
+    <!-- Start Page Loading -->
+    <div class="loading"><img src="../static/images/loading.gif" alt="loading-img"></div>
+    <!-- End Page Loading -->
+    
+    <!-- 保持原有TOP和SIDEBAR部分不变 -->
+    <!-- START TOP -->
+<div id="top" class="clearfix">
+    <!-- Logo -->
+    <div class="applogo">
+        <a href="index_main.html" class="logo">
+            <span class="logo-text">智创电商营销系统</span>
+            <span class="logo-glow"></span>
+        </a>
+    </div>
+        <!-- 菜单按钮  -->
+        <a href="#" class="sidebar-open-button-mobile"><i class="fa fa-bars"></i></a>
+        <a href="#" class="sidebar-open-button"><i class="fa fa-bars"></i></a>
+    <!-- 搜索框 -->
+    <form class="searchform">
+        <input type="text" class="searchbox" id="searchbox" placeholder="搜索">
+        <span class="searchbutton"><i class="fa fa-search"></i></span>
+    </form>
+    
+    <!-- 用户菜单 -->
+    <ul class="top-right">
+        <li class="dropdown link">
+            <a href="#" data-toggle="dropdown" class="dropdown-toggle profilebox"><img
+                    src="static/images/用户头像.jpg" alt="img"><b>模拟用户</b><span
+                    class="caret"></span></a>
+            <ul class="dropdown-menu dropdown-menu-list dropdown-menu-right">
+                <li role="presentation" class="dropdown-header">更多</li>
+                <li><a href="#"><i class="fa falist fa-wrench"></i>设置</a></li>
+                <li><a href="#"><i class="fa falist fa-lock"></i> 修改密码</a></li>
+                <li><a href="#"><i class="fa falist fa-power-off"></i> 退出登录</a></li>
+                <li class="divider"></li>
+                <li><a href="#">更多功能更新中......</a></li>
+            </ul>
+        </li>
+    </ul>
+</div>
+<!-- END TOP -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+<!-- START SIDEBAR -->
+<div class="sidebar clearfix">
+    <ul class="sidebar-panel nav">
+        <li><a href="/home"><span class="icon color5"><i class="fa fa-home"></i></span>首页</a></li>
+        <li><a href="#"><span class="icon color10"><i class="fa fa-th"></i></span>商品信息管理<span class="caret"></span></a>
+            <ul>
+                <li><a href="/product_management">商品基础信息库</a></li>
+                <li><a href="/product_marketing">商品营销素材库</a></li>
+            </ul>
+        </li>
+        <li><a href="test1"><span class="icon color5"><i class="fa fa-comment-o"></i></span>文案智造器</a></li>
+
+        <li><a href="test2"><span class="icon color11"><i class="fa fa-photo"></i></span>营销图创作</a></li>
+        <li><a href="test3"><span class="icon color8"><i class="fa fa-film"></i></span>短视频智造</a></li>
+        <li><a href="http://127.0.0.1:5000/setting"><span class="icon color12"><i class="fa fa-smile-o"></i></span>数字直播大厅</a></li>
+        <li><a href="calendar"><span class="icon color8"><i class="fa fa-calendar-o"></i></span>营销日程规划<span class="label label-danger">NEW</span></a></li>
+        <li><a href="note" class="active"><span class="icon color8"><i class="fa fa-bullhorn"></i></span>营销笔记发布</a></li>
+        <li><a href="http://127.0.0.1:5000"><span class="icon color5"><i class="fa fa-desktop"></i></span>登录</a></li>
+    </ul>
+</div>
+<!-- END SIDEBAR -->
+<!-- //////////////////////////////////////////////////////////////////////////// -->
+    <!-- START CONTENT -->
+    <div class="content">
+        <!-- Start Page Header -->
+        <div class="page-header">
+            <h1 class="title">淘宝商品管理</h1>
+            <ol class="breadcrumb">
+                <li><a href="/">首页</a></li>
+                <li class="active">淘宝商品管理</li>
+            </ol>
+        </div>
+        
+        <!-- 主内容区 - 新增淘宝商品管理功能 -->
+        <div class="container-padding">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="panel panel-default">
+                        <div class="panel-title">
+                            商品管理操作
+                            <ul class="panel-tools">
+                                <li><a class="icon minimise-tool"><i class="fa fa-minus"></i></a></li>
+                                <li><a class="icon expand-tool"><i class="fa fa-expand"></i></a></li>
+                                <li><a class="icon closed-tool"><i class="fa fa-times"></i></a></li>
+                            </ul>
+                        </div>
+                        
+                        <div class="panel-body">
+                            <!-- 淘宝授权状态 -->
+                            <div class="taobao-auth-status">
+                                <h4>淘宝账号状态</h4>
+                                <div id="auth-status" class="alert alert-warning">
+                                    未授权淘宝账号
+                                </div>
+                                <button id="taobao-auth-btn" class="btn btn-primary">授权淘宝账号</button>
+                            </div>
+                            
+                            <!-- 商品管理选项卡 -->
+                            <div class="taobao-tabs">
+                                <ul class="nav nav-tabs">
+                                    <li class="active"><a href="#tab1" data-toggle="tab">商品发布</a></li>
+                                    <li><a href="#tab2" data-toggle="tab">商品列表</a></li>
+                                    <li><a href="#tab3" data-toggle="tab">类目管理</a></li>
+                                </ul>
+                                
+                                <div class="tab-content">
+                                    <!-- 商品发布表单 -->
+                                    <div class="tab-pane active" id="tab1">
+                                        <form id="product-form" class="form-horizontal">
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label">商品标题</label>
+                                                <div class="col-sm-10">
+                                                    <input type="text" class="form-control" id="product-title" required>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label">商品价格</label>
+                                                <div class="col-sm-10">
+                                                    <input type="number" class="form-control" id="product-price" step="0.01" required>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label">商品类目</label>
+                                                <div class="col-sm-10">
+                                                    <select class="form-control" id="product-category" required>
+                                                        <option value="">-- 选择类目 --</option>
+                                                        <!-- 类目将通过JS动态加载 -->
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label">商品描述</label>
+                                                <div class="col-sm-10">
+                                                    <textarea class="form-control" id="product-desc" rows="5" required></textarea>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label">商品图片</label>
+                                                <div class="col-sm-10">
+                                                    <div id="image-uploader" class="dropzone">
+                                                        <div class="dz-message">拖放图片到这里或点击上传</div>
+                                                    </div>
+                                                    <small class="help-block">第一张图片将作为主图</small>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="form-group">
+                                                <div class="col-sm-offset-2 col-sm-10">
+                                                    <button type="submit" class="btn btn-success">发布商品</button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    
+                                    <!-- 商品列表 -->
+                                    <div class="tab-pane" id="tab2">
+                                        <div class="table-responsive">
+                                            <table id="product-table" class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>商品ID</th>
+                                                        <th>标题</th>
+                                                        <th>价格</th>
+                                                        <th>状态</th>
+                                                        <th>操作</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <!-- 商品数据将通过JS动态加载 -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="text-center">
+                                            <ul class="pagination">
+                                                <!-- 分页将通过JS动态生成 -->
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 类目管理 -->
+                                    <div class="tab-pane" id="tab3">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="category-tree" id="category-tree">
+                                                    <!-- 类目树将通过JS动态生成 -->
+                                                </div>
+                                            </div>
+                                            <div class="col-md-8">
+                                                <div class="category-props" id="category-props">
+                                                    <div class="alert alert-info">
+                                                        请从左侧选择类目查看属性
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Start Footer -->
+        <div class="row footer">
+            <div class="col-md-6 text-left">
+                智行合一团队-智创电商营销系统
+            </div>
+        </div>
+        <!-- End Footer -->
+    </div>
+
+    <!-- 原有JS库引入 -->
+    <script src="../static/js/jquery.min.js"></script>
+    <script src="../static/js/bootstrap/bootstrap.min.js"></script>
+    <script type="text/javascript" src="../static/js/plugins.js"></script>
+    
+    <!-- 新增淘宝商品管理JS -->
+    <script src="../static/js/dropzone.min.js"></script>
+    <script src="../static/js/taobao.js"></script>
+    
+    <!-- 粒子效果JS -->
+    <script src="/static/js/particles.min.js"></script>
+    <script src="/static/js/particles-init.js"></script>
+</body>
+</html>

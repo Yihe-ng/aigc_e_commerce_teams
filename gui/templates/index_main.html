@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Kode is a Premium Bootstrap Admin Template">
+    <title>智创电商营销系统</title>
+
+    <link href="{{ url_for('static', filename='css/root.css') }}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Montserrat&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div id="particles-js"></div>
+
+<div class="loading"><img src="{{ url_for('static', filename='images/loading.gif') }}" alt="loading-img"></div>
+<div id="top" class="clearfix">
+    <div class="applogo">
+        <a href="{{ url_for('home') }}" class="logo">
+            <span class="logo-text">智创电商营销系统</span>
+            <span class="logo-glow"></span>
+        </a>
+    </div>
+
+    <a href="#" class="sidebar-open-button-mobile"><i class="fa fa-bars"></i></a>
+    <a href="#" class="sidebar-open-button"><i class="fa fa-bars"></i></a>
+
+    <form class="searchform">
+        <input type="text" class="searchbox" id="searchbox" placeholder="搜索">
+        <span class="searchbutton"><i class="fa fa-search"></i></span>
+    </form>
+</div>
+<div class="sidebar clearfix">
+    <ul class="sidebar-panel nav">
+        <li><a href="{{ url_for('home') }}" class="active"><span class="icon color5"><i class="fa fa-home"></i></span>首页</a></li>
+
+        <li><a href="#"><span class="icon color10"><i class="fa fa-th"></i></span>商品信息管理<span class="caret"></span></a>
+            <ul>
+                <li><a href="{{ url_for('product_management') }}">商品基础信息库</a></li>
+                <li><a href="{{ url_for('product_marketing') }}">商品营销素材库</a></li>
+            </ul>
+        </li>
+
+        <li><a href="{{ url_for('test1') }}"><span class="icon color5"><i class="fa fa-comment-o"></i></span>文案智造器</a></li>
+        <li><a href="{{ url_for('test2') }}"><span class="icon color11"><i class="fa fa-photo"></i></span>营销图创作</a></li>
+        <li><a href="{{ url_for('test3') }}"><span class="icon color8"><i class="fa fa-film"></i></span>短视频智造</a></li>
+        <li><a href="{{ url_for('setting') }}"><span class="icon color12"><i class="fa fa-smile-o"></i></span>数字直播大厅</a></li>
+        <li><a href="{{ url_for('calendar') }}"><span class="icon color8"><i class="fa fa-calendar-o"></i></span>营销日程规划<span class="label label-danger">NEW</span></a></li>
+        <li><a href="{{ url_for('note') }}"><span class="icon color8"><i class="fa fa-bullhorn"></i></span>营销笔记发布</a></li>
+        <li><a href="http://127.0.0.1:5000"><span class="icon color5"><i class="fa fa-desktop"></i></span>登录</a></li>
+    </ul>
+</div>
+<div class="content">
+    <div class="row presentation">
+        <div class="col-lg-8 col-md-6 titles">
+            <span class="icon color7-bg"><i class="fa fa-font"></i></span>
+            <h1>智创电商营销系统</h1>
+            <h4>基于 AIGC 的新电商数字化营销技术研究与创新应用<br></h4>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <ul class="list-unstyled list">
+                <li><i class="fa fa-check"></i>知识库+大语言模型</li>
+                <li></li>
+                <li><i class="fa fa-check"></i>文生图片技术</li>
+                <li></li>
+                <li><i class="fa fa-check"></i>文生视频技术</li>
+                <li></li>
+                <li><i class="fa fa-check"></i>数字人直播带货</li>
+                <li></li>
+                <li><i class="fa fa-check"></i>小红书、微博等平台营销</li>
+                <li></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="container-padding">
+        <div class="row">
+            <div class="col-md-6 col-lg-4">
+                <div class="panel panel-primary">
+                    <div class="panel-title">
+                        项目简介
+                        <ul class="panel-tools">
+                            <li><a class="icon expand-tool"><i class="fa fa-expand"></i></a></li>
+                            <li><a class="icon closed-tool"><i class="fa fa-times"></i></a></li>
+                        </ul>
+                    </div>
+                    <div class="panel-heading">基于 AIGC 的新电商数字化营销技术研究与创新应用</div>
+                    <div class="panel-body">
+                        随着生成式人工智能（AIGC）技术的快速发展，电商产业迎来了一次潜在的变革和更新。
+                        <br>本项目利用 AI 技术加速电商行业的自动化，
+                        并实现产品文案、宣传图、视频内容的智能化生成，同时借助数字人进行直播带货，从而推动电商产业的转型升级。
+                    </div>
+                    <div class="panel-footer">AIGC</div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-4">
+                <div class="panel panel-info">
+                    <div class="panel-title">
+                        功能概览
+                        <ul class="panel-tools">
+                            <li><a class="icon expand-tool"><i class="fa fa-expand"></i></a></li>
+                            <li><a class="icon closed-tool"><i class="fa fa-times"></i></a></li>
+                        </ul>
+                    </div>
+                    <div class="panel-heading">我们拥有以下功能：</div>
+                    <div class="panel-body">
+                        大语言模型，解决传统电商行业中文案制作、编辑等问题;
+                        <br>文生图片技术，实现宣传图或产品描述图的智能生成;
+                        <br>文生视频技术，智能生成商品动态视频、产品介绍视频等多种类型的营销视频；
+                        <br>数字人直播带货，结合 AIGC 技术，可以实现更具个性化和趣味性的直播形式；
+                        <br>小红书、微博、抖音、b站等平台营销，整合生成内容实现一键式发布。
+                    </div>
+                    <div class="panel-footer">AIGC</div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-4">
+                <div class="panel panel-dark">
+                    <div class="panel-title">
+                        用户手册 <span class="badge">使用指引</span>
+                        <ul class="panel-tools">
+                            <li><a class="icon expand-tool"><i class="fa fa-expand"></i></a></li>
+                            <li><a class="icon closed-tool"><i class="fa fa-times"></i></a></li>
+                        </ul>
+                    </div>
+                    <div class="panel-heading">使用说明</div>
+                    <div class="panel-body">
+                        文案智造器：输入商品名字、特点等信息，会生成一系列宣传文案、广告词、导购文案供您选择;
+                        <br>营销图创作：根据输入的商品信息和图片，实现宣传图或产品描述图的智能生成;
+                        <br>短视频智造：根据输入的商品图片，智能生成商品动态图、宣传片、产品介绍视频等多种类型的营销视频；
+                        <br>数字直播大厅：结合 AIGC 技术，使用虚拟数字人，实现更具个性化和趣味性的直播形式。
+                    </div>
+                    <div class="panel-footer">AIGC</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row footer">
+        <div class="col-md-6 text-left">
+            智行合一团队-智创电商营销系统
+        </div>
+    </div>
+    </div>
+<script type="text/javascript" src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/bootstrap/bootstrap.min.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/plugins.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap-select/bootstrap-select.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap-toggle/bootstrap-toggle.min.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/particles.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/particles-init.js') }}"></script>
+
+<script>
+// 增强版悬浮粒子效果
+document.addEventListener('DOMContentLoaded', function() {
+    const techDots = document.createElement('div');
+    techDots.className = 'tech-dots';
+    document.body.appendChild(techDots);
+
+    const glow1 = document.createElement('div');
+    glow1.className = 'glow-effect';
+    glow1.style.top = '20%';
+    glow1.style.left = '10%';
+    glow1.style.animation = 'float 18s infinite ease-in-out';
+    document.body.appendChild(glow1);
+
+    const glow2 = document.createElement('div');
+    glow2.className = 'glow-effect';
+    glow2.style.width = '250px';
+    glow2.style.height = '250px';
+    glow2.style.right = '10%';
+    glow2.style.top = '30%';
+    glow2.style.background = 'radial-gradient(circle, var(--secondary-color) 0%, transparent 70%)';
+    glow2.style.animation = 'float 22s infinite ease-in-out reverse';
+    document.body.appendChild(glow2);
+
+    const particleContainer = document.createElement('div');
+    particleContainer.style.position = 'fixed';
+    particleContainer.style.top = '0';
+    particleContainer.style.left = '0';
+    particleContainer.style.width = '100%';
+    particleContainer.style.height = '100%';
+    particleContainer.style.pointerEvents = 'none';
+    particleContainer.style.zIndex = '-1';
+    document.body.appendChild(particleContainer);
+
+    for (let i = 0; i < 40; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        if (i % 4 === 0) {
+            particle.style.width = '6px';
+            particle.style.height = '6px';
+            particle.style.background = 'rgba(94, 234, 212, 0.5)';
+            particle.style.animationDuration = `${Math.random() * 20 + 20}s`;
+        } else if (i % 3 === 0) {
+            particle.style.width = '4px';
+            particle.style.height = '4px';
+            particle.style.background = 'rgba(58, 123, 213, 0.4)';
+            particle.style.animationDuration = `${Math.random() * 15 + 15}s`;
+        } else {
+            particle.style.width = '2px';
+            particle.style.height = '2px';
+            particle.style.background = 'rgba(255, 255, 255, 0.3)';
+            particle.style.animationDuration = `${Math.random() * 10 + 10}s`;
+        }
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.top = `${Math.random() * 100}%`;
+        particle.style.animationDelay = `${Math.random() * 30}s`;
+        particleContainer.appendChild(particle);
+    }
+});
+</script>
+
+<script>
+    // 图表数据初始化
+    var seriesData = [[], [], []];
+    var random = new Rickshaw.Fixtures.RandomData(20);
+
+    for (var i = 0; i < 110; i++) {
+        random.addData(seriesData);
+    }
+
+    var graph = new Rickshaw.Graph({
+        element: document.getElementById("todaysales"),
+        renderer: 'bar',
+        series: [
+            { color: "#33577B", data: seriesData[0], name: 'Photodune' },
+            { color: "#77BBFF", data: seriesData[1], name: 'Themeforest' },
+            { color: "#C1E0FF", data: seriesData[2], name: 'Codecanyon' }
+        ]
+    });
+
+    graph.render();
+
+    var hoverDetail = new Rickshaw.Graph.HoverDetail({
+        graph: graph,
+        formatter: function (series, x, y) {
+            var date = '<span class="date">' + new Date(x * 1000).toUTCString() + '</span>';
+            var swatch = '<span class="detail_swatch" style="background-color: ' + series.color + '"></span>';
+            var content = swatch + series.name + ": " + parseInt(y) + '<br>' + date;
+            return content;
+        }
+    });
+</script>
+
+<script>
+    // 图表2数据初始化
+    var seriesData2 = [[], [], []];
+    var random2 = new Rickshaw.Fixtures.RandomData(20);
+
+    for (var i = 0; i < 50; i++) {
+        random2.addData(seriesData2);
+    }
+
+    var graph2 = new Rickshaw.Graph({
+        element: document.getElementById("todayactivity"),
+        renderer: 'area',
+        series: [
+            { color: "#9A80B9", data: seriesData2[0], name: 'London' },
+            { color: "#CDC0DC", data: seriesData2[1], name: 'Tokyo' }
+        ]
+    });
+
+    graph2.render();
+
+    var hoverDetail2 = new Rickshaw.Graph.HoverDetail({
+        graph: graph2,
+        formatter: function (series, x, y) {
+            var date = '<span class="date">' + new Date(x * 1000).toUTCString() + '</span>';
+            var swatch = '<span class="detail_swatch" style="background-color: ' + series.color + '"></span>';
+            var content = swatch + series.name + ": " + parseInt(y) + '<br>' + date;
+            return content;
+        }
+    });
+</script>
+</body>
+</html>
