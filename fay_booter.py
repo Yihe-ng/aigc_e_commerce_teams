@@ -231,46 +231,7 @@ def kill_process_by_port(port):
                     proc.wait()
         except(psutil.NosuchProcess, psutil.AccessDenied):
             pass
-#数字人端请求获取最新的自动播放消息，若自动播放服务关闭会自动退出自动播放
-def start_auto_play_service():
-    url = f"{config_util.config['source']['automatic_player_url']}/get_auto_play_item"
-    user = "User" #TODO 临时固死了
-    is_auto_server_error = False
-    while __running:
-        if config_util.config['source']['wake_word_enabled'] and config_util.config['source']['wake_word_type'] == 'common' and recorderListener.wakeup_matched == True:
-            time.sleep(0.01)
-            continue
-        if is_auto_server_error:
-            util.printInfo(1, user, '60s后重连自动播放服务器')
-            time.sleep(60)
-        # 请求自动播放服务器
-        with fay_core.auto_play_lock:
-            if config_util.config['source']['automatic_player_status'] and config_util.config['source']['automatic_player_url'] is not None and fay_core.can_auto_play == True and (config_util.config["interact"]["playSound"] or wsa_server.get_instance().is_connected(user)):
-                fay_core.can_auto_play = False
-                post_data = {"user": user}
-                try:
-                    response = requests.post(url, json=post_data, timeout=5)
-                    if response.status_code == 200:
-                        is_auto_server_error = False
-                        data = response.json()
-                        audio_url = data.get('audio')
-                        if not audio_url or audio_url.strip()[0:4] != "http":
-                            audio_url = None   
-                        response_text = data.get('text')
-                        timestamp = data.get('timestamp')
-                        interact = Interact("auto_play", 2, {'user': user, 'text': response_text, 'audio': audio_url})
-                        util.printInfo(1, user, '自动播放：{}，{}'.format(response_text, audio_url), time.time())
-                        feiFei.on_interact(interact)
-                    else:
-                        is_auto_server_error = True
-                        fay_core.can_auto_play = True
-                        util.printInfo(1, user, '请求自动播放服务器失败，错误代码是：{}'.format(response.status_code))
-                except requests.exceptions.RequestException as e:
-                    is_auto_server_error = True
-                    fay_core.can_auto_play = True
-                    util.printInfo(1, user, '请求自动播放服务器失败，错误信息是：{}'.format(e))
-        time.sleep(0.01)
-     
+
 #控制台输入监听
 def console_listener():
     global feiFei
@@ -285,7 +246,6 @@ def console_listener():
 
         if len(args) == 0 or len(args[0]) == 0:
             continue
-
         if args[0] == 'help':
             util.log(1, 'in <msg> \t通过控制台交互')
             util.log(1, 'restart \t重启服务')
