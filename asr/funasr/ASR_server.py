@@ -2,6 +2,7 @@ import asyncio
 import websockets
 import argparse
 import json
+import re
 from funasr import AutoModel
 import os
 
@@ -58,7 +59,7 @@ async def worker():
 
 async def process_wav_file(websocket, url):
     #热词
-    param_dict = {"sentence_timestamp": False}
+    param_dict = {"sentence_timestamp": False, "itn": True}
     with open("data/hotword.txt", "r", encoding="utf-8") as f:
         lines = f.readlines()
         lines = [line.strip() for line in lines]
@@ -70,7 +71,11 @@ async def process_wav_file(websocket, url):
         res = asr_model.generate(input=wav_path,is_final=True, **param_dict)
         if res:
             if 'text' in res[0] and websocket.open:
-                await websocket.send(res[0]['text'])
+                text = res[0]['text']
+                text = re.sub(r'(\d+斤)，装', r'\1斤装', text)
+                text = re.sub(r'(\d+)，(瓶|袋|听|件|个)', r'\1\2', text)
+                text = text.replace("不1样", "不一样")
+                await websocket.send(text)
     except Exception as e:
         print(f"Error during model.generate: {e}")
     finally:
