@@ -302,7 +302,7 @@ new Vue({
                 .then((res) => {
                     this.configEditable = false;
                     this.liveState = 1;
-                    this.sendSuccessMsg('已开启！');
+                    // this.sendSuccessMsg('已开启！');
                 })
                 .catch((err) => {
                     console.error('start-live failed:', err);
@@ -316,7 +316,7 @@ new Vue({
                 .then(() => {
                     this.configEditable = true;
                     this.liveState = 0;
-                    this.sendSuccessMsg('已关闭！');
+                    // this.sendSuccessMsg('已关闭！'); //已注释掉，和后端重复了
                 })
                 .catch((err) => {
                     console.error('stop-live failed:', err);
