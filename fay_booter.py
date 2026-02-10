@@ -344,8 +344,8 @@ def start():
     deviceSocketThread.start()
 
     #启动自动播放服务
-    util.log(1,'启动自动播放服务...')
-    MyThread(target=start_auto_play_service).start()
+    # util.log(1,'启动自动播放服务...')
+    # MyThread(target=start_auto_play_service).start()
             
     #监听控制台
     util.log(1, '注册命令...')
