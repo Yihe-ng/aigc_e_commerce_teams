@@ -925,23 +925,44 @@ def delete_product_by_id(product_id):  # 修改函数名确保唯一性
 @app.route('/generate_xiaohongshu', methods=['POST'])
 def handle_xiaohongshu():
     try:
-        data = request.get_json()
+        data = request.get_json(force=True) or {}
         response = requests.post(
             'https://api.dify.ai/v1/workflows/run',
             headers={'Authorization': 'Bearer app-G1jK63X8rj8Rkok4P32sMus7'},
             json={
-                'inputs': {'basic_instruction': data['query']},
+                'inputs': {'basic_instruction': data.get('query', '')},
                 'response_mode': 'blocking',
                 'user': 'abc-123'
             },
             timeout=25
         )
         response_data = response.json()
-        
-        # 智能解析输出
+
         outputs = response_data.get('data', {}).get('outputs', {})
-        content = outputs.get('red_content', '') if isinstance(outputs, dict) else str(outputs)
-        hashtags = outputs.get('red_hashtag', '') if isinstance(outputs, dict) else ''
+        content = ''
+        hashtags = ''
+        if isinstance(outputs, dict):
+            for k in ['red_content', 'content', 'text', 'output', 'result', 'reply']:
+                v = outputs.get(k)
+                if isinstance(v, str) and v.strip():
+                    content = v
+                    break
+            for k in ['red_hashtag', 'hashtags', 'tags']:
+                v = outputs.get(k)
+                if isinstance(v, str):
+                    hashtags = v
+                    break
+        if not content:
+            data_section = response_data.get('data', {})
+            for k in ['text', 'result', 'message']:
+                v = data_section.get(k)
+                if isinstance(v, str) and v.strip():
+                    content = v
+                    break
+        if not isinstance(content, str):
+            content = str(content or '')
+        if not isinstance(hashtags, str):
+            hashtags = str(hashtags or '')
         
         return jsonify({
             'content': content,
@@ -951,6 +972,56 @@ def handle_xiaohongshu():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/generate_xiaohongshu_stream', methods=['GET'])
+def handle_xiaohongshu_stream():
+    q = request.args.get('query', '')
+    @stream_with_context
+    def generate():
+        try:
+            r = requests.post(
+                'https://api.dify.ai/v1/workflows/run',
+                headers={'Authorization': 'Bearer app-G1jK63X8rj8Rkok4P32sMus7'},
+                json={'inputs': {'basic_instruction': q}, 'response_mode': 'blocking', 'user': 'abc-123'},
+                timeout=25
+            )
+            rd = r.json()
+            outs = rd.get('data', {}).get('outputs', {})
+            content = ''
+            hashtags = ''
+            if isinstance(outs, dict):
+                for k in ['red_content', 'content', 'text', 'output', 'result', 'reply']:
+                    v = outs.get(k)
+                    if isinstance(v, str) and v.strip():
+                        content = v
+                        break
+                for k in ['red_hashtag', 'hashtags', 'tags']:
+                    v = outs.get(k)
+                    if isinstance(v, str):
+                        hashtags = v
+                        break
+            if not content:
+                ds = rd.get('data', {})
+                for k in ['text', 'result', 'message']:
+                    v = ds.get(k)
+                    if isinstance(v, str) and v.strip():
+                        content = v
+                        break
+            if not isinstance(content, str):
+                content = str(content or '')
+            if not isinstance(hashtags, str):
+                hashtags = str(hashtags or '')
+            size = 48
+            i = 0
+            while i < len(content):
+                chunk = content[i:i+size]
+                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+                i += size
+                time.sleep(0.02)
+            yield f"data: {json.dumps({'done': True, 'hashtags': hashtags})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    return Response(generate(), mimetype='text/event-stream')
 
 @app.route('/api/stream_generate', methods=['POST'])  # 新增专用流式端点
 def stream_generate():
@@ -963,23 +1034,21 @@ def stream_generate():
     @stream_with_context
     def generate():
         try:
-            # 初始化生成任务
-            init_response = generate_img2img(image_url)  # 复用原有生成逻辑
+            init_response = generate_img2img(image_url)
             yield f"data: {json.dumps(init_response)}\n\n"
             
             if init_response.get('status') != 'success':
                 return
-
-            # 轮询状态
+ 
             task_id = init_response['task_id']
             while True:
-                status = check_img2img_status(task_id)  # 复用状态检查
+                status = img2img_handler.check_status(task_id)
                 yield f"data: {json.dumps(status)}\n\n"
                 
                 if status.get('completed'):
                     break
                     
-                time.sleep(5)  # 5秒间隔
+                time.sleep(5)
                 
         except Exception as e:
             yield f"data: {json.dumps({'status': 'error', 'error': str(e)})}\n\n"
@@ -989,15 +1058,11 @@ def stream_generate():
 # 原有生成函数改为内部调用
 def generate_img2img(image_url):
     try:
-        # ...保持原有签名和请求逻辑...
-        response = requests.post(request_url, headers=headers, json=request_body)
-        result = response.json()
-        
-        return {
-            'status': 'success' if result.get('code') == 0 else 'error',
-            'task_id': result.get('data', {}).get('generateUuid'),
-            'error': result.get('msg')
-        }
+        submit_response = img2img_handler.submit_task(image_url)
+        if submit_response.get("code") == 0:
+            return {'status': 'success', 'task_id': submit_response["data"]["generateUuid"]}
+        else:
+            return {'status': 'error', 'error': submit_response.get('msg')}
     except Exception as e:
         return {'status': 'error', 'error': str(e)}
 '''
@@ -1672,9 +1737,14 @@ def ensure_oss_directories(bucket, product_id):
 def get_oss_categories():
     """获取所有商品分类"""
     try:
-        # 列出OSS中所有分类文件
+        if not OSS_CONFIG['ACCESS_KEY_ID'] or not OSS_CONFIG['ACCESS_KEY_SECRET']:
+            return jsonify({"status": "error", "error": "未配置OSS密钥"}), 500
+
+        local_auth = oss2.Auth(OSS_CONFIG['ACCESS_KEY_ID'], OSS_CONFIG['ACCESS_KEY_SECRET'])
+        local_bucket = oss2.Bucket(local_auth, OSS_CONFIG['ENDPOINT'], OSS_CONFIG['BUCKET_NAME'])
+
         prefix = "products/_index/by_category/"
-        files = bucket.list_objects(prefix=prefix).object_list
+        files = local_bucket.list_objects(prefix=prefix).object_list
         
         # 提取分类名称（去掉.json后缀）
         categories = [
