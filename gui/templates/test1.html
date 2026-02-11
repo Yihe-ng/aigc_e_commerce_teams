@@ -11,6 +11,7 @@
     <!-- CSS 文件 -->
     <link href="{{ url_for('static', filename='css/root.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/index.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Montserrat&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -538,7 +539,9 @@
         <div class="glow-effect"></div>
         <div class="glow-effect"></div>
         <!-- 加载动画 -->
-        <div class="loading"></div>
+        <div class="loading">
+            <img src="{{ url_for('static', filename='images/loading.gif') }}" alt="loading-img">
+        </div>
         <!-- 顶部导航栏 -->
         <!-- START TOP -->
 <div id="top" class="clearfix">
@@ -791,43 +794,80 @@ kimi api
 
         conv.scrollTop = conv.scrollHeight;
 
-        // 3. 调用API（使用原有可用端点）
-        fetch('/generate_xiaohongshu', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({query: message})
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('请求失败: ' + response.status);
-            return response.json();
-        })
-        .then(data => {
-            // 4. 替换生成中消息为AI回复
-            loadingMsg.outerHTML = `
-                <li>
-                    <img src="../static/images/智行合一logo.png" class="img">
-                    <p class="ballon color2">
-                        ${data.content.replace(/\n/g, '<br>')}
-                        ${data.hashtags ? '<div class="hashtags">'+data.hashtags.replace(/#(\w+)/g, '<span>#$1</span>')+'</div>' : ''}
-                    </p>
-                </li>`;
-        })
-        .catch(error => {
-            // 5. 错误处理
-            loadingMsg.querySelector('.ballon').innerHTML =
-                `❌ 生成失败: ${error.message || '未知错误'}`;
-            console.error('API错误:', error);
-        })
-        .finally(() => {
-            input.value = '';
-            conv.scrollTop = conv.scrollHeight;
-        });
+        const es = new EventSource('/generate_xiaohongshu_stream?query=' + encodeURIComponent(message));
+        let acc = '';
+        let hs = '';
+        es.onmessage = function(e) {
+            try {
+                const data = JSON.parse(e.data);
+                if (data.error) {
+                    es.close();
+                    fallback();
+                    return;
+                }
+                if (data.chunk) {
+                    acc += data.chunk;
+                    loadingMsg.querySelector('.ballon').innerHTML = acc.replace(/\n/g, '<br>');
+                }
+                if (data.done) {
+                    hs = data.hashtags || '';
+                    es.close();
+                    loadingMsg.outerHTML = `
+                        <li>
+                            <img src="../static/images/智行合一logo.png" class="img">
+                            <p class="ballon color2">
+                                ${acc.replace(/\n/g, '<br>')}
+                                ${hs ? '<div class="hashtags">'+hs.replace(/#(\w+)/g, '<span>#$1</span>')+'</div>' : ''}
+                            </p>
+                        </li>`;
+                }
+            } catch (err) {
+                es.close();
+                fallback();
+            }
+        };
+        es.onerror = function() {
+            es.close();
+            fallback();
+        };
+        function fallback() {
+            fetch('/generate_xiaohongshu', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({query: message})
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('请求失败: ' + response.status);
+                return response.json();
+            })
+            .then(data => {
+                loadingMsg.outerHTML = `
+                    <li>
+                        <img src="../static/images/智行合一logo.png" class="img">
+                        <p class="ballon color2">
+                            ${data.content.replace(/\n/g, '<br>')}
+                            ${data.hashtags ? '<div class="hashtags">'+data.hashtags.replace(/#(\w+)/g, '<span>#$1</span>')+'</div>' : ''}
+                        </p>
+                    </li>`;
+            })
+            .catch(error => {
+                loadingMsg.querySelector('.ballon').innerHTML =
+                    `❌ 生成失败: ${error.message || '未知错误'}`;
+                console.error('API错误:', error);
+            })
+            .finally(() => {
+                input.value = '';
+                conv.scrollTop = conv.scrollHeight;
+            });
+        }
     });
 
     // 监听基础设定保存按钮的点击事件
     document.getElementById('saveBtn').addEventListener('click', function () {
         var formData = getFormData();
         var message = `我的商品名是 ${formData.product_name}，产品特点有 ${formData.product_features}，我希望生成的广告类型为 ${formData.ad_type}`;
+        var tabLink = document.querySelector('a[href="#home1"]');
+        if (tabLink) tabLink.click();
         addMessageToChat(message, 'user');
         chatWithKimi(message);
     });
@@ -841,22 +881,87 @@ kimi api
         };
     }
 
-    // 调用问答助手
+    function addMessageToChat(text, role) {
+        const conv = document.getElementById('conv');
+        const li = document.createElement('li');
+        if (role === 'user') {
+            li.className = 'user-message';
+            li.innerHTML = `<p class="ballon">${text}</p><img src="../static/images/用户头像.jpg" class="img">`;
+        } else {
+            li.innerHTML = `<img src="../static/images/智行合一logo.png" class="img"><p class="ballon color2">${text}</p>`;
+        }
+        conv.appendChild(li);
+        conv.scrollTop = conv.scrollHeight;
+    }
+
+    // 调用生成文案（复用SSE并带阻塞回退）
     function chatWithKimi(message) {
-        fetch('/chat_response', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({query: message}),
-        })
-            .then(response => response.json())
-            .then(data => {
-                addMessageToChat(data.response, 'kimi');
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
+        const conv = document.getElementById('conv');
+        const loadingMsg = document.createElement('li');
+        loadingMsg.className = 'loading-msg';
+        loadingMsg.innerHTML = `<img src="../static/images/智行合一logo.png" class="img"><p class="ballon color2">生成中...</p>`;
+        conv.appendChild(loadingMsg);
+        conv.scrollTop = conv.scrollHeight;
+
+        const es = new EventSource('/generate_xiaohongshu_stream?query=' + encodeURIComponent(message));
+        let acc = '';
+        let hs = '';
+        es.onmessage = function(e) {
+            try {
+                const data = JSON.parse(e.data);
+                if (data.error) {
+                    es.close();
+                    fallback();
+                    return;
+                }
+                if (data.chunk) {
+                    acc += data.chunk;
+                    loadingMsg.querySelector('.ballon').innerHTML = acc.replace(/\n/g, '<br>');
+                }
+                if (data.done) {
+                    hs = data.hashtags || '';
+                    es.close();
+                    loadingMsg.outerHTML = `
+                        <li>
+                            <img src="../static/images/智行合一logo.png" class="img">
+                            <p class="ballon color2">
+                                ${acc.replace(/\n/g, '<br>')}
+                                ${hs ? '<div class="hashtags">'+hs.replace(/#(\w+)/g, '<span>#$1</span>')+'</div>' : ''}
+                            </p>
+                        </li>`;
+                }
+            } catch (err) {
+                es.close();
+                fallback();
+            }
+        };
+        es.onerror = function() {
+            es.close();
+            fallback();
+        };
+        async function fallback() {
+            try {
+                const resp = await fetch('/generate_xiaohongshu', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({query: message})
+                });
+                if (!resp.ok) throw new Error('请求失败: ' + resp.status);
+                const data = await resp.json();
+                loadingMsg.outerHTML = `
+                    <li>
+                        <img src="../static/images/智行合一logo.png" class="img">
+                        <p class="ballon color2">
+                            ${data.content.replace(/\n/g, '<br>')}
+                            ${data.hashtags ? '<div class="hashtags">'+data.hashtags.replace(/#(\w+)/g, '<span>#$1</span>')+'</div>' : ''}
+                        </p>
+                    </li>`;
+            } catch (error) {
+                loadingMsg.querySelector('.ballon').innerHTML = `❌ 生成失败: ${error.message || '未知错误'}`;
+            } finally {
+                conv.scrollTop = conv.scrollHeight;
+            }
+        }
     }
 
     // 滚动到底部
