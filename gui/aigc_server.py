@@ -75,11 +75,27 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
 # 创建上传目录
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+@app.route('/favicon.ico')
+def favicon():
+    try:
+        static_images_dir = os.path.join(app.static_folder, 'images')
+        static_ico = os.path.join(static_images_dir, 'favicon.ico')
+        if os.path.exists(static_ico):
+            return send_from_directory(static_images_dir, 'favicon.ico', mimetype='image/x-icon')
+        root_dir = os.path.dirname(app.root_path)
+        root_ico = os.path.join(root_dir, 'favicon.ico')
+        if os.path.exists(root_ico):
+            return send_from_directory(root_dir, 'favicon.ico', mimetype='image/x-icon')
+        return redirect(url_for('static', filename='images/kode-icon.png'))
+    except Exception:
+        return redirect(url_for('static', filename='images/kode-icon.png'))
+
 
 # chat-------------------------------------------------------------------------------------------
 def chat(query):
+    api_key = os.getenv('DIFY_API_KEY', '')
     headers = {
-        'Authorization': 'Bearer app-G1jK63X8rj8Rkok4P32sMus7',
+        'Authorization': f'Bearer {api_key}' if api_key else '',
         'Content-Type': 'application/json',
     }
     # 根据小红书文案生成工作流构建请求体
@@ -131,12 +147,15 @@ def dify_chat():
         data = request.get_json()
         query = data.get('query', '')
         user_id = data.get('user', 'anonymous')
+        api_key = os.getenv('DIFY_API_KEY', '')
+        if not api_key:
+            return jsonify({"status": "error", "message": "缺少DIFY_API_KEY环境变量"}), 500
         
         # 调用Dify.ai API
         response = requests.post(
             'https://api.dify.ai/v1/chat-messages',
             headers={
-                'Authorization': 'Bearer app-SBvChHqxwwb8fPmPDiZjbQ6U',
+                'Authorization': f'Bearer {api_key}',
                 'Content-Type': 'application/json'
             },
             json={
@@ -176,33 +195,50 @@ def dify_chat():
 from flask import redirect, url_for # 确保在文件顶部导入了这些
 
 # 添加流式响应处理端点
-@app.route('/api/chat-messages/stream', methods=['GET'])
+@app.route('/api/chat-messages/stream', methods=['POST'])
 def dify_chat_stream():
-    """处理Dify.ai的流式响应"""
+    """转发Dify.ai的流式响应（SSE）"""
     try:
-        message_id = request.args.get('id')
-        if not message_id:
-            return jsonify({"error": "缺少message_id参数"}), 400
-            
-        # 转发流式请求
-        response = requests.get(
-            f'https://api.dify.ai/v1/chat-messages/stream?id={message_id}',
+        data = request.get_json() or {}
+        api_key = os.getenv('DIFY_API_KEY', '')
+        if not api_key:
+            return jsonify({"status": "error", "message": "缺少DIFY_API_KEY环境变量"}), 500
+
+        # 以POST形式请求Dify的stream端点
+        response = requests.post(
+            'https://api.dify.ai/v1/chat-messages/stream',
             headers={
-                'Authorization': 'Bearer app-SBvChHqxwwb8fPmPDiZjbQ6U',
-                'Accept': 'text/event-stream'
+                'Authorization': f'Bearer {api_key}',
+                'Accept': 'text/event-stream',
+                'Content-Type': 'application/json'
             },
-            stream=True
+            json={
+                "inputs": data.get('inputs', {}),
+                "query": data.get('query', ''),
+                "response_mode": "streaming",
+                "conversation_id": data.get('conversation_id', ''),
+                "user": data.get('user', 'anonymous')
+            },
+            stream=True,
+            timeout=60
         )
-        
-        # 创建流式响应
+
         def generate():
-            for chunk in response.iter_content(chunk_size=1024):
-                yield chunk
-                
+            try:
+                for chunk in response.iter_content(chunk_size=1024):
+                    if chunk:
+                        yield chunk
+            finally:
+                try:
+                    response.close()
+                except Exception:
+                    pass
+
         return Response(generate(), mimetype='text/event-stream')
-        
+    except requests.exceptions.Timeout:
+        return jsonify({"status": "error", "message": "Dify流式请求超时"}), 504
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
     
     
 '''
@@ -630,7 +666,7 @@ def test1():
 
 @app.route('/test2')  # 宣传图
 def test2():
-    return render_template('test2.html')
+    return render_template('test2.html', oss_custom_domain=OSS_CONFIG.get('CUSTOM_DOMAIN'))
 
 
 @app.route('/test3')  # 宣传视频
@@ -680,25 +716,34 @@ PRODUCTS_FILE = BASE_DIR / 'products.csv'
 def product_management():
     return render_template('product_management.html')
 
-# 修正后的OSS配置
+# 修正后的OSS配置（支持环境变量覆盖，端点包含协议）
 OSS_CONFIG = {
     'ACCESS_KEY_ID': os.getenv('ALIYUN_ACCESS_KEY_ID'),
     'ACCESS_KEY_SECRET': os.getenv('ALIYUN_ACCESS_KEY_SECRET'),
-    'ENDPOINT': 'oss-cn-shenzhen.aliyuncs.com',
-    'BUCKET_NAME': 'oceanedgen',
-    'CUSTOM_DOMAIN': 'oceanedgen.oss-cn-shenzhen.aliyuncs.com'
+    'ENDPOINT': os.getenv('ALIYUN_OSS_ENDPOINT', 'https://oss-cn-shenzhen.aliyuncs.com'),
+    'BUCKET_NAME': os.getenv('ALIYUN_OSS_BUCKET', 'oceanedgen'),
+    'CUSTOM_DOMAIN': os.getenv('ALIYUN_OSS_CUSTOM_DOMAIN', 'oceanedgen.oss-cn-shenzhen.aliyuncs.com')
 }
 
 auth = None
 bucket = None
-if OSS_CONFIG['ACCESS_KEY_ID'] and OSS_CONFIG['ACCESS_KEY_SECRET']:
-    try:
-        auth = oss2.Auth(OSS_CONFIG['ACCESS_KEY_ID'], OSS_CONFIG['ACCESS_KEY_SECRET'])
-        bucket = oss2.Bucket(auth, OSS_CONFIG['ENDPOINT'], OSS_CONFIG['BUCKET_NAME'])
-    except Exception as e:
-        print(f"Warning: Failed to initialize Aliyun OSS: {e}")
-else:
-    print("Warning: Aliyun OSS credentials not found. OSS features will be disabled.")
+def _init_oss():
+    global auth, bucket
+    if OSS_CONFIG['ACCESS_KEY_ID'] and OSS_CONFIG['ACCESS_KEY_SECRET']:
+        try:
+            auth = oss2.Auth(OSS_CONFIG['ACCESS_KEY_ID'], OSS_CONFIG['ACCESS_KEY_SECRET'])
+            bucket = oss2.Bucket(auth, OSS_CONFIG['ENDPOINT'], OSS_CONFIG['BUCKET_NAME'])
+            try:
+                bucket.get_bucket_info()
+            except oss2.exceptions.NoSuchBucket:
+                print(f"Error: OSS Bucket '{OSS_CONFIG['BUCKET_NAME']}' 不存在或区域不匹配")
+            except Exception:
+                pass
+        except Exception as e:
+            print(f"Warning: Failed to initialize Aliyun OSS: {e}")
+    else:
+        print("Warning: Aliyun OSS credentials not found. OSS features will be disabled.")
+_init_oss()
 
 def generate_product_id():
     return f"prod_{datetime.now().strftime('%Y%m%d')}_{uuid.uuid4().hex[:8]}"
@@ -979,49 +1024,84 @@ def handle_xiaohongshu_stream():
     @stream_with_context
     def generate():
         try:
-            r = requests.post(
-                'https://api.dify.ai/v1/workflows/run',
-                headers={'Authorization': 'Bearer app-G1jK63X8rj8Rkok4P32sMus7'},
-                json={'inputs': {'basic_instruction': q}, 'response_mode': 'blocking', 'user': 'abc-123'},
-                timeout=25
-            )
-            rd = r.json()
-            outs = rd.get('data', {}).get('outputs', {})
-            content = ''
-            hashtags = ''
-            if isinstance(outs, dict):
-                for k in ['red_content', 'content', 'text', 'output', 'result', 'reply']:
-                    v = outs.get(k)
-                    if isinstance(v, str) and v.strip():
-                        content = v
-                        break
-                for k in ['red_hashtag', 'hashtags', 'tags']:
-                    v = outs.get(k)
-                    if isinstance(v, str):
-                        hashtags = v
-                        break
-            if not content:
-                ds = rd.get('data', {})
-                for k in ['text', 'result', 'message']:
-                    v = ds.get(k)
-                    if isinstance(v, str) and v.strip():
-                        content = v
-                        break
-            if not isinstance(content, str):
-                content = str(content or '')
-            if not isinstance(hashtags, str):
-                hashtags = str(hashtags or '')
-            size = 48
-            i = 0
-            while i < len(content):
-                chunk = content[i:i+size]
-                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
-                i += size
-                time.sleep(0.02)
-            yield f"data: {json.dumps({'done': True, 'hashtags': hashtags})}\n\n"
+            yield "data: {\"status\":\"init\"}\n\n"
+            from threading import Thread
+            from queue import Queue
+            qout: Queue = Queue()
+            done = {"ok": False, "err": None}
+
+            def worker():
+                try:
+                    r = requests.post(
+                        'https://api.dify.ai/v1/workflows/run',
+                        headers={'Authorization': 'Bearer app-G1jK63X8rj8Rkok4P32sMus7'},
+                        json={'inputs': {'basic_instruction': q}, 'response_mode': 'blocking', 'user': 'abc-123'},
+                        timeout=25
+                    )
+                    rd = r.json()
+                    outs = rd.get('data', {}).get('outputs', {})
+                    content = ''
+                    hashtags = ''
+                    if isinstance(outs, dict):
+                        for k in ['red_content', 'content', 'text', 'output', 'result', 'reply']:
+                            v = outs.get(k)
+                            if isinstance(v, str) and v.strip():
+                                content = v
+                                break
+                        for k in ['red_hashtag', 'hashtags', 'tags']:
+                            v = outs.get(k)
+                            if isinstance(v, str):
+                                hashtags = v
+                                break
+                    if not content:
+                        ds = rd.get('data', {})
+                        for k in ['text', 'result', 'message']:
+                            v = ds.get(k)
+                            if isinstance(v, str) and v.strip():
+                                content = v
+                                break
+                    if not isinstance(content, str):
+                        content = str(content or '')
+                    if not isinstance(hashtags, str):
+                        hashtags = str(hashtags or '')
+                    qout.put({"content": content, "hashtags": hashtags})
+                    done["ok"] = True
+                except Exception as e:
+                    done["err"] = str(e)
+
+            Thread(target=worker, daemon=True).start()
+
+            spinner = ["⠋","⠙","⠚","⠞","⠖","⠦","⠴","⠲","⠳","⠓"]
+            si = 0
+            start = time.time()
+            while True:
+                if not qout.empty():
+                    payload = qout.get()
+                    content = payload["content"]
+                    hashtags = payload["hashtags"]
+                    size = 48
+                    i = 0
+                    while i < len(content):
+                        chunk = content[i:i+size]
+                        yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+                        i += size
+                        time.sleep(0.02)
+                    yield f"data: {json.dumps({'done': True, 'hashtags': hashtags})}\n\n"
+                    break
+                if done["err"] is not None:
+                    yield f"data: {json.dumps({'error': done['err']})}\n\n"
+                    break
+                # 心跳/占位，让前端看到流式变化
+                yield f"data: {json.dumps({'tick': spinner[si]})}\n\n"
+                si = (si + 1) % len(spinner)
+                time.sleep(0.25)
+                # 安全超时（避免无限等待）
+                if time.time() - start > 60:
+                    yield f"data: {json.dumps({'error': 'upstream_timeout'})}\n\n"
+                    break
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
-    return Response(generate(), mimetype='text/event-stream')
+    return Response(generate(), mimetype='text/event-stream', headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no","Connection":"keep-alive"})
 
 @app.route('/api/stream_generate', methods=['POST'])  # 新增专用流式端点
 def stream_generate():
@@ -1742,6 +1822,18 @@ def get_oss_categories():
 
         local_auth = oss2.Auth(OSS_CONFIG['ACCESS_KEY_ID'], OSS_CONFIG['ACCESS_KEY_SECRET'])
         local_bucket = oss2.Bucket(local_auth, OSS_CONFIG['ENDPOINT'], OSS_CONFIG['BUCKET_NAME'])
+        try:
+            local_bucket.get_bucket_info()
+        except oss2.exceptions.NoSuchBucket:
+            return jsonify({
+                "status": "error",
+                "error": f"OSS存储桶不存在或区域不匹配: {OSS_CONFIG['BUCKET_NAME']}",
+                "hint": "请在阿里云控制台确认桶已创建且区域与ENDPOINT一致",
+                "config": {
+                    "endpoint": OSS_CONFIG['ENDPOINT'],
+                    "bucket": OSS_CONFIG['BUCKET_NAME']
+                }
+            }), 500
 
         prefix = "products/_index/by_category/"
         files = local_bucket.list_objects(prefix=prefix).object_list

@@ -11,7 +11,7 @@
     <!-- CSS 文件 -->
     <link href="{{ url_for('static', filename='css/root.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/index.css') }}" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Montserrat&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('favicon') }}">
     <style>
         :root {
             --primary-color: #3a7bd5;
@@ -538,7 +538,7 @@
         <div class="glow-effect"></div>
         <div class="glow-effect"></div>
         <!-- 加载动画 -->
-        <div class="loading"></div>
+        <div class="loading"><img src="{{ url_for('static', filename='images/loading.gif') }}" alt="loading-img"></div>
         <!-- 顶部导航栏 -->
         <!-- START TOP -->
 <div id="top" class="clearfix">
@@ -841,22 +841,44 @@ kimi api
         };
     }
 
-    // 调用问答助手
+    // 将消息追加到对话区
+    function addMessageToChat(text, role) {
+        var conv = document.getElementById('conv');
+        var li = document.createElement('li');
+        if (role === 'user') {
+            li.className = 'user-message';
+            li.innerHTML = '<p class="ballon">' + text + '</p><img src="../static/images/用户头像.jpg" class="img">';
+        } else {
+            li.className = 'kimi-message';
+            li.innerHTML = '<p class="ballon">' + text + '</p><img src="../static/images/kimi.jpg" class="img">';
+        }
+        conv.appendChild(li);
+        conv.scrollTop = conv.scrollHeight;
+    }
+
+    // 调用问答助手（走本地后端代理）
     function chatWithKimi(message) {
-        fetch('/chat_response', {
+        fetch('/api/send/v1/chat/completions', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({query: message}),
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({messages: [{role: 'user', content: message}], model: 'fay'})
         })
-            .then(response => response.json())
-            .then(data => {
-                addMessageToChat(data.response, 'kimi');
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+            var text = '';
+            if (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+                text = data.choices[0].message.content;
+            } else if (data && data.error) {
+                text = '错误: ' + data.error;
+            } else {
+                text = '未收到有效回复';
+            }
+            addMessageToChat(text, 'kimi');
+        })
+        .catch(function(err){
+            addMessageToChat('请求失败，请稍后重试', 'kimi');
+            console.error(err);
+        });
     }
 
     // 滚动到底部
@@ -1048,18 +1070,16 @@ Below codes are only for index widgets
         conv.scrollTop = conv.scrollHeight;
 
         try {
-            // 调用Dify.ai API
-            const response = await fetch('https://api.dify.ai/v1/chat-messages', {
+            // 调用后端转发的 Dify 流式接口
+            const response = await fetch('/api/chat-messages/stream', {
                 method: 'POST',
                 headers: {
-                    'Authorization': 'Bearer app-SBvChHqxwwb8fPmPDiZjbQ6U',
                     'Content-Type': 'application/json',
                     'Accept': 'text/event-stream'
                 },
                 body: JSON.stringify({
                     inputs: {},
                     query: message,
-                    response_mode: "streaming",
                     conversation_id: "",
                     user: "abc-123"
                 })
@@ -1137,6 +1157,9 @@ Below codes are only for index widgets
     });
 </script>
 <script src="../static/js/particles.min.js"></script>
+<script>
+  window.pJSDom = window.pJSDom || [];
+</script>
 <script src="../static/js/particles-init.js"></script>
 </div>
 </body>

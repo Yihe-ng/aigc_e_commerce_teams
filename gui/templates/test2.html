@@ -7,8 +7,8 @@
     <title>营销图创作 - 智创电商营销系统</title>
 
     <link href="{{ url_for('static', filename='css/root.css') }}" rel="stylesheet">
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Montserrat&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('favicon') }}">
+    <meta name="oss-custom-domain" content="{{ oss_custom_domain or '' }}">
 
     <style>
     /* 样式保持不变 */
@@ -117,8 +117,8 @@
                     <div class="panel-body" style="min-height:400px;display:flex;align-items:center;justify-content:center;">
                         <img src="{{ url_for('static', filename='images/智行合一logo.png') }}"
                              alt="生成的图片" id="generated-image"
-                             style="max-width:100%;max-height:380px;object-fit:contain;"
-                             onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/image-error.png') }}';">
+                             data-error-img="{{ url_for('static', filename='images/image-error.png') }}"
+                             style="max-width:100%;max-height:380px;object-fit:contain;">
                     </div>
                 </div>
             </div>
@@ -175,12 +175,14 @@
 <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 
 <script>
+const ossMeta = document.querySelector('meta[name="oss-custom-domain"]');
 const OSS_CONFIG = {
-    CUSTOM_DOMAIN: 'oceanedgen.oss-cn-shenzhen.aliyuncs.com'
+    CUSTOM_DOMAIN: (ossMeta && ossMeta.content) || (window.OSS_CUSTOM_DOMAIN || "")
 };
 
 $(document).ready(function() {
     loadCategories();
+    $('#generated-image').on('error', function(){ this.onerror=null; this.src=$(this).data('error-img'); });
 
     // 级联选择逻辑
     $('#product-category').change(function() {
@@ -326,27 +328,54 @@ function handleImageGenerationSuccess(response) {
 
 // 加载分类
 function loadCategories() {
-    $.get('/api/oss/categories', function(res) {
+    $.get('/api/oss/categories')
+     .done(function(res) {
         if(res.code === 200 || res.status === 'success') {
             const list = res.data || [];
+            if (list.length === 0) {
+                $('#product-category').html('<option value="">暂无分类</option>');
+                $('#image-preview').html('<span class="text-muted">分类为空，请稍后重试</span>');
+                return;
+            }
             list.forEach(c => $('#product-category').append(`<option value="${c}">${c}</option>`));
+        } else {
+            $('#product-category').html('<option value="">分类加载失败</option>');
+            $('#image-preview').html('<span class="text-muted">分类接口异常</span>');
         }
-    });
+     })
+     .fail(function() {
+        $('#product-category').html('<option value="">分类不可用</option>');
+        $('#image-preview').html('<span class="text-muted">OSS暂不可用，请稍后重试</span>');
+     });
 }
 
 // 加载商品
 function loadProductsByCategory(cat) {
     $('#product-select').empty().append('<option>加载中...</option>');
-    $.get('/api/oss/products_by_category', { category: cat }, function(res) {
+    $.get('/api/oss/products_by_category', { category: cat })
+     .done(function(res) {
         $('#product-select').empty().append('<option value="">-- 选择商品 --</option>');
         if(res.status === 'success' && res.data) {
+            if (res.data.length === 0) {
+                $('#product-select').append('<option value="">该分类暂无商品</option>');
+                $('#image-preview').html('<span class="text-muted">无商品主图</span>');
+                return;
+            }
             res.data.forEach(p => {
                 const opt = $('<option>').val(p.product_id).text(p.name);
-                opt.data('img', p.main_image ? `https://${OSS_CONFIG.CUSTOM_DOMAIN}/${p.main_image}` : '');
+                const d = OSS_CONFIG.CUSTOM_DOMAIN;
+                opt.data('img', (p.main_image && d) ? `https://${d}/${p.main_image}` : '');
                 $('#product-select').append(opt);
             });
+        } else {
+            $('#product-select').html('<option value="">商品加载失败</option>');
+            $('#image-preview').html('<span class="text-muted">商品接口异常</span>');
         }
-    });
+     })
+     .fail(function() {
+        $('#product-select').html('<option value="">加载失败</option>');
+        $('#image-preview').html('<span class="text-muted">OSS暂不可用，请稍后重试</span>');
+     });
 }
 
 // 更新预览
