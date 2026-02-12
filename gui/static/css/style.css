@@ -116,7 +116,7 @@ body {
   margin: 0;
   line-height: 1.7em;
   font-size: 13px;
-  font-family: 'Open Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
   outline: 0;
   text-Shadow: 0 0 1px rgba(0, 0, 0, 0.2);
   position: relative; /* 新增 */
