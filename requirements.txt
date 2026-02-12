@@ -30,3 +30,4 @@ pandas
 dashscope
 oss2
 redis
+python-dotenv
