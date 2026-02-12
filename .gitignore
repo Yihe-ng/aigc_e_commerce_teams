@@ -171,3 +171,20 @@ config.json
 node_modules/
 .next/
 out/
+# AI Context
+.cobridge
+
+# .traerules
+.traerules
+
+# .cursorrules
+.cursorrules
+
+# GitHub Copilot Instructions
+.github/copilot-instructions.md
+
+# User ignored files
+logs/answer_result.txt
+logs/asr_result.txt
+package-lock.json
+qa.csv

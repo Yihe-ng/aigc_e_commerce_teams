@@ -1,6 +1,12 @@
 import os
 import sys
+from dotenv import load_dotenv
+
+# 加载 .env 文件
 current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+load_dotenv(os.path.join(project_root, '.env'), override=True)
+
 # 获取上一级目录，即项目根目录
 project_root = os.path.dirname(current_dir)
 
@@ -93,7 +99,7 @@ def favicon():
 
 # chat-------------------------------------------------------------------------------------------
 def chat(query):
-    api_key = os.getenv('DIFY_API_KEY', '')
+    api_key = os.getenv('DIFY_WORKFLOW_KEY')
     headers = {
         'Authorization': f'Bearer {api_key}' if api_key else '',
         'Content-Type': 'application/json',
@@ -147,9 +153,9 @@ def dify_chat():
         data = request.get_json()
         query = data.get('query', '')
         user_id = data.get('user', 'anonymous')
-        api_key = os.getenv('DIFY_API_KEY', '')
+        api_key = os.getenv('DIFY_CHAT_KEY')
         if not api_key:
-            return jsonify({"status": "error", "message": "缺少DIFY_API_KEY环境变量"}), 500
+            return jsonify({"status": "error", "message": "缺少DIFY_CHAT_KEY环境变量"}), 500
         
         # 调用Dify.ai API
         response = requests.post(
@@ -200,13 +206,13 @@ def dify_chat_stream():
     """转发Dify.ai的流式响应（SSE）"""
     try:
         data = request.get_json() or {}
-        api_key = os.getenv('DIFY_API_KEY', '')
+        api_key = os.getenv('DIFY_CHAT_KEY')
         if not api_key:
-            return jsonify({"status": "error", "message": "缺少DIFY_API_KEY环境变量"}), 500
+            return jsonify({"status": "error", "message": "缺少DIFY_CHAT_KEY环境变量"}), 500
 
         # 以POST形式请求Dify的stream端点
         response = requests.post(
-            'https://api.dify.ai/v1/chat-messages/stream',
+            'https://api.dify.ai/v1/chat-messages',
             headers={
                 'Authorization': f'Bearer {api_key}',
                 'Accept': 'text/event-stream',
@@ -973,7 +979,7 @@ def handle_xiaohongshu():
         data = request.get_json(force=True) or {}
         response = requests.post(
             'https://api.dify.ai/v1/workflows/run',
-            headers={'Authorization': 'Bearer app-G1jK63X8rj8Rkok4P32sMus7'},
+            headers={'Authorization': f'Bearer {os.getenv("DIFY_WORKFLOW_KEY")}'},
             json={
                 'inputs': {'basic_instruction': data.get('query', '')},
                 'response_mode': 'blocking',
@@ -1034,7 +1040,7 @@ def handle_xiaohongshu_stream():
                 try:
                     r = requests.post(
                         'https://api.dify.ai/v1/workflows/run',
-                        headers={'Authorization': 'Bearer app-G1jK63X8rj8Rkok4P32sMus7'},
+                        headers={'Authorization': f'Bearer {os.getenv("DIFY_WORKFLOW_KEY")}'},
                         json={'inputs': {'basic_instruction': q}, 'response_mode': 'blocking', 'user': 'abc-123'},
                         timeout=25
                     )
