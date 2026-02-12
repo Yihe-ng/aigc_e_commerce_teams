@@ -1153,18 +1153,16 @@ Below codes are only for index widgets
         conv.scrollTop = conv.scrollHeight;
 
         try {
-            // 调用Dify.ai API
-            const response = await fetch('https://api.dify.ai/v1/chat-messages', {
+            // 调用后端转发的 Dify 流式接口
+            const response = await fetch('/api/chat-messages/stream', {
                 method: 'POST',
                 headers: {
-                    'Authorization': 'Bearer app-SBvChHqxwwb8fPmPDiZjbQ6U',
                     'Content-Type': 'application/json',
                     'Accept': 'text/event-stream'
                 },
                 body: JSON.stringify({
                     inputs: {},
                     query: message,
-                    response_mode: "streaming",
                     conversation_id: "",
                     user: "abc-123"
                 })
@@ -1242,6 +1240,9 @@ Below codes are only for index widgets
     });
 </script>
 <script src="../static/js/particles.min.js"></script>
+<script>
+  window.pJSDom = window.pJSDom || [];
+</script>
 <script src="../static/js/particles-init.js"></script>
 </div>
 </body>

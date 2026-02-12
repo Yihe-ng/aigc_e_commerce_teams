@@ -33,12 +33,32 @@ def load_model():
         print(f"模型已准备就绪，路径: {model_dir}")
         
         print("正在加载模型到显存 (RTX 4060)...")
+        # 条件启用 flash-attn，加速注意力；未安装时安全回退
+        use_flash = False
+        try:
+            import flash_attn
+            print(f"检测到 flash-attn 版本: {getattr(flash_attn, '__version__', 'unknown')}")
+            use_flash = True
+        except Exception as e:
+            print(f"未启用 flash-attn: {e}")
         # 针对 4060 开启 bfloat16
         model = Qwen3TTSModel.from_pretrained(
             model_dir,
             device_map="cuda:0",
-            dtype=torch.bfloat16
+            dtype=torch.bfloat16,
+            attn_implementation="flash_attention_2" if use_flash else None
         )
+        # 预热一次，降低首个请求的冷启动延迟
+        try:
+            _wavs, _sr = model.generate_custom_voice(
+                text="预热",
+                language="Chinese",
+                speaker="vivian",
+                instruct="用自然、平稳的语气说话"
+            )
+            print("模型预热完成")
+        except Exception as e:
+            print(f"模型预热失败: {e}")
         print("模型加载成功！服务已就绪。")
         print("="*50)
     except Exception as e:
