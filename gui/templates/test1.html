@@ -173,6 +173,11 @@
             border-radius: 18px;
             max-width: 80%;
             position: relative;
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            overflow: hidden;
+            line-height: 1.6;
         }
 
         .conv .ballon.color1 {
@@ -237,17 +242,21 @@
         /* 标签样式 */
         .hashtags {
             margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
         }
-
-        .hashtags span {
-            display: inline-block;
+        .hashtags .tag {
+            display: inline-flex;
             background: rgba(58, 123, 213, 0.2);
-            color: var(--secondary-color);
+            color: #00d2ff;
             padding: 2px 8px;
             border-radius: 12px;
-            margin-right: 5px;
-            margin-bottom: 5px;
             font-size: 12px;
+            max-width: 100%;
+            word-break: break-all;
+            overflow-wrap: anywhere;
+            line-height: 1.4;
         }
 
         /* 页脚样式 */
@@ -448,11 +457,65 @@
             border-top-right-radius: 4px;
         }
 
-        /* AI气泡 */
+        /* AI气泡 - 双列布局 */
         .ballon.color2 {
             background: #58666e;
             color: white !important;
             border-top-left-radius: 4px;
+            /* 使用flex确保背景包裹内容 */
+            display: flex;
+            flex-direction: column;
+            width: fit-content;
+            max-width: 100%;
+        }
+        
+        /* 针对包含标签的消息使用特殊布局 */
+        .message-with-tags {
+            display: flex;
+            gap: 15px;
+            align-items: stretch;
+            width: 100%; /* 占满气泡宽度 */
+        }
+        
+        /* 文案部分 */
+        .message-content {
+            flex: 1;
+            min-width: 0; 
+            padding-right: 5px;
+        }
+        
+        /* 标签部分 - 右侧 */
+        .message-tags {
+            width: 200px; 
+            min-width: 180px; 
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            gap: 6px; 
+            border-left: 1px solid rgba(255,255,255,0.1);
+            padding-left: 15px;
+            margin-top: 0;
+            flex-shrink: 0; 
+        }
+        
+        .message-tags .tag {
+            display: inline-flex; /* 改回inline-flex以支持垂直居中 */
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 210, 255, 0.15);
+            color: #00d2ff;
+            padding: 4px 12px; /* 增加内边距让其更像胶囊 */
+            border-radius: 14px; /* 加大圆角 */
+            font-size: 13px; /* 稍微调大字号 */
+            max-width: 100%;
+            word-break: break-all;
+            line-height: 1.3;
+            text-decoration: none;
+            flex-grow: 0; 
+            width: auto;
+            white-space: normal; 
+            margin-bottom: 2px; /* 微调垂直间距 */
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* 增加轻微立体感 */
         }
 
         /* 聊天容器全屏适配 */
@@ -461,7 +524,7 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            background: #3d464d;
+            background: transparent; /* 移除覆盖的背景色 */
         }
 
         /* 消息区域 */
@@ -477,7 +540,14 @@
         .conv li {
             display: flex;
             margin-bottom: 15px;
-            max-width: 80%;
+            align-items: flex-start;
+            max-width: 90%; /* 稍微放宽以容纳双列 */
+            width: 100%; /* 确保li容器宽度足够 */
+        }
+
+        /* 修复AI消息容器宽度 */
+        .conv li:not(.user-message) {
+            margin-right: auto; /* 靠左对齐 */
         }
 
         /* 用户消息（右侧） */
@@ -498,8 +568,8 @@
         /* 输入区域 */
         .write {
             padding: 15px;
-            background: #3d464d;
-            border-top: 1px solid #58666e;
+            background: rgba(30, 41, 59, 0.5); /* 恢复半透明背景 */
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         /* 添加固定定位样式 */
@@ -737,6 +807,13 @@
                                     </div>
                                     <div class="panel-body">
                                         <div class="form-group">
+                                            <label class="form-label">文案类型</label>
+                                            <select class="form-control" id="copyType">
+                                                <option value="marketing">营销文案</option>
+                                                <option value="guide">导购文案</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
                                             <label class="form-label">最终确定广告词</label>
                                             <textarea class="form-control" id="input4" rows="5" placeholder="请将您满意的文案复制到这里..."></textarea>
                                         </div>
@@ -774,100 +851,24 @@ kimi api
         const message = input.value.trim();
         if (!message) return;
 
-        const conv = document.getElementById('conv');
+        // 1. 添加用户消息
+        addMessageToChat(message, 'user');
 
-        // 1. 添加用户消息（右侧）
-        const userMsg = document.createElement('li');
-        userMsg.className = 'user-message';
-        userMsg.innerHTML = `
-            <p class="ballon">${message}</p>
-            <img src="../static/images/用户头像.jpg" class="img">`;
-        conv.appendChild(userMsg);
-
-        // 2. 添加AI生成中消息（左侧）
-        const loadingMsg = document.createElement('li');
-        loadingMsg.className = 'loading-msg';
-        loadingMsg.innerHTML = `
-            <img src="../static/images/智行合一logo.png" class="img">
-            <p class="ballon color2">生成中...</p>`;
-        conv.appendChild(loadingMsg);
-
-        conv.scrollTop = conv.scrollHeight;
-
-        const es = new EventSource('/generate_xiaohongshu_stream?query=' + encodeURIComponent(message));
-        let acc = '';
-        let hs = '';
-        es.onmessage = function(e) {
-            try {
-                const data = JSON.parse(e.data);
-                if (data.error) {
-                    es.close();
-                    fallback();
-                    return;
-                }
-                if (data.chunk) {
-                    acc += data.chunk;
-                    loadingMsg.querySelector('.ballon').innerHTML = acc.replace(/\n/g, '<br>');
-                }
-                if (data.done) {
-                    hs = data.hashtags || '';
-                    es.close();
-                    loadingMsg.outerHTML = `
-                        <li>
-                            <img src="../static/images/智行合一logo.png" class="img">
-                            <p class="ballon color2">
-                                ${acc.replace(/\n/g, '<br>')}
-                                ${hs ? '<div class="hashtags">'+hs.replace(/#(\w+)/g, '<span>#$1</span>')+'</div>' : ''}
-                            </p>
-                        </li>`;
-                }
-            } catch (err) {
-                es.close();
-                fallback();
-            }
-        };
-        es.onerror = function() {
-            es.close();
-            fallback();
-        };
-        function fallback() {
-            fetch('/generate_xiaohongshu', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({query: message})
-            })
-            .then(response => {
-                if (!response.ok) throw new Error('请求失败: ' + response.status);
-                return response.json();
-            })
-            .then(data => {
-                loadingMsg.outerHTML = `
-                    <li>
-                        <img src="../static/images/智行合一logo.png" class="img">
-                        <p class="ballon color2">
-                            ${data.content.replace(/\n/g, '<br>')}
-                            ${data.hashtags ? '<div class="hashtags">'+data.hashtags.replace(/#(\w+)/g, '<span>#$1</span>')+'</div>' : ''}
-                        </p>
-                    </li>`;
-            })
-            .catch(error => {
-                loadingMsg.querySelector('.ballon').innerHTML =
-                    `❌ 生成失败: ${error.message || '未知错误'}`;
-                console.error('API错误:', error);
-            })
-            .finally(() => {
-                input.value = '';
-                conv.scrollTop = conv.scrollHeight;
-            });
-        }
+        // 2. 调用统一的生成逻辑 (包含UI渲染、流式处理、JSON解析等)
+        chatWithKimi(message);
+        input.value = '';
     });
 
     // 监听基础设定保存按钮的点击事件
     document.getElementById('saveBtn').addEventListener('click', function () {
         var formData = getFormData();
+        saveBasicSettings(formData);
         var message = `我的商品名是 ${formData.product_name}，产品特点有 ${formData.product_features}，我希望生成的广告类型为 ${formData.ad_type}`;
+        // 修复Tab切换逻辑：使用Bootstrap的tab方法而不是click事件
         var tabLink = document.querySelector('a[href="#home1"]');
-        if (tabLink) tabLink.click();
+        if (tabLink) {
+            $(tabLink).tab('show');
+        }
         addMessageToChat(message, 'user');
         chatWithKimi(message);
     });
@@ -881,17 +882,65 @@ kimi api
         };
     }
 
+    function saveBasicSettings(data) {
+        try {
+            localStorage.setItem('basic_settings', JSON.stringify(data || {}));
+        } catch (e) {}
+    }
+
+    function loadBasicSettings() {
+        try {
+            var s = localStorage.getItem('basic_settings');
+            if (!s) return;
+            var d = JSON.parse(s) || {};
+            if (typeof d.product_name === 'string') document.getElementById('input1').value = d.product_name;
+            if (typeof d.product_features === 'string') document.getElementById('input2').value = d.product_features;
+            if (typeof d.ad_type === 'string') document.getElementById('input3').value = d.ad_type;
+        } catch (e) {}
+    }
+
+    loadBasicSettings();
+
+    function sanitizeText(text) {
+        try {
+            var s = (text == null ? '' : String(text));
+            s = s.replace(/\u00A0/g, ' ');
+            s = s.replace(/[ \t]{2,}/g, ' ');
+            return s.replace(/^\s+|\s+$/g, '');
+        } catch(e) {
+            return String(text || '');
+        }
+    }
+
     function addMessageToChat(text, role) {
+        text = sanitizeText(text);
         const conv = document.getElementById('conv');
         const li = document.createElement('li');
         if (role === 'user') {
             li.className = 'user-message';
             li.innerHTML = `<p class="ballon">${text}</p><img src="../static/images/用户头像.jpg" class="img">`;
         } else {
-            li.innerHTML = `<img src="../static/images/智行合一logo.png" class="img"><p class="ballon color2">${text}</p>`;
+            li.innerHTML = `<img src="../static/images/智行合一logo.png" class="img"><div class="ballon color2">${text}</div>`;
         }
         conv.appendChild(li);
         conv.scrollTop = conv.scrollHeight;
+    }
+
+    function buildPrompt(baseText) {
+        var s = null;
+        try { s = JSON.parse(localStorage.getItem('basic_settings') || '{}'); } catch(e) { s = {}; }
+        var pn = sanitizeText(s.product_name || '');
+        var pf = sanitizeText(s.product_features || '');
+        var at = sanitizeText(s.ad_type || '');
+        var bt = sanitizeText(baseText || '');
+        var lines = [];
+        if (pn) lines.push('产品名：' + pn);
+        if (pf) lines.push('产品特点：' + pf);
+        if (at) lines.push('广告类型：' + at);
+        var header = lines.join('\n');
+        var guide = '请严格基于以上设定生成中文营销文案与话题标签，文案优先围绕产品特点，不要引入与设定无关的信息。标签以#开头，数量控制在8-12个。';
+        var extra = bt ? ('补充指令：' + bt) : '';
+        return [header, guide, extra].filter(Boolean).join('\n');
     }
 
     // 调用生成文案（复用SSE并带阻塞回退）
@@ -899,11 +948,27 @@ kimi api
         const conv = document.getElementById('conv');
         const loadingMsg = document.createElement('li');
         loadingMsg.className = 'loading-msg';
-        loadingMsg.innerHTML = `<img src="../static/images/智行合一logo.png" class="img"><p class="ballon color2">生成中...</p>`;
+        // 使用div替代p
+        loadingMsg.innerHTML = `<img src="../static/images/智行合一logo.png" class="img"><div class="ballon color2">生成中...</div>`;
         conv.appendChild(loadingMsg);
         conv.scrollTop = conv.scrollHeight;
 
-        const es = new EventSource('/generate_xiaohongshu_stream?query=' + encodeURIComponent(message));
+        var composed = buildPrompt(message);
+        
+        // 检测是否是从基础设定跳转来的消息（根据message格式）
+        // 如果是"我的商品名是..."这种格式，说明是从基础设定来的
+        if (message.startsWith('我的商品名是') && message.includes('产品特点有') && message.includes('广告类型为')) {
+            // 关键修复：当从基础设定跳转时，我们只传空字符串给buildPrompt
+            // 这样buildPrompt只会使用localStorage里的结构化数据生成prompt
+            // 从而保证生成的prompt格式与直接在对话框输入指令时（此时localStorage数据会被忽略或覆盖）保持一致的结构化程度
+            composed = buildPrompt(''); 
+        } else {
+            // 如果是用户手动输入的（比如“生成芒果千层文案”），我们把它作为补充指令传给buildPrompt
+            // buildPrompt会把localStorage里的设定作为背景信息，把用户输入作为“补充指令”拼在最后
+            composed = buildPrompt(message);
+        }
+
+        const es = new EventSource('/generate_xiaohongshu_stream?query=' + encodeURIComponent(composed));
         let acc = '';
         let hs = '';
         es.onmessage = function(e) {
@@ -916,19 +981,30 @@ kimi api
                 }
                 if (data.chunk) {
                     acc += data.chunk;
-                    loadingMsg.querySelector('.ballon').innerHTML = acc.replace(/\n/g, '<br>');
+                    // 在流式过程中如果检测到JSON结构，尝试实时清理显示
+                    let displayContent = acc;
+                    if (acc.trim().startsWith('{') && acc.includes('"content"')) {
+                        try {
+                            // 尝试提取content字段内容用于展示，提升流式体验
+                            // 使用更强的正则来匹配内容，支持转义引号
+                            const match = acc.match(/"content"\s*:\s*"((?:[^"\\]|\\.)*)/);
+                            if (match) {
+                                displayContent = match[1]
+                                    .replace(/\\"/g, '"')
+                                    .replace(/\\n/g, '\n')
+                                    .replace(/\\\\/g, '\\');
+                            }
+                        } catch(e) {}
+                    }
+                    const clean = sanitizeText(displayContent);
+                    loadingMsg.querySelector('.ballon').innerHTML = clean.replace(/\n/g, '<br>');
                 }
                 if (data.done) {
                     hs = data.hashtags || '';
                     es.close();
-                    loadingMsg.outerHTML = `
-                        <li>
-                            <img src="../static/images/智行合一logo.png" class="img">
-                            <p class="ballon color2">
-                                ${acc.replace(/\n/g, '<br>')}
-                                ${hs ? '<div class="hashtags">'+hs.replace(/#(\w+)/g, '<span>#$1</span>')+'</div>' : ''}
-                            </p>
-                        </li>`;
+                    
+                    // 统一渲染逻辑
+                    renderFinalMessage(loadingMsg, acc, hs);
                 }
             } catch (err) {
                 es.close();
@@ -944,18 +1020,11 @@ kimi api
                 const resp = await fetch('/generate_xiaohongshu', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({query: message})
+                    body: JSON.stringify({query: composed})
                 });
                 if (!resp.ok) throw new Error('请求失败: ' + resp.status);
                 const data = await resp.json();
-                loadingMsg.outerHTML = `
-                    <li>
-                        <img src="../static/images/智行合一logo.png" class="img">
-                        <p class="ballon color2">
-                            ${data.content.replace(/\n/g, '<br>')}
-                            ${data.hashtags ? '<div class="hashtags">'+data.hashtags.replace(/#(\w+)/g, '<span>#$1</span>')+'</div>' : ''}
-                        </p>
-                    </li>`;
+                renderFinalMessage(loadingMsg, data.content, data.hashtags);
             } catch (error) {
                 loadingMsg.querySelector('.ballon').innerHTML = `❌ 生成失败: ${error.message || '未知错误'}`;
             } finally {
@@ -963,6 +1032,152 @@ kimi api
             }
         }
     }
+
+    function renderFinalMessage(loadingElement, content, hashtags) {
+        // 尝试检测content是否本身就是一段JSON字符串
+        if (typeof content === 'string' && content.trim().startsWith('{')) {
+            try {
+                const parsed = JSON.parse(content);
+                content = parsed.content || content;
+                hashtags = parsed.hashtags || hashtags;
+            } catch(e) { 
+                // JSON解析失败时的回退处理（处理可能的格式错误）
+                // 尝试用正则提取 content 和 hashtags
+                const contentMatch = content.match(/"content"\s*:\s*"([\s\S]*?)"\s*,\s*"hashtags"/);
+                const hashtagsMatch = content.match(/"hashtags"\s*:\s*"([\s\S]*?)"\s*}/);
+                
+                if (contentMatch) {
+                    // 手动反转义
+                    content = contentMatch[1]
+                        .replace(/\\"/g, '"')
+                        .replace(/\\n/g, '\n')
+                        .replace(/\\\\/g, '\\');
+                }
+                if (hashtagsMatch) {
+                    hashtags = hashtagsMatch[1]
+                        .replace(/\\"/g, '"')
+                        .replace(/\\n/g, '\n');
+                }
+            }
+        }
+
+        let contentHtml = '';
+        if (hashtags) {
+            // 从正文中过滤掉已在hashtags中出现的标签
+            let cleanContent = sanitizeText(content);
+            cleanContent = cleanContent.replace(/(\n\s*)?(#[^\s#]+[\s\n]*)+$/g, '').trim();
+            const tagsToStrip = (hashtags.match(/[^#\s",]+/g) || []);
+            tagsToStrip.forEach(t => {
+                const re = new RegExp(`#${t}\\b`, 'g');
+                cleanContent = cleanContent.replace(re, '');
+            });
+            if (cleanContent.includes('"hashtags"')) {
+                cleanContent = cleanContent.split('"hashtags"')[0].trim();
+                cleanContent = cleanContent.replace(/,\s*$/, '').trim();
+            }
+            cleanContent = cleanContent.replace(/\n{3,}/g, '\n\n').trim();
+
+            // 解析标签
+            let tagsHtml = '';
+            if (hashtags.includes('[')) { 
+                try {
+                    const arr = JSON.parse(hashtags);
+                    tagsHtml = arr.map(t => `<span class="tag">${sanitizeText(t)}</span>`).join('');
+                } catch(e) {
+                    tagsHtml = sanitizeText(hashtags).replace(/#[^\s#]+/g, m => `<span class="tag">${m}</span>`);
+                }
+            } else if (hashtags.includes('"')) { 
+                tagsHtml = hashtags.match(/"([^"]+)"/g)?.map(t => `<span class="tag">${sanitizeText(t.replace(/"/g,''))}</span>`).join('') 
+                           || sanitizeText(hashtags).replace(/#[^\s#]+/g, m => `<span class="tag">${m}</span>`);
+            } else { 
+                tagsHtml = sanitizeText(hashtags).replace(/#[^\s#]+/g, m => `<span class="tag">${m}</span>`);
+            }
+
+            contentHtml = `
+                <div class="message-with-tags">
+                    <div class="message-content">
+                        ${cleanContent.replace(/\n/g, '<br>')}
+                    </div>
+                    <div class="message-tags">
+                        ${tagsHtml}
+                    </div>
+                </div>
+            `;
+        } else {
+            contentHtml = sanitizeText(content).replace(/\n/g, '<br>');
+        }
+
+        loadingElement.outerHTML = `
+            <li>
+                <img src="../static/images/智行合一logo.png" class="img">
+                <div class="ballon color2" style="display: flex; flex-direction: column;">
+                    ${contentHtml}
+                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.2); text-align: right;">
+                        <button class="btn btn-xs btn-primary adopt-btn" onclick="adoptPlan(this, 'marketing')" data-content="${encodeURIComponent(content)}">
+                            <i class="fa fa-check-circle"></i> 采纳此方案
+                        </button>
+                    </div>
+                </div>
+            </li>`;
+    }
+
+    // 存储不同类型的方案内容
+    const savedPlans = {
+        marketing: '',
+        guide: ''
+    };
+
+    // 采纳方案功能
+    function adoptPlan(btn, type = 'marketing') {
+        const content = decodeURIComponent(btn.getAttribute('data-content'));
+        
+        // 保存内容到对应类型
+        savedPlans[type] = content;
+
+        // 1. 切换到"最佳方案保存"标签页
+        const tabLink = document.querySelector('a[href="#messages2"]');
+        if (tabLink) {
+            $(tabLink).tab('show');
+        }
+        
+        // 2. 设置文案类型
+        const typeSelect = document.getElementById('copyType');
+        if (typeSelect) {
+            typeSelect.value = type;
+        }
+
+        // 3. 自动填充内容
+        const textarea = document.getElementById('input4');
+        if (textarea) {
+            textarea.value = content;
+            // 给予视觉反馈
+            textarea.style.backgroundColor = 'rgba(58, 123, 213, 0.3)';
+            setTimeout(() => {
+                textarea.style.backgroundColor = '';
+            }, 500);
+        }
+    }
+
+    // 监听类型切换，自动回显对应内容
+    document.addEventListener('DOMContentLoaded', function() {
+        const typeSelect = document.getElementById('copyType');
+        const textarea = document.getElementById('input4');
+        
+        if (typeSelect && textarea) {
+            typeSelect.addEventListener('change', function() {
+                const type = this.value;
+                // 如果有保存的内容，则回显；否则清空（或保留当前输入？通常回显更好）
+                // 为了避免误删用户手动输入的内容，可以加个判断，或者直接回显
+                textarea.value = savedPlans[type] || '';
+            });
+            
+            // 监听输入框变化，实时保存（可选，防止切换后丢失手动修改）
+            textarea.addEventListener('input', function() {
+                const type = typeSelect.value;
+                savedPlans[type] = this.value;
+            });
+        }
+    });
 
     // 滚动到底部
     function scrollToBottom() {
@@ -982,13 +1197,15 @@ kimi api
         var productFeatures = document.getElementById('input2').value;
         var adType = document.getElementById('input3').value;
         var adbest = document.getElementById('input4').value;
+        var copyType = document.getElementById('copyType') ? document.getElementById('copyType').value : 'marketing';
 
         // 将数据打包成对象
         var formData = {
             product_name: productName,
             product_features: productFeatures,
             ad_type: adType,
-            ad_best: adbest
+            ad_best: adbest,
+            copy_type: copyType
         };
 
         // 发送AJAX请求到服务器
@@ -1175,12 +1392,14 @@ Below codes are only for index widgets
             botMessage.className = 'bot-message';
             botMessage.innerHTML = `
                 <img src="../static/images/智行合一logo.png" class="img">
-                <p class="ballon color2"></p>`;
+                <div class="ballon color2" style="display: flex; flex-direction: column;">
+                    <div class="content-text"></div>
+                </div>`;
 
             // 移除加载状态并添加AI消息容器
             document.getElementById(loadingId).remove();
             conv.appendChild(botMessage);
-            const contentElement = botMessage.querySelector('.ballon');
+            const contentElement = botMessage.querySelector('.content-text');
 
             // 处理流式响应
             const reader = response.body.getReader();
@@ -1225,6 +1444,19 @@ Below codes are only for index widgets
                         console.warn('解析事件数据失败:', e, '原始数据:', line);
                     }
                 }
+            }
+
+            // 添加采纳按钮
+            if (fullResponse) {
+                const ballonDiv = botMessage.querySelector('.ballon');
+                const btnDiv = document.createElement('div');
+                btnDiv.style.cssText = "margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.2); text-align: right;";
+                btnDiv.innerHTML = `
+                    <button class="btn btn-xs btn-primary adopt-btn" onclick="adoptPlan(this, 'guide')" data-content="${encodeURIComponent(fullResponse)}">
+                        <i class="fa fa-check-circle"></i> 采纳此方案
+                    </button>`;
+                ballonDiv.appendChild(btnDiv);
+                conv.scrollTop = conv.scrollHeight;
             }
 
         } catch (error) {
