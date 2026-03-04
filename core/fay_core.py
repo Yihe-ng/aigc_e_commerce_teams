@@ -1,4 +1,4 @@
-#作用是处理交互逻辑，文字输入，语音、文字及情绪的发送、播放及展示输出
+# 作用是处理交互逻辑，文字输入，语音、文字及情绪的发送、播放及展示输出
 import math
 import os
 import time
@@ -10,6 +10,7 @@ from pydub import AudioSegment
 
 # 适应模型使用
 import numpy as np
+
 from ai_module import baidu_emotion
 from core import wsa_server
 from core.interact import Interact
@@ -31,29 +32,36 @@ from llm import nlp_coze
 from core import member_db
 import threading
 import functools
+import traceback  # 确保导入
 
-#加载配置
+# 加载配置
 cfg.load_config()
-if cfg.tts_module =='ali':
+if cfg.tts_module == 'ali':
     from tts.ali_tss import Speech
+elif cfg.tts_module == 'qwen3':
+    from tts.qwen3 import Speech
 elif cfg.tts_module == 'gptsovits':
     from tts.gptsovits import Speech
 elif cfg.tts_module == 'gptsovits_v3':
-    from tts.gptsovits_v3 import Speech    
+    from tts.gptsovits_v3 import Speech
 elif cfg.tts_module == 'volcano':
     from tts.volcano_tts import Speech
-elif cfg.tts_module == 'qwen3':
-    from tts.qwen3 import Speech
+elif cfg.tts_module == 'azure':
+    from tts.ms_tts_sdk import Speech
+elif cfg.tts_module == 'gpt':  # 添加对GPT模型的支持
+    from tts.gpt import Speech
 else:
     from tts.ms_tts_sdk import Speech
 
-#windows运行推送唇形数据
+# windows运行推送唇形数据
 import platform
+
 if platform.system() == "Windows":
     import sys
+
     sys.path.append("test/ovr_lipsync")
     from test_olipsync import LipSyncGenerator
-    
+
 modules = {
     "nlp_gpt": nlp_gpt,
     "nlp_rasa": nlp_rasa,
@@ -62,10 +70,10 @@ modules = {
     "nlp_langchain": nlp_langchain,
     "nlp_ollama_api": nlp_ollama_api,
     "nlp_coze": nlp_coze
-
 }
 
-#大语言模型回复
+
+# 大语言模型回复
 def handle_chat_message(msg, username='User'):
     text = ''
     textlist = []
@@ -76,27 +84,31 @@ def handle_chat_message(msg, username='User'):
         module_name = "nlp_" + cfg.key_chat_module
         selected_module = modules.get(module_name)
         if selected_module is None:
-            raise RuntimeError('请选择正确的nlp模型')   
+            # 默认使用GPT模型
+            selected_module = nlp_gpt
+
         if cfg.key_chat_module == 'rasa':
             textlist = selected_module.question(msg)
-            text = textlist[0]['text'] 
+            text = textlist[0]['text']
         else:
             uid = member_db.new_instance().find_user(username)
-            text = selected_module.question(msg, uid)  
+            text = selected_module.question(msg, uid)
         util.printInfo(1, username, '自然语言处理完成. 耗时: {} ms'.format(math.floor((time.time() - tm) * 1000)))
         if text == '哎呀，你这么说我也不懂，详细点呗' or text == '':
             util.printInfo(1, username, '[!] 自然语言无语了！')
-            text = '哎呀，你这么说我也不懂，详细点呗'  
+            text = '哎呀，你这么说我也不懂，详细点呗'
     except BaseException as e:
         print(e)
         util.printInfo(1, username, '自然语言处理错误！')
-        text = '哎呀，你这么说我也不懂，详细点呗'   
+        text = '哎呀，你这么说我也不懂，详细点呗'
 
-    return text,textlist
+    return text, textlist
 
-#可以使用自动播放的标记    
+
+# 可以使用自动播放的标记
 can_auto_play = True
 auto_play_lock = threading.Lock()
+
 
 class FeiFei:
     def __init__(self):
@@ -111,147 +123,171 @@ class FeiFei:
         self.wsParam = None
         self.wss = None
         self.sp = Speech()
-        self.speaking = False #声音是否在播放
+        self._tts_cache = {}
+        self.speaking = False  # 声音是否在播放
         self.__running = True
-        self.sp.connect()  #TODO 预连接
+        self.sp.connect()  # TODO 预连接
         self.cemotion = None
 
-    #语音消息处理检查是否命中q&a
+    # 语音消息处理检查是否命中q&a
     def __get_answer(self, interleaver, text):
         answer = None
         # 全局问答
-        answer = qa_service.QAService().question('qa',text)
+        answer = qa_service.QAService().question('qa', text)
         if answer is not None:
             return answer
-        
-       
-    #语音消息处理
+
+    # 语音消息处理
     def __process_interact(self, interact: Interact):
         if self.__running:
             try:
                 index = interact.interact_type
-                if index == 1: #语音文字交互
-                    #记录用户问题,方便obs等调用
-                    self.write_to_file("./logs", "asr_result.txt",  interact.data["msg"])
+                if index == 1:  # 语音文字交互
+                    print("===== DEBUG: __process_interact 处理语音交互 =====")  # 新增
+                    print("用户消息:", interact.data.get("msg"))                # 新增
+                    # 记录用户问题,方便obs等调用
+                    self.write_to_file("./logs", "asr_result.txt", interact.data["msg"])
 
-                    #同步用户问题到数字人
-                    if wsa_server.get_instance().is_connected(interact.data.get("user")): 
-                        content = {'Topic': 'Unreal', 'Data': {'Key': 'question', 'Value': interact.data["msg"]}, 'Username' : interact.data.get("user")}
+                    # 同步用户问题到数字人
+                    if wsa_server.get_instance().is_connected(interact.data.get("user")):
+                        content = {'Topic': 'Unreal', 'Data': {'Key': 'question', 'Value': interact.data["msg"]},
+                                   'Username': interact.data.get("user")}
                         wsa_server.get_instance().add_cmd(content)
 
-                    #记录用户
+                    # 记录用户
                     username = interact.data.get("user", "User")
-                    if member_db.new_instance().is_username_exist(username)  == "notexists":
+                    if member_db.new_instance().is_username_exist(username) == "notexists":
                         member_db.new_instance().add_user(username)
                     uid = member_db.new_instance().find_user(username)
 
-                    #记录用户问题
-                    content_db.new_instance().add_content('member','speak',interact.data["msg"], username, uid)
+                    # 记录用户问题
+                    content_db.new_instance().add_content('member', 'speak', interact.data["msg"], username, uid)
                     if wsa_server.get_web_instance().is_connected(username):
-                        wsa_server.get_web_instance().add_cmd({"panelReply": {"type":"member","content":interact.data["msg"], "username":username, "uid":uid}, "Username" : username})
-                    
-                    #确定是否命中q&a
+                        wsa_server.get_web_instance().add_cmd({"panelReply": {"type": "member",
+                                                                              "content": interact.data["msg"],
+                                                                              "username": username, "uid": uid},
+                                                               "Username": username})
+
+                    # 确定是否命中q&a
                     answer = self.__get_answer(interact.interleaver, interact.data["msg"])
 
-                    #大语言模型回复    
+                    # 大语言模型回复
                     text = ''
                     textlist = []
                     if answer is None:
                         if wsa_server.get_web_instance().is_connected(username):
-                            wsa_server.get_web_instance().add_cmd({"panelMsg": "思考中...", "Username" : username, 'robot': f'http://{cfg.fay_url}:5000/robot/Thinking.jpg'})
+                            wsa_server.get_web_instance().add_cmd({"panelMsg": "思考中...", "Username": username,
+                                                                   'robot': f'http://{cfg.fay_url}:5000/robot/Thinking.jpg'})
                         if wsa_server.get_instance().is_connected(username):
-                            content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': "思考中..."}, 'Username' : username, 'robot': f'http://{cfg.fay_url}:5000/robot/Thinking.jpg'}
+                            content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': "思考中..."},
+                                       'Username': username, 'robot': f'http://{cfg.fay_url}:5000/robot/Thinking.jpg'}
                             wsa_server.get_instance().add_cmd(content)
-                        text,textlist = handle_chat_message(interact.data["msg"], username)
+                        text, textlist = handle_chat_message(interact.data["msg"], username)
 
-                        qa_service.QAService().record_qapair(interact.data["msg"], text)#沟通记录缓存到qa文件
-                    else: 
+                        qa_service.QAService().record_qapair(interact.data["msg"], text)  # 沟通记录缓存到qa文件
+                    else:
                         text = answer
 
-                    #记录回复    
+                    # 记录回复
                     self.write_to_file("./logs", "answer_result.txt", text)
-                    content_db.new_instance().add_content('fay','speak',text, username, uid)
+                    content_db.new_instance().add_content('fay', 'speak', text, username, uid)
 
-                    #文字输出：面板、聊天窗、log、数字人
+                    # 文字输出：面板、聊天窗、log、数字人
                     if wsa_server.get_web_instance().is_connected(username):
-                        wsa_server.get_web_instance().add_cmd({"panelMsg": text, "Username" : username, 'robot': f'http://{cfg.fay_url}:5000/robot/Speaking.jpg'})
-                        wsa_server.get_web_instance().add_cmd({"panelReply": {"type":"fay","content":text, "username":username, "uid":uid}, "Username" : username})
+                        wsa_server.get_web_instance().add_cmd({"panelMsg": text, "Username": username,
+                                                               'robot': f'http://{cfg.fay_url}:5000/robot/Speaking.jpg'})
+                        wsa_server.get_web_instance().add_cmd(
+                            {"panelReply": {"type": "fay", "content": text, "username": username, "uid": uid},
+                             "Username": username})
                     if len(textlist) > 1:
                         i = 1
                         while i < len(textlist):
-                            content_db.new_instance().add_content('fay','speak',textlist[i]['text'], username, uid)
+                            content_db.new_instance().add_content('fay', 'speak', textlist[i]['text'], username, uid)
                             if wsa_server.get_web_instance().is_connected(username):
-                                wsa_server.get_web_instance().add_cmd({"panelReply": {"type":"fay","content":textlist[i]['text'], "username":username, "uid":uid}, "Username" : username, 'robot': f'http://{cfg.fay_url}:5000/robot/Speaking.jpg'})
-                            i+= 1                                
-                    util.printInfo(1, interact.data.get('user'), '({}) {}'.format(self.__get_mood_voice(), text))                            
+                                wsa_server.get_web_instance().add_cmd({"panelReply": {"type": "fay",
+                                                                                      "content": textlist[i]['text'],
+                                                                                      "username": username, "uid": uid},
+                                                                       "Username": username,
+                                                                       'robot': f'http://{cfg.fay_url}:5000/robot/Speaking.jpg'})
+                            i += 1
+                    util.printInfo(1, interact.data.get('user'), '({}) {}'.format(self.__get_mood_voice(), text))
                     if wsa_server.get_instance().is_connected(username):
-                        content = {'Topic': 'Unreal', 'Data': {'Key': 'text', 'Value': text}, 'Username' : username, 'robot': f'http://{cfg.fay_url}:5000/robot/Speaking.jpg'}
+                        content = {'Topic': 'Unreal', 'Data': {'Key': 'text', 'Value': text}, 'Username': username,
+                                   'robot': f'http://{cfg.fay_url}:5000/robot/Speaking.jpg'}
                         wsa_server.get_instance().add_cmd(content)
-                
-                    #声音输出
+
+                    # 声音输出
+                    print("===== DEBUG: 准备调用 say 方法 =====")   # 新增
                     MyThread(target=self.say, args=[interact, text]).start()
-                    
-                    return text      
-                
-                elif (index == 2):#透传模式，用于适配自动播放控制及agent的通知工具
-                    #记录用户
+
+                    return text
+
+                elif (index == 2):  # 透传模式，用于适配自动播放控制及agent的通知工具
+                    # 记录用户
                     username = interact.data.get("user", "User")
-                    if member_db.new_instance().is_username_exist(username)  == "notexists":
+                    if member_db.new_instance().is_username_exist(username) == "notexists":
                         member_db.new_instance().add_user(username)
                     uid = member_db.new_instance().find_user(username)
-                    
-                    #TODO 这里可以通过qa来触发指定的脚本操作，如ppt翻页等
+
+                    # TODO 这里可以通过qa来触发指定的脚本操作，如ppt翻页等
 
                     if interact.data.get("text"):
-                        #记录回复
+                        # 记录回复
                         text = interact.data.get("text")
                         self.write_to_file("./logs", "answer_result.txt", text)
-                        content_db.new_instance().add_content('fay','speak', text, username, uid)
+                        content_db.new_instance().add_content('fay', 'speak', text, username, uid)
 
-                        #文字输出：面板、聊天窗、log、数字人
+                        # 文字输出：面板、聊天窗、log、数字人
                         if wsa_server.get_web_instance().is_connected(username):
-                            wsa_server.get_web_instance().add_cmd({"panelMsg": text, "Username" : username, 'robot': f'http://{cfg.fay_url}:5000/robot/Speaking.jpg'})
-                            wsa_server.get_web_instance().add_cmd({"panelReply": {"type":"fay","content":text, "username":username, "uid":uid}, "Username" : username})  
-                        util.printInfo(1, interact.data.get('user'), '({}) {}'.format(self.__get_mood_voice(), text))                            
+                            wsa_server.get_web_instance().add_cmd({"panelMsg": text, "Username": username,
+                                                                   'robot': f'http://{cfg.fay_url}:5000/robot/Speaking.jpg'})
+                            wsa_server.get_web_instance().add_cmd(
+                                {"panelReply": {"type": "fay", "content": text, "username": username, "uid": uid},
+                                 "Username": username})
+                        util.printInfo(1, interact.data.get('user'), '({}) {}'.format(self.__get_mood_voice(), text))
                         if wsa_server.get_instance().is_connected(username):
-                            content = {'Topic': 'Unreal', 'Data': {'Key': 'text', 'Value': text}, 'Username' : username, 'robot': f'http://{cfg.fay_url}:5000/robot/Speaking.jpg'}
+                            content = {'Topic': 'Unreal', 'Data': {'Key': 'text', 'Value': text}, 'Username': username,
+                                       'robot': f'http://{cfg.fay_url}:5000/robot/Speaking.jpg'}
                             wsa_server.get_instance().add_cmd(content)
-                    
-                    #声音输出
+
+                    # 声音输出
                     MyThread(target=self.say, args=[interact, text]).start()
-   
+
             except BaseException as e:
                 print(e)
-                return e
+                return "哎呀，出错了！请稍后再试"
         else:
             return "还没有开始运行"
 
-    #记录问答到log
+    # 记录问答到log
     def write_to_file(self, path, filename, content):
         if not os.path.exists(path):
             os.makedirs(path)
         full_path = os.path.join(path, filename)
+        safe_content = "" if content is None else str(content)
         with open(full_path, 'w', encoding='utf-8') as file:
-            file.write(content)
-            file.flush()  
-            os.fsync(file.fileno()) 
+            file.write(safe_content)
+            file.flush()
+            os.fsync(file.fileno())
 
-    #触发语音交互
+            # 触发语音交互
+
     def on_interact(self, interact: Interact):
+        print("===== DEBUG: on_interact 被调用 =====")   # 新增
         MyThread(target=self.__update_mood, args=[interact]).start()
         return self.__process_interact(interact)
 
     # 发送情绪
     def __send_mood(self):
-         while self.__running:
+        while self.__running:
             time.sleep(3)
             if wsa_server.get_instance().is_connected("User"):
-                if  self.old_mood != self.mood:
+                if self.old_mood != self.mood:
                     content = {'Topic': 'Unreal', 'Data': {'Key': 'mood', 'Value': self.mood}}
                     wsa_server.get_instance().add_cmd(content)
                     self.old_mood = self.mood
 
-    #TODO 考虑重构这个逻辑  
+    # TODO 考虑重构这个逻辑
     # 更新情绪
     def __update_mood(self, interact):
         perception = config_util.config["interact"]["perception"]
@@ -261,11 +297,12 @@ class FeiFei:
                     result = nlp_cemotion.get_sentiment(self.cemotion, interact.data["msg"])
                     chat_perception = perception["chat"]
                     if result >= 0.5 and result <= 1:
-                       self.mood = self.mood + (chat_perception / 150.0)
+                        self.mood = self.mood + (chat_perception / 150.0)
                     elif result <= 0.2:
-                       self.mood = self.mood - (chat_perception / 100.0)
+                        self.mood = self.mood - (chat_perception / 100.0)
                 else:
-                    if str(cfg.baidu_emotion_api_key) == '' or str(cfg.baidu_emotion_app_id) == '' or str(cfg.baidu_emotion_secret_key) == '':
+                    if str(cfg.baidu_emotion_api_key) == '' or str(cfg.baidu_emotion_app_id) == '' or str(
+                            cfg.baidu_emotion_secret_key) == '':
                         self.mood = 0
                     else:
                         result = int(baidu_emotion.get_sentiment(interact.data["msg"]))
@@ -293,7 +330,7 @@ class FeiFei:
         if self.mood <= -1:
             self.mood = -1
 
-    #获取不同情绪声音
+    # 获取不同情绪声音
     def __get_mood_voice(self):
         voice = tts_voice.get_voice_of(config_util.config["attribute"]["voice"])
         if voice is None:
@@ -312,39 +349,196 @@ class FeiFei:
             sayType = styleList["cheerful"]
         return sayType
 
+    def __get_tts_speech(self):
+        voice_value = None
+        try:
+            voice_value = config_util.config["attribute"]["voice"]
+        except Exception:
+            voice_value = None
+
+        voice = tts_voice.get_voice_of(voice_value) if voice_value else None
+        voice_str = voice_value if isinstance(voice_value, str) else ""
+        is_qwen_voice = (
+                (voice in (EnumVoice.QWEN3_FEMALE, EnumVoice.QWEN3_MALE))
+                or (voice_str.startswith("qwen_") or voice_str.startswith("Qwen"))
+        )
+        is_gpt_voice = (
+                (voice in (EnumVoice.GPT_FEMALE, EnumVoice.GPT_MALE))
+                or (voice_str.startswith("gpt_") or voice_str.startswith("GPT"))
+        )
+        is_ms_voice = (voice is not None) and (
+                voice not in (EnumVoice.QWEN3_FEMALE, EnumVoice.QWEN3_MALE, EnumVoice.GPT_FEMALE,
+                              EnumVoice.GPT_MALE))
+        is_volcano_voice = voice_str.startswith("volcano_") or voice_str.startswith("火山")
+        is_ali_voice = (
+                isinstance(voice_value, str)
+                and voice_value != ""
+                and voice_value.replace("_", "").isalnum()
+                and not is_qwen_voice
+                and not is_gpt_voice
+                and not is_volcano_voice
+        )
+
+        # 添加对GPT模型的支持
+        if is_gpt_voice:
+            if cfg.tts_module == "gpt":
+                print("===== __get_tts_speech 返回默认 GPT Speech 实例 =====")  # 新增
+                return self.sp
+            sp = self._tts_cache.get("gpt")
+            if sp is None:
+                from tts.gpt import Speech as GPTSpeech
+                sp = GPTSpeech()
+                try:
+                    sp.connect()
+                except Exception as e:
+                    util.log(1, f"GPT-TTS connect error: {e}")
+                self._tts_cache["gpt"] = sp
+            print("===== __get_tts_speech 返回缓存的 GPT Speech 实例 =====")  # 新增
+            return sp
+
+        if is_qwen_voice:
+            if cfg.tts_module == "qwen3":
+                return self.sp
+            sp = self._tts_cache.get("qwen3")
+            if sp is None:
+                from tts.qwen3 import Speech as QwenSpeech
+                sp = QwenSpeech()
+                try:
+                    sp.connect()
+                except Exception as e:
+                    util.log(1, f"Qwen3-TTS connect error: {e}")
+                self._tts_cache["qwen3"] = sp
+            return sp
+
+        if is_volcano_voice:
+            if cfg.tts_module == "volcano":
+                return self.sp
+            sp = self._tts_cache.get("volcano")
+            if sp is None:
+                from tts.volcano_tts import Speech as VolcanoSpeech
+                sp = VolcanoSpeech()
+                try:
+                    sp.connect()
+                except Exception as e:
+                    util.log(1, f"Volcano TTS connect error: {e}")
+                self._tts_cache["volcano"] = sp
+            return sp
+
+        if is_ali_voice:
+            if cfg.tts_module == "ali":
+                return self.sp
+            sp = self._tts_cache.get("ali")
+            if sp is None:
+                from tts.ali_tss import Speech as AliSpeech
+                sp = AliSpeech()
+                try:
+                    sp.connect()
+                except Exception as e:
+                    util.log(1, f"Ali TTS connect error: {e}")
+                self._tts_cache["ali"] = sp
+            return sp
+
+        if is_ms_voice:
+            if cfg.tts_module in ("azure", "ms"):
+                return self.sp
+            sp = self._tts_cache.get("ms")
+            if sp is None:
+                from tts.ms_tts_sdk import Speech as MsSpeech
+                sp = MsSpeech()
+                try:
+                    sp.connect()
+                except Exception as e:
+                    util.log(1, f"MS TTS connect error: {e}")
+                self._tts_cache["ms"] = sp
+            return sp
+
+        print("===== __get_tts_speech 返回默认 Speech 实例 =====")  # 新增
+        return self.sp
+
     # 合成声音
     def say(self, interact, text):
+        print("===== DEBUG: say 方法被调用，text =", text)
         try:
             result = None
-            audio_url = interact.data.get('audio')#透传的音频
+            text = "" if text is None else str(text)
+            audio_url = interact.data.get('audio')  # 透传的音频
             if audio_url is not None:
                 file_name = 'sample-' + str(int(time.time() * 1000)) + '.wav'
                 result = self.download_wav(audio_url, './samples/', file_name)
-            else:
-                util.printInfo(1,  interact.data.get('user'), '正在请求 TTS 合成音频...')
+            elif config_util.config["interact"]["playSound"] or wsa_server.get_instance().is_connected(
+                    interact.data.get("user")) or self.__is_send_remote_device_audio(interact):  # tts
+                util.printInfo(1, interact.data.get('user'), '合成音频...')
                 tm = time.time()
-                mood_voice = self.__get_mood_voice()
-                result = self.sp.to_sample(text.replace("*", ""), mood_voice)
-                if result:
-                    util.printInfo(1,  interact.data.get('user'), '合成音频完成. 耗时: {} ms 文件:{}'.format(math.floor((time.time() - tm) * 1000), result))
-                else:
-                    util.log(1, "TTS 合成失败，请检查服务端日志")
+                sp = self.__get_tts_speech()
+                print("===== DEBUG: sp 类型:", type(sp).__name__)  # 新增
+                # 尝试调用 to_sample，并捕获详细异常
+                try:
+                    result = sp.to_sample(text.replace("*", ""), self.__get_mood_voice())
+                    print(f"===== sp.to_sample 返回: {result} =====")  # 新增
+                except AttributeError as ae:
+                    print("===== DEBUG: to_sample 属性不存在，可能 sp 不是正确的 TTS 实例 =====")
+                    print("异常详情:", ae)
+                    traceback.print_exc()
+                    result = None
+                except Exception as e:
+                    print("===== DEBUG: to_sample 抛出异常:", e)
+                    traceback.print_exc()
+                    result = None
+                util.printInfo(1, interact.data.get('user'),
+                               '合成音频完成. 耗时: {} ms 文件:{}'.format(math.floor((time.time() - tm) * 1000),
+                                                                          result))
 
-            if result is not None:            
+            if result is not None:
                 MyThread(target=self.__process_output_audio, args=[result, interact, text]).start()
                 return result
             else:
                 if wsa_server.get_web_instance().is_connected(interact.data.get('user')):
-                    wsa_server.get_web_instance().add_cmd({"panelMsg": "", 'Username' : interact.data.get('user'), 'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'})
-                if wsa_server.get_instance().is_connected(interact.data.get("user")):
-                    content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': ''}, 'Username' : interact.data.get('user'), 'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'}
-                    wsa_server.get_instance().add_cmd(content)               
-                
-        except BaseException as e:
-            print(e)
-        return None
-    
-    #下载wav
+                    wsa_server.get_web_instance().add_cmd({"panelMsg": "", 'Username': interact.data.get('user'),
+                                                           'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'})
+                # 使用广播发送给所有连接的客户端
+                content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': ''},
+                           'Username': interact.data.get('user'),
+                           'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'}
+                wsa_server.add_cmd_to_all(content)
+        except Exception as e:
+            print(f"say error: {e}")
+            traceback.print_exc()  # 打印完整堆栈
+
+    def __process_output_audio(self, file, interact, text):
+        try:
+            # 播放音频
+            if config_util.config["interact"]["playSound"]:
+                util.printInfo(1, interact.data.get('user'), '播放音频...')
+                try:
+                    pygame.mixer.music.load(file)
+                    pygame.mixer.music.play()
+                    while pygame.mixer.music.get_busy():
+                        time.sleep(0.1)
+                except Exception as e:
+                    util.printInfo(1, interact.data.get('user'), '播放音频出错: {}'.format(e))
+                util.printInfo(1, interact.data.get('user'), '结束播放！')
+
+            # 发送给 UE5
+            # 注意：这里我们使用广播，确保无论 UE5 连的是哪个端口，都能收到指令
+            content = {
+                'Topic': 'Unreal',
+                'Data': {
+                    'Key': 'audio',
+                    'Value': os.path.abspath(file),  # 发送绝对路径
+                    'Text': text
+                },
+                'Username': interact.data.get('user')
+            }
+            wsa_server.add_cmd_to_all(content)
+
+            # 发送给网页端
+            if wsa_server.get_web_instance().is_connected(interact.data.get('user')):
+                wsa_server.get_web_instance().add_cmd({"panelMsg": text, 'Username': interact.data.get('user')})
+
+        except Exception as e:
+            print(f"处理音频输出时出错: {e}")
+
+    # 下载wav
     def download_wav(self, url, save_directory, filename):
         try:
             # 发送HTTP GET请求以获取WAV文件内容
@@ -369,15 +563,15 @@ class FeiFei:
             print(f"[Error] Failed to download file: {e}")
             return None
 
-
-    #面板播放声音
+    # 面板播放声音
     def __play_sound(self, file_url, audio_length, interact):
-        util.printInfo(1,  interact.data.get('user'), '播放音频...')
+        util.printInfo(1, interact.data.get('user'), '播放音频...')
         pygame.mixer.init()
         pygame.mixer.music.load(file_url)
         pygame.mixer.music.play()
 
-        #等待音频播放完成，唤醒模式不用等待        
+        # 等待音频播放完成，唤醒模式不用等待
+
         length = 0
         while True:
             if audio_length + 0.01 > length:
@@ -386,16 +580,17 @@ class FeiFei:
             else:
                 break
         if wsa_server.get_instance().is_connected(interact.data.get("user")):
-            wsa_server.get_web_instance().add_cmd({"panelMsg": "", 'Username' : interact.data.get('user')})
-    
-    #推送远程音频
+            wsa_server.get_web_instance().add_cmd({"panelMsg": "", 'Username': interact.data.get('user')})
+
+    # 推送远程音频
     def __send_remote_device_audio(self, file_url, interact):
-        import fay_booter  # 延迟导入，避免循环导入
-        delkey = None    
+        import fay_booter
+        delkey = None
         for key, value in fay_booter.DeviceInputListenerDict.items():
-            if value.username == interact.data.get("user") and value.isOutput: #按username选择推送，booter.devicelistenerdice按用户名记录
+            if value.username == interact.data.get(
+                    "user") and value.isOutput:  # 按username选择推送，booter.devicelistenerdice按用户名记录
                 try:
-                    value.deviceConnector.send(b"\x00\x01\x02\x03\x04\x05\x06\x07\x08") # 发送音频开始标志，同时也检查设备是否在线
+                    value.deviceConnector.send(b"\x00\x01\x02\x03\x04\x05\x06\x07\x08")  # 发送音频开始标志，同时也检查设备是否在线
                     wavfile = open(os.path.abspath(file_url), "rb")
                     data = wavfile.read(102400)
                     total = 0
@@ -404,25 +599,27 @@ class FeiFei:
                         value.deviceConnector.send(data)
                         data = wavfile.read(102400)
                         time.sleep(0.0001)
-                    value.deviceConnector.send(b'\x08\x07\x06\x05\x04\x03\x02\x01\x00')# 发送音频结束标志
+                    value.deviceConnector.send(b'\x08\x07\x06\x05\x04\x03\x02\x01\x00')  # 发送音频结束标志
                     util.printInfo(1, value.username, "远程音频发送完成：{}".format(total))
                 except socket.error as serr:
-                    util.printInfo(1, value.username, "远程音频输入输出设备已经断开：{}".format(key)) 
+                    util.printInfo(1, value.username, "远程音频输入输出设备已经断开：{}".format(key))
                     value.stop()
                     delkey = key
         if delkey:
-             value =  fay_booter.DeviceInputListenerDict.pop(delkey)
-             if wsa_server.get_web_instance().is_connected(interact.data.get('user')):
-                wsa_server.get_web_instance().add_cmd({"remote_audio_connect": False, "Username" : interact.data.get('user')})
+            value = fay_booter.DeviceInputListenerDict.pop(delkey)
+            if wsa_server.get_web_instance().is_connected(interact.data.get('user')):
+                wsa_server.get_web_instance().add_cmd(
+                    {"remote_audio_connect": False, "Username": interact.data.get('user')})
 
     def __is_send_remote_device_audio(self, interact):
-        import fay_booter  # 延迟导入，避免循环导入
+        import fay_booter
         for key, value in fay_booter.DeviceInputListenerDict.items():
             if value.username == interact.data.get("user") and value.isOutput:
                 return True
-        return False 
+        return False
 
-    #输出音频处理
+        # 输出音频处理
+
     def __process_output_audio(self, file_url, interact, text):
         try:
             try:
@@ -431,20 +628,23 @@ class FeiFei:
             except Exception as e:
                 audio_length = 3
 
-            #自动播放关闭
+            # 自动播放关闭
             global auto_play_lock
             global can_auto_play
             with auto_play_lock:
                 can_auto_play = False
 
             self.speaking = True
-            #推送远程音频
-            MyThread(target=self.__send_remote_device_audio, args=[file_url, interact]).start()       
+            # 推送远程音频
+            MyThread(target=self.__send_remote_device_audio, args=[file_url, interact]).start()
 
-            #发送音频给数字人接口
+            # 发送音频给数字人接口
             if wsa_server.get_instance().is_connected(interact.data.get("user")):
-                content = {'Topic': 'Unreal', 'Data': {'Key': 'audio', 'Value': os.path.abspath(file_url), 'HttpValue': f'http://{cfg.fay_url}:5000/audio/' + os.path.basename(file_url),  'Text': text, 'Time': audio_length, 'Type': 'interact'}, 'Username' : interact.data.get('user')}
-                #计算lips
+                content = {'Topic': 'Unreal', 'Data': {'Key': 'audio', 'Value': os.path.abspath(file_url),
+                                                       'HttpValue': f'http://{cfg.fay_url}:5000/audio/' + os.path.basename(
+                                                           file_url), 'Text': text, 'Time': audio_length,
+                                                       'Type': 'interact'}, 'Username': interact.data.get('user')}
+                # 计算lips
                 if platform.system() == "Windows":
                     try:
                         lip_sync_generator = LipSyncGenerator()
@@ -453,49 +653,59 @@ class FeiFei:
                         content["Data"]["Lips"] = consolidated_visemes
                     except Exception as e:
                         print(e)
-                        util.printInfo(1, interact.data.get("user"),  "唇型数据生成失败")
+                        util.printInfo(1, interact.data.get("user"), "唇型数据生成失败")
                 wsa_server.get_instance().add_cmd(content)
-                util.printInfo(1, interact.data.get("user"),  "数字人接口发送音频数据成功")
-            
-            #播放完成通知
+                util.printInfo(1, interact.data.get("user"), "数字人接口发送音频数据成功")
+
+            # 播放完成通知
             threading.Timer(audio_length, self.send_play_end_msg, [interact]).start()
 
-            #面板播放
+            # 面板播放
             if config_util.config["interact"]["playSound"]:
-                 self.__play_sound(file_url, audio_length, interact)
-            
+                self.__play_sound(file_url, audio_length, interact)
+
         except Exception as e:
             print(e)
 
     def send_play_end_msg(self, interact):
         if wsa_server.get_web_instance().is_connected(interact.data.get('user')):
-            wsa_server.get_web_instance().add_cmd({"panelMsg": "", 'Username' : interact.data.get('user'), 'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'})
+            wsa_server.get_web_instance().add_cmd({"panelMsg": "", 'Username': interact.data.get('user'),
+                                                   'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'})
         if wsa_server.get_instance().is_connected(interact.data.get("user")):
-            content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': ""}, 'Username' : interact.data.get('user'), 'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'}
+            content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': ""}, 'Username': interact.data.get('user'),
+                       'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'}
             wsa_server.get_instance().add_cmd(content)
         if config_util.config["interact"]["playSound"]:
             util.printInfo(1, interact.data.get('user'), '结束播放！')
-        
-        #恢复自动播放(如何有)
+
+        # 恢复自动播放(如何有)
         global auto_play_lock
         global can_auto_play
         with auto_play_lock:
             can_auto_play = True
-        
+
         self.speaking = False
 
-    #启动核心服务
+    # 启动核心服务
     def start(self):
         if cfg.ltp_mode == "cemotion":
             from cemotion import Cemotion
             self.cemotion = Cemotion()
         MyThread(target=self.__send_mood).start()
 
-    #停止核心服务
+    # 停止核心服务
     def stop(self):
         self.__running = False
         self.speaking = False
-        self.sp.close()
+        try:
+            self.sp.close()
+        except Exception:
+            pass
+        for sp in list(getattr(self, "_tts_cache", {}).values()):
+            try:
+                sp.close()
+            except Exception:
+                pass
         wsa_server.get_web_instance().add_cmd({"panelMsg": ""})
         content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': ""}}
         wsa_server.get_instance().add_cmd(content)
