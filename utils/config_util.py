@@ -41,6 +41,11 @@ coze_bot_id = None
 coze_api_key = None
 start_mode = None
 fay_url = None
+gpt_tts_url = None
+ref_audio_path = None
+gpt_prompt_text = None
+prompt_lang = None
+text_lang = None
 
 def load_config():
     global config
@@ -82,6 +87,11 @@ def load_config():
     global coze_api_key
     global start_mode
     global fay_url
+    global gpt_tts_url
+    global ref_audio_path
+    global gpt_prompt_text
+    global prompt_lang
+    global text_lang
 
     system_config = ConfigParser()
     system_config.read('system.conf', encoding='UTF-8')
@@ -128,6 +138,26 @@ def load_config():
     coze_api_key = system_config.get('key', 'coze_api_key')
     start_mode = system_config.get('key', 'start_mode')
     fay_url = system_config.get('key', 'fay_url')
+    try:
+        gpt_tts_url = system_config.get('key', 'gpt_tts_url')
+    except:
+        gpt_tts_url = "http://127.0.0.1:9880/tts"
+    try:
+        ref_audio_path = system_config.get('key', 'ref_audio_path')
+    except:
+        ref_audio_path = ""
+    try:
+        gpt_prompt_text = system_config.get('key', 'gpt_prompt_text')
+    except:
+        gpt_prompt_text = ""
+    try:
+        prompt_lang = system_config.get('key', 'prompt_lang')
+    except:
+        prompt_lang = "zh"
+    try:
+        text_lang = system_config.get('key', 'text_lang')
+    except:
+        text_lang = "zh"
     config = json.load(codecs.open('config.json', encoding='utf-8'))
 
 def save_config(config_data):
