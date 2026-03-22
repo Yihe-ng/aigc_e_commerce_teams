@@ -119,6 +119,7 @@ fay/Fay5_4_Oct/
 
 # Runtime Data
 gui/incremental_updates.db
+/incremental_updates.db
 gui/history_data.json
 fay/Fay5_4_Oct/Saved/
 
