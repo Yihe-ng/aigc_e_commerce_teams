@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react"
 import Script from "next/script"
-import loginBg from '../../../gui/static/images/bg2.jpg';
 
 export default function ParticlesBackground() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -95,10 +94,6 @@ export default function ParticlesBackground() {
       }
     }
   }, [])
-
-
-  console.log("图片路径:", loginBg);
-
   return (
     <>
       <Script 
@@ -157,8 +152,7 @@ export default function ParticlesBackground() {
         ref={containerRef}
         className="absolute inset-0 z-0"
         style={{
-          backgroundImage: `url(${loginBg.src})`,
-
+          backgroundImage: "url(/images/bg2.jpg)",
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
