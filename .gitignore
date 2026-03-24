@@ -5,6 +5,8 @@ __pycache__/
 .idea/
 .venv/
 *.pyc
+.agents/
+.trae/
 # C extensions
 *.so
 
@@ -121,6 +123,10 @@ fay/Fay5_4_Oct/
 gui/incremental_updates.db
 gui/history_data.json
 fay/Fay5_4_Oct/Saved/
+dump.rdb
+tasks.db
+incremental_updates.db
+history_data.json
 
 celerybeat.pid
 
@@ -188,3 +194,12 @@ logs/answer_result.txt
 logs/asr_result.txt
 package-lock.json
 qa.csv
+
+# 忽略第三方 TTS 源码仓库（应作为依赖安装）
+tts/GPT-SoVITS/
+
+# 忽略以下文件
+.gitignore
+incremental_updates.db
+skills-lock.json
+incremental_updates.db

@@ -32,19 +32,19 @@ def login_api():
     try:
         data = request.get_json(force=True, silent=True)
         if not data:
-            return jsonify({'status': 'error', 'message': 'Invalid JSON body'}), 400
+            return jsonify({'status': 'error', 'message': 'Invalid JSON body'}), 400   #没有数据，返回400
 
         username = data.get('username') or data.get('email')
         password = data.get('password')
         
         print(f"Login attempt: username={username}, password={password}")
         
-        # Simple dummy check
+     
         if username == 'zxhy' and password == '12345678':
             session['user_id'] = username
-            return jsonify({'status': 'success', 'message': 'Login successful'})
+            return jsonify({'status': 'success', 'message': '登录成功'})
         
-        return jsonify({'status': 'error', 'message': 'Invalid credentials'}), 401
+        return jsonify({'status': 'error', 'message': 'Invalid credentials'}), 401  #登录失败，返回401（用户名或者密码错误）
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -56,8 +56,6 @@ def login_phone():
     phone = data.get('phone')
     code = data.get('code')
     
-    # TODO: Implement actual phone verification logic
-    # For now, accept any code '123456' for testing
     if code == '123456':
         session['user_id'] = phone
         return jsonify({'status': 'success', 'message': 'Login successful', 'redirect': 'http://localhost:5000/home'})
@@ -66,25 +64,30 @@ def login_phone():
 
 @app.route('/api/login/wechat/qrcode', methods=['GET'])
 def get_wechat_qrcode():
-    # TODO: Implement WeChat QRCode generation
     return jsonify({'status': 'success', 'qrcode_url': '/static/images/mock_qrcode.png', 'uuid': 'mock_uuid'})
 
 @app.route('/api/login/wechat/check', methods=['GET'])
 def check_wechat_login():
     uuid = request.args.get('uuid')
-    # TODO: Implement WeChat login status check
     return jsonify({'status': 'waiting'})
 
 if __name__ == '__main__':
     print("Login Server starting on port 3002...")
+    # 设置 socket 选项允许端口复用
+    import socket
     server = pywsgi.WSGIServer(('0.0.0.0', 3002), app)
+    server.init_socket()
+    server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.serve_forever()
 
 def start():
     from threading import Thread
     print("Login Server starting on port 3002...")
     def run():
+        import socket
         server = pywsgi.WSGIServer(('0.0.0.0', 3002), app)
+        server.init_socket()
+        server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.serve_forever()
     t = Thread(target=run)
     t.daemon = True
