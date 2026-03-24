@@ -446,25 +446,8 @@ Below codes are only for index widgets
         <script>
             // 为按钮添加点击事件监听器
             document.getElementById('run-exe-btn').addEventListener('click', function () {
-                // 定义exe文件的路径
-                var exePath = 'D:/aigc/AIGC_E_COMMERCE/fay/Fay5_4_Oct.exe'; // 替换为你的exe文件实际路径
-                // 发送AJAX请求到服务器
-                var xhr = new XMLHttpRequest();
-                xhr.open('POST', 'http://localhost:5000/run_exe', true);
-                xhr.setRequestHeader('Content-Type', 'application/json');
-                xhr.send(JSON.stringify({
-                    exe_path: exePath,
-                }));
-
-                xhr.onload = function () {
-                    if (xhr.status === 200) {
-                        console.log('Executable started successfully');
-                        alert('数字人平台已启动');
-                    } else {
-                        console.error('Error starting executable');
-                        alert('启动失败');
-                    }
-                };
+                // 跳转到数字人直播平台
+                window.open('http://localhost:5000/live', '_blank');
             });
         </script>
 
