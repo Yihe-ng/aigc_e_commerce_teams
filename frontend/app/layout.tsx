@@ -19,6 +19,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
+      <head>
+        {/* 预连接 CDN 加速加载 */}
+        <link rel="preconnect" href="https://cubism.live2d.com" />
+        <link rel="dns-prefetch" href="https://cubism.live2d.com" />
+        {/* 预加载 Live2D 运行时 */}
+        <link rel="preload" href="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js" as="script" /> 
+        <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js" async />
+      </head>
       <body className={inter.className}>{children}</body>
     </html>
   )

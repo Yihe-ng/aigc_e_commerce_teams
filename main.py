@@ -92,15 +92,15 @@ def start_frontend():
     
     # 检查 node_modules 是否存在
     if not os.path.exists(os.path.join(frontend_dir, 'node_modules')):
-        print(">>> 警告: frontend/node_modules 不存在，请先运行 npm install")
+        print(">>> 警告: frontend/node_modules 不存在，请先运行 pnpm install")
         return None
     
-    # 启动 npm run dev
-    print(">>> 正在启动 frontend (npm run dev)...")
+    # 启动 pnpm dev
+    print(">>> 正在启动 frontend (pnpm dev)...")
     
     # Windows 使用 shell=True
     process = subprocess.Popen(
-        'npm run dev',
+        'pnpm dev',
         cwd=frontend_dir,
         shell=True,
         stdout=subprocess.PIPE,

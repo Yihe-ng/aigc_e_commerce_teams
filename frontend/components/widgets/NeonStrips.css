@@ -1,0 +1,529 @@
+/* 霓虹分割线容器 - 紧贴右侧聊天区左边缘 */
+.neon-strips-container {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0; /* 紧贴父容器右边缘 */
+  width: 6px;
+  pointer-events: none;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ========== 光源发射器（顶部） ========== */
+.light-source-top {
+  position: absolute;
+  top: -15px;
+  width: 32px;
+  height: 30px;
+  background: linear-gradient(180deg,
+    rgba(200, 210, 220, 0.9) 0%,
+    rgba(180, 190, 200, 0.8) 50%,
+    rgba(160, 170, 180, 0.9) 100%
+  );
+  border-radius: 8px 8px 4px 4px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 2px rgba(255, 255, 255, 0.6),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.1);
+  z-index: 5;
+}
+
+/* 光源发光口 */
+.light-source-top::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 8px;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(200, 210, 230, 0.6) 100%
+  );
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(180, 200, 220, 0.8);
+}
+
+/* ========== 光源接收器（底部） ========== */
+.light-source-bottom {
+  position: absolute;
+  bottom: -15px;
+  width: 32px;
+  height: 30px;
+  background: linear-gradient(0deg,
+    rgba(200, 210, 220, 0.9) 0%,
+    rgba(180, 190, 200, 0.8) 50%,
+    rgba(160, 170, 180, 0.9) 100%
+  );
+  border-radius: 4px 4px 8px 8px;
+  box-shadow:
+    0 -4px 12px rgba(0, 0, 0, 0.15),
+    0 -2px 4px rgba(0, 0, 0, 0.1),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.6),
+    inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  z-index: 5;
+}
+
+/* ========== 主霓虹灯带 ========== */
+.neon-divider {
+  position: relative;
+  width: 6px;
+  height: 100%;
+  border-radius: 3px;
+  transition: all 0.3s ease;
+  /* 两端淡入淡出 */
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+}
+
+/* 内部发光核心 */
+.strip-core {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  transition: all 0.3s ease;
+}
+
+/* 中层光晕 */
+.strip-glow {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  transition: all 0.3s ease;
+}
+
+/* 外层环境光 - 照亮周围网格 */
+.strip-ambient {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 100%;
+  border-radius: 40px;
+  filter: blur(40px);
+  opacity: 0.4;
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+/* 侧边光晕 - 照亮左右区域 */
+.strip-side-glow {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 80%;
+  border-radius: 100px;
+  filter: blur(60px);
+  opacity: 0.15;
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+/* ========== 待机状态 (Idle) - 柔和淡蓝 ========== */
+.neon-idle .neon-divider {
+  background: linear-gradient(180deg,
+    rgba(180, 200, 220, 0.2) 0%,
+    rgba(160, 180, 200, 0.4) 15%,
+    rgba(140, 160, 180, 0.5) 50%,
+    rgba(160, 180, 200, 0.4) 85%,
+    rgba(180, 200, 220, 0.2) 100%
+  );
+  box-shadow:
+    inset 0 0 4px rgba(255, 255, 255, 0.2),
+    0 0 8px rgba(180, 200, 220, 0.15);
+}
+
+.neon-idle .strip-core {
+  background: linear-gradient(180deg,
+    rgba(200, 210, 230, 0.5) 0%,
+    rgba(180, 190, 210, 0.8) 50%,
+    rgba(200, 210, 230, 0.5) 100%
+  );
+  box-shadow:
+    0 0 15px rgba(180, 200, 220, 0.4),
+    0 0 30px rgba(180, 200, 220, 0.2);
+}
+
+.neon-idle .strip-glow {
+  background: linear-gradient(180deg,
+    rgba(180, 200, 220, 0.3) 0%,
+    rgba(160, 180, 200, 0.5) 50%,
+    rgba(180, 200, 220, 0.3) 100%
+  );
+  box-shadow:
+    0 0 25px rgba(180, 200, 220, 0.25),
+    0 0 50px rgba(180, 200, 220, 0.1);
+  filter: blur(2px);
+}
+
+.neon-idle .strip-ambient {
+  background: radial-gradient(ellipse at center,
+    rgba(180, 200, 220, 0.2) 0%,
+    transparent 70%
+  );
+}
+
+.neon-idle .strip-side-glow {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(180, 200, 220, 0.1) 20%,
+    rgba(180, 200, 220, 0.15) 50%,
+    rgba(180, 200, 220, 0.1) 80%,
+    transparent 100%
+  );
+}
+
+/* ========== 说话状态 (Speaking) - 淡蓝呼吸 ========== */
+.neon-speaking .neon-divider {
+  background: linear-gradient(180deg,
+    rgba(140, 180, 210, 0.3) 0%,
+    rgba(100, 160, 200, 0.5) 15%,
+    rgba(80, 140, 190, 0.7) 50%,
+    rgba(100, 160, 200, 0.5) 85%,
+    rgba(140, 180, 210, 0.3) 100%
+  );
+  box-shadow:
+    inset 0 0 6px rgba(255, 255, 255, 0.3),
+    0 0 15px rgba(100, 160, 200, 0.3),
+    0 0 30px rgba(100, 160, 200, 0.15);
+  animation: speaking-pulse 0.5s ease-in-out infinite;
+}
+
+.neon-speaking .strip-core {
+  background: linear-gradient(180deg,
+    rgba(150, 190, 220, 0.6) 0%,
+    rgba(100, 160, 200, 0.9) 50%,
+    rgba(150, 190, 220, 0.6) 100%
+  );
+  box-shadow:
+    0 0 20px rgba(100, 160, 200, 0.5),
+    0 0 40px rgba(100, 160, 200, 0.3);
+  animation: core-pulse 0.5s ease-in-out infinite;
+}
+
+.neon-speaking .strip-glow {
+  background: linear-gradient(180deg,
+    rgba(140, 180, 210, 0.4) 0%,
+    rgba(80, 140, 190, 0.7) 50%,
+    rgba(140, 180, 210, 0.4) 100%
+  );
+  box-shadow:
+    0 0 35px rgba(100, 160, 200, 0.35),
+    0 0 70px rgba(100, 160, 200, 0.15);
+  filter: blur(3px);
+  animation: glow-pulse 0.5s ease-in-out infinite;
+}
+
+.neon-speaking .strip-ambient {
+  background: radial-gradient(ellipse at center,
+    rgba(100, 160, 200, 0.25) 0%,
+    transparent 60%
+  );
+  animation: ambient-pulse 0.5s ease-in-out infinite;
+}
+
+.neon-speaking .strip-side-glow {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(100, 160, 200, 0.15) 20%,
+    rgba(100, 160, 200, 0.25) 50%,
+    rgba(100, 160, 200, 0.15) 80%,
+    transparent 100%
+  );
+  animation: side-pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes speaking-pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+@keyframes core-pulse {
+  0%, 100% { opacity: 0.7; box-shadow: 0 0 20px rgba(100, 160, 200, 0.5), 0 0 40px rgba(100, 160, 200, 0.3); }
+  50% { opacity: 1; box-shadow: 0 0 30px rgba(100, 160, 200, 0.7), 0 0 60px rgba(100, 160, 200, 0.4); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; filter: blur(3px); }
+  50% { opacity: 0.9; filter: blur(4px); }
+}
+
+@keyframes ambient-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes side-pulse {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.25; }
+}
+
+/* ========== 思考状态 (Thinking) - 暖黄流动 ========== */
+.neon-thinking .neon-divider {
+  background: linear-gradient(180deg,
+    rgba(210, 190, 150, 0.25) 0%,
+    rgba(200, 170, 120, 0.45) 15%,
+    rgba(190, 160, 100, 0.65) 50%,
+    rgba(200, 170, 120, 0.45) 85%,
+    rgba(210, 190, 150, 0.25) 100%
+  );
+  box-shadow:
+    inset 0 0 6px rgba(255, 255, 255, 0.25),
+    0 0 15px rgba(200, 170, 120, 0.25),
+    0 0 30px rgba(200, 170, 120, 0.12);
+  animation: thinking-flow 2s linear infinite;
+}
+
+.neon-thinking .strip-core {
+  background: linear-gradient(180deg,
+    rgba(220, 200, 150, 0.5) 0%,
+    rgba(190, 160, 100, 0.8) 50%,
+    rgba(220, 200, 150, 0.5) 100%
+  );
+  box-shadow:
+    0 0 20px rgba(200, 170, 120, 0.4),
+    0 0 40px rgba(200, 170, 120, 0.2);
+  animation: core-flow 2s linear infinite;
+}
+
+.neon-thinking .strip-glow {
+  background: linear-gradient(180deg,
+    rgba(210, 190, 150, 0.35) 0%,
+    rgba(190, 160, 100, 0.65) 50%,
+    rgba(210, 190, 150, 0.35) 100%
+  );
+  box-shadow:
+    0 0 35px rgba(200, 170, 120, 0.3),
+    0 0 70px rgba(200, 170, 120, 0.12);
+  filter: blur(3px);
+  animation: glow-flow 2s linear infinite;
+}
+
+.neon-thinking .strip-ambient {
+  background: radial-gradient(ellipse at center,
+    rgba(200, 170, 120, 0.2) 0%,
+    transparent 60%
+  );
+  animation: ambient-flow 2s linear infinite;
+}
+
+.neon-thinking .strip-side-glow {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(200, 170, 120, 0.1) 20%,
+    rgba(200, 170, 120, 0.2) 50%,
+    rgba(200, 170, 120, 0.1) 80%,
+    transparent 100%
+  );
+  animation: side-flow 2s linear infinite;
+}
+
+@keyframes thinking-flow {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 0% 200%; }
+}
+
+@keyframes core-flow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.9; }
+}
+
+@keyframes glow-flow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes ambient-flow {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes side-flow {
+  0%, 100% { opacity: 0.12; }
+  50% { opacity: 0.2; }
+}
+
+/* ========== 热卖状态 (Hot) - 柔和暖粉 ========== */
+.neon-hot .neon-divider {
+  background: linear-gradient(180deg,
+    rgba(220, 170, 170, 0.3) 0%,
+    rgba(210, 140, 140, 0.5) 15%,
+    rgba(200, 120, 120, 0.7) 50%,
+    rgba(210, 140, 140, 0.5) 85%,
+    rgba(220, 170, 170, 0.3) 100%
+  );
+  box-shadow:
+    inset 0 0 6px rgba(255, 255, 255, 0.3),
+    0 0 18px rgba(210, 140, 140, 0.3),
+    0 0 36px rgba(210, 140, 140, 0.15);
+  animation: hot-pulse 0.6s ease-in-out infinite;
+}
+
+.neon-hot .strip-core {
+  background: linear-gradient(180deg,
+    rgba(230, 180, 180, 0.6) 0%,
+    rgba(200, 120, 120, 0.9) 50%,
+    rgba(230, 180, 180, 0.6) 100%
+  );
+  box-shadow:
+    0 0 25px rgba(210, 140, 140, 0.5),
+    0 0 50px rgba(210, 140, 140, 0.25);
+  animation: core-hot 0.6s ease-in-out infinite;
+}
+
+.neon-hot .strip-glow {
+  background: linear-gradient(180deg,
+    rgba(220, 170, 170, 0.4) 0%,
+    rgba(200, 120, 120, 0.75) 50%,
+    rgba(220, 170, 170, 0.4) 100%
+  );
+  box-shadow:
+    0 0 40px rgba(210, 140, 140, 0.35),
+    0 0 80px rgba(210, 140, 140, 0.15);
+  filter: blur(3px);
+  animation: glow-hot 0.6s ease-in-out infinite;
+}
+
+.neon-hot .strip-ambient {
+  background: radial-gradient(ellipse at center,
+    rgba(210, 140, 140, 0.25) 0%,
+    transparent 60%
+  );
+  animation: ambient-hot 0.6s ease-in-out infinite;
+}
+
+.neon-hot .strip-side-glow {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(210, 140, 140, 0.15) 20%,
+    rgba(210, 140, 140, 0.25) 50%,
+    rgba(210, 140, 140, 0.15) 80%,
+    transparent 100%
+  );
+  animation: side-hot 0.6s ease-in-out infinite;
+}
+
+@keyframes hot-pulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+@keyframes core-hot {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+@keyframes glow-hot {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 0.9; }
+}
+
+@keyframes ambient-hot {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes side-hot {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.25; }
+}
+
+/* ========== 状态指示器 ========== */
+.state-indicator {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+}
+
+.thinking-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: rgba(210, 180, 120, 0.9);
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+}
+
+.thinking-dots::after {
+  content: '...';
+  animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+  0%, 20% { content: ''; }
+  40% { content: '.'; }
+  60% { content: '..'; }
+  80%, 100% { content: '...'; }
+}
+
+.hot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, rgba(220, 150, 150, 0.95), rgba(230, 170, 170, 0.95));
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+  box-shadow:
+    0 4px 12px rgba(220, 150, 150, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.25) inset;
+  animation: hot-shake 0.5s ease-in-out infinite;
+}
+
+@keyframes hot-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-1px); }
+  75% { transform: translateX(1px); }
+}
+
+/* 响应式调整 */
+@media (max-width: 1200px) {
+  .neon-strips-container {
+    right: 340px;
+  }
+}
+
+@media (max-width: 992px) {
+  .neon-strips-container {
+    display: none;
+  }
+}

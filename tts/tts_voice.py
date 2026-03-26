@@ -101,10 +101,32 @@ class EnumVoice(Enum):
             "cheerful": "用爽朗、阳光、充满活力的语气说话"
         }
     }
+    GPT_FEMALE = {
+        "name": "gpt_female",
+        "voiceName": "gpt_female",
+        "styleList": {
+            "calm": "用平稳、自然、淡定的语气说话",
+            "angry": "用愤怒、暴躁的语气说话",
+            "lyrical": "用抒情、柔和的语气说话",
+            "assistant": "用温柔、体贴的语气说话",
+            "cheerful": "用愉快、热情的语气说话"
+        }
+    }
+    GPT_MALE = {
+        "name": "gpt_male",
+        "voiceName": "gpt_male",
+        "styleList": {
+            "calm": "用平稳、自然、淡定的语气说话",
+            "angry": "用愤怒、暴躁的语气说话",
+            "lyrical": "用抒情、柔和的语气说话",
+            "assistant": "用温柔、体贴的语气说话",
+            "cheerful": "用愉快、热情的语气说话"
+        }
+    }
 
 
 def get_voice_list():
-    return [EnumVoice.XIAO_XIAO_NEW, EnumVoice.YUN_XI, EnumVoice.XIAO_XIAO, EnumVoice.YUN_JIAN, EnumVoice.XIAO_YI, EnumVoice.YUN_YANG, EnumVoice.YUN_XIA, EnumVoice.QWEN3_FEMALE, EnumVoice.QWEN3_MALE]
+    return [EnumVoice.XIAO_XIAO_NEW, EnumVoice.YUN_XI, EnumVoice.XIAO_XIAO, EnumVoice.YUN_JIAN, EnumVoice.XIAO_YI, EnumVoice.YUN_YANG, EnumVoice.YUN_XIA, EnumVoice.QWEN3_FEMALE, EnumVoice.QWEN3_MALE, EnumVoice.GPT_FEMALE , EnumVoice.GPT_MALE]
 
 
 def get_voice_of(name):

@@ -39,7 +39,6 @@ const Canvas: React.FC<CanvasProps> = ({ style }) => {
     // Configuration from particles-init.js
     const colors = ["#5eead4", "#38bdf8", "#22d3ee"]
     const lineLinkColor = "rgba(94, 234, 212, 0.4)" 
-    const particleCount = Math.floor(width / 15)
     const connectDistance = 120
     const moveSpeed = 0.8
     const interactionDistance = 140 // Repulse radius

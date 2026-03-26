@@ -1,0 +1,45 @@
+/* 极简风格时钟 - 页面左上角 */
+.minimal-clock-widget {
+  position: absolute;
+  top: 90px;
+  left: 24px;
+  z-index: 100;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.minimal-time {
+  font-size: 32px;
+  font-weight: 600;
+  color: #1a1a2e;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.minimal-date {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.minimal-date .weekday {
+  color: #94a3b8;
+}
+
+.minimal-date .separator {
+  color: #cbd5e1;
+}
+
+.minimal-date .month {
+  color: #64748b;
+}
+
+.minimal-date .date-number {
+  color: #1a1a2e;
+  font-weight: 600;
+  margin-left: 4px;
+}

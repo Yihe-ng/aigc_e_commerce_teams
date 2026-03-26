@@ -601,7 +601,7 @@ def dify_chat_stream():
 
 @app.route('/')
 def index():
-    return redirect("http://localhost:3002/login") # Redirect to Login Server
+    return redirect("http://localhost:3000/login") # Redirect to Login Server
 
 # ----------------- Dashboard Redirects -----------------
 def video_generation_worker(task_id, ak, sk, generate_uuid):
