@@ -20,6 +20,35 @@ const nextConfig = {
         source: "/api/:path*",
         destination: "http://localhost:5000/api/:path*", // Flask backend
       },
+      // 文案智造器 API 代理
+      {
+        source: "/generate_xiaohongshu",
+        destination: "http://localhost:5000/generate_xiaohongshu",
+      },
+      {
+        source: "/generate_xiaohongshu_stream",
+        destination: "http://localhost:5000/generate_xiaohongshu_stream",
+      },
+      {
+        source: "/generate_xiaohongshu_stream_post",
+        destination: "http://localhost:5000/generate_xiaohongshu_stream_post",
+      },
+      {
+        source: "/submit-form-data",
+        destination: "http://localhost:5000/submit-form-data",
+      },
+      {
+        source: "/api/product-info",
+        destination: "http://localhost:5000/api/product-info",
+      },
+      {
+        source: "/api/saved-marketing-contents",
+        destination: "http://localhost:5000/api/saved-marketing-contents",
+      },
+      {
+        source: "/api/saved-marketing-contents/:path*",
+        destination: "http://localhost:5000/api/saved-marketing-contents/:path*",
+      },
     ];
   },
 };
