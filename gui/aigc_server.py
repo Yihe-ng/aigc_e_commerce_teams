@@ -1418,9 +1418,8 @@ def test1():
 
 @app.route("/test2")  # 宣传图
 def test2():
-    return render_template(
-        "test2.html", oss_custom_domain=OSS_CONFIG.get("CUSTOM_DOMAIN")
-    )
+    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    return redirect(f"{frontend_url}/ai-tools/image")
 
 
 @app.route("/test3")  # 宣传视频
@@ -1477,6 +1476,19 @@ OSS_CONFIG = {
         "ALIYUN_OSS_CUSTOM_DOMAIN", "oceanedgen.oss-cn-shenzhen.aliyuncs.com"
     ),
 }
+
+
+@app.route("/api/runtime-config/image", methods=["GET"])
+def get_image_runtime_config():
+    return jsonify(
+        {
+            "status": "success",
+            "data": {
+                "oss_custom_domain": OSS_CONFIG.get("CUSTOM_DOMAIN") or "",
+            },
+        }
+    )
+
 
 auth = None
 bucket = None
