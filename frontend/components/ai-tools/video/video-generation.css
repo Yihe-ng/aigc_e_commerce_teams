@@ -1,0 +1,114 @@
+.sparkle-loader {
+  --fill-color: #91c1fa;
+  --shine-color: rgba(145, 193, 250, 0.24);
+
+  position: relative;
+  width: 100px;
+  height: 100px;
+  filter: drop-shadow(0 0 14px var(--shine-color));
+}
+
+.sparkle {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 100px;
+  height: 100px;
+  color: var(--fill-color);
+}
+
+.sparkle-one {
+  transform: translateX(-50%);
+  animation: sparkle-fall-one 1.8s linear infinite;
+}
+
+.sparkle-two {
+  opacity: 0;
+  transform: translateX(-50%) scale(0) translateY(-200px) translateX(-100px);
+  animation: sparkle-fall-two 1.8s linear infinite;
+  animation-delay: 0.45s;
+}
+
+.sparkle-three {
+  opacity: 0;
+  transform: translateX(-50%) scale(0) translateY(-200px) translateX(100px);
+  animation: sparkle-fall-three 1.8s linear infinite;
+  animation-delay: 0.9s;
+}
+
+@keyframes sparkle-fall-one {
+  0% {
+    transform: translateX(-50%) scale(0.5) translateY(-200px);
+    opacity: 0;
+  }
+  25% {
+    transform: translateX(-50%) scale(0.75) translateY(-100px);
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(-50%) scale(1) translateY(0);
+    opacity: 1;
+  }
+  75% {
+    transform: translateX(-50%) scale(0.5) translateY(50px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scale(0) translateY(100px);
+    opacity: 0;
+  }
+}
+
+@keyframes sparkle-fall-two {
+  0% {
+    transform: translateX(-50%) scale(0.5) rotateZ(-10deg) translateY(-200px)
+      translateX(-100px);
+    opacity: 0;
+  }
+  25% {
+    transform: translateX(-50%) scale(1) rotateZ(-5deg) translateY(-100px)
+      translateX(-50px);
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(-50%) scale(1) rotateZ(0deg) translateY(0) translateX(-25px);
+    opacity: 1;
+  }
+  75% {
+    transform: translateX(-50%) scale(0.5) rotateZ(5deg) translateY(50px)
+      translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scale(0) rotateZ(10deg) translateY(100px)
+      translateX(25px);
+    opacity: 0;
+  }
+}
+
+@keyframes sparkle-fall-three {
+  0% {
+    transform: translateX(-50%) scale(0.5) rotateZ(10deg) translateY(-200px)
+      translateX(100px);
+    opacity: 0;
+  }
+  25% {
+    transform: translateX(-50%) scale(1) rotateZ(5deg) translateY(-100px)
+      translateX(50px);
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(-50%) scale(1) rotateZ(0deg) translateY(0) translateX(25px);
+    opacity: 1;
+  }
+  75% {
+    transform: translateX(-50%) scale(0.5) rotateZ(-5deg) translateY(50px)
+      translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scale(0) rotateZ(-10deg) translateY(100px)
+      translateX(-25px);
+    opacity: 0;
+  }
+}

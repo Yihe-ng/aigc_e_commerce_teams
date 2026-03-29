@@ -76,7 +76,10 @@ export function GenerationHistory({
             <Table.ScrollContainer>
               <Table.Content aria-label="营销图生成历史" className="w-full">
                 <Table.Header>
-                  <Table.Column className="px-6 py-4 text-left text-sm font-medium text-gray-700">
+                  <Table.Column
+                    className="px-6 py-4 text-left text-sm font-medium text-gray-700"
+                    isRowHeader
+                  >
                     任务 ID
                   </Table.Column>
                   <Table.Column className="px-6 py-4 text-left text-sm font-medium text-gray-700">

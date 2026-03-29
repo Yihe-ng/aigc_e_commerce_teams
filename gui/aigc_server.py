@@ -1424,7 +1424,8 @@ def test2():
 
 @app.route("/test3")  # 宣传视频
 def test3():
-    return render_template("test3.html")
+    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    return redirect(f"{frontend_url}/ai-tools/video")
 
 
 # @app.route('/test4')  # 直播数字人

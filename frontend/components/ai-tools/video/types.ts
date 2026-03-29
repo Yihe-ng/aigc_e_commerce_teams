@@ -9,45 +9,39 @@ import type {
 
 export type { CategoriesResponse, Product, ProductsResponse, TaskStatus }
 
-export interface GenerationResult {
-  image_url: string
-  percent?: number
+export interface VideoGenerationResult {
+  video_url?: string
+  cover_url?: string
+  points_cost?: number
+  log?: string[]
 }
 
-export interface GenerationTask {
+export interface VideoGenerationTask {
   id: string
-  type: string
+  type: 'video_generation' | 'video'
   status: TaskStatus
-  result?: GenerationResult | string | null
+  result?: VideoGenerationResult | string | null
   error?: string | null
   created_at: string
   updated_at?: string
 }
 
-export interface GenerateImageResponse {
-  code: number
-  msg: string
-  data: {
-    task_id: string
-    generateUuid?: string
-  } | null
+export interface GenerateVideoResponse {
+  status: string
+  task_id?: string
+  message?: string
+  error?: string
 }
 
 export interface TaskStatusResponse {
   status: string
-  task?: GenerationTask
+  task?: VideoGenerationTask
   error?: string
 }
 
 export interface TaskHistoryResponse {
   status: string
-  tasks: GenerationTask[]
-}
-
-export interface SaveGeneratedContentResponse {
-  status: string
-  error?: string
-  oss_url?: string
+  tasks: VideoGenerationTask[]
 }
 
 export interface RuntimeImageConfig {
