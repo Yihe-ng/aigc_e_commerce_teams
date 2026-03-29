@@ -1,7 +1,7 @@
 "use client"
 
 import { Avatar, Button, Card, Chip, Tooltip } from "@heroui/react"
-import { Copy, Lightbulb, RefreshCw, Sparkles } from "lucide-react"
+import { CheckCircle2, Copy, Lightbulb, RefreshCw, Sparkles } from "lucide-react"
 import { useTypewriter } from "@/lib/hooks/use-typewriter"
 import { extractQuestionsFromContent } from "./message-format"
 
@@ -13,6 +13,7 @@ interface AIMessageProps {
   onRegenerate?: () => void
   onCopy?: () => void
   onQuestionClick?: (question: string) => void
+  onAdopt?: (content: string) => void
 }
 
 export function AIMessage({
@@ -23,6 +24,7 @@ export function AIMessage({
   onRegenerate,
   onCopy,
   onQuestionClick,
+  onAdopt,
 }: AIMessageProps) {
   const { displayText, isTyping } = useTypewriter(isStreaming ? content : "", 30)
 
@@ -84,6 +86,18 @@ export function AIMessage({
           )}
 
           <div className="mt-2 flex justify-end gap-2">
+            {onAdopt && cleanContent.trim().length > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                isDisabled={isStreaming}
+                onPress={() => onAdopt(cleanContent)}
+                className="rounded-lg bg-[#EEF6FF] text-[#3B82F6] hover:bg-[#E0EEFF]"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                采纳此方案
+              </Button>
+            )}
             {onRegenerate && (
               <Tooltip>
                 <Tooltip.Trigger>

@@ -7,7 +7,7 @@ import type { GenerationResult, GenerationTask, TaskStatus } from "./types"
 
 interface GenerationHistoryProps {
   tasks: GenerationTask[]
-  onPreview: (imageUrl: string) => void
+  onPreview: (task: GenerationTask) => void
   onView: (imageUrl: string) => void
 }
 
@@ -34,7 +34,9 @@ function formatTimestamp(value: string): string {
   return date.toLocaleString("zh-CN", { hour12: false })
 }
 
-function getResultImageUrl(result: GenerationTask["result"]): string | null {
+function parseGenerationResult(
+  result: GenerationTask["result"]
+): GenerationResult | null {
   if (!result) {
     return null
   }
@@ -42,13 +44,17 @@ function getResultImageUrl(result: GenerationTask["result"]): string | null {
   if (typeof result === "string") {
     try {
       const parsed = JSON.parse(result) as GenerationResult
-      return parsed.image_url ?? null
+      return parsed
     } catch {
       return null
     }
   }
 
-  return result.image_url ?? null
+  return result
+}
+
+function getResultImageUrl(result: GenerationTask["result"]): string | null {
+  return parseGenerationResult(result)?.image_url ?? null
 }
 
 export function GenerationHistory({
@@ -66,7 +72,7 @@ export function GenerationHistory({
             生成历史
           </Card.Title>
           <Card.Description className="mt-1 text-sm text-gray-500">
-            在此处查看你的生成历史和结果
+            在此查看你的生成记录和结果。
           </Card.Description>
         </div>
       </Card.Header>
@@ -130,7 +136,7 @@ export function GenerationHistory({
                                 className="h-9 w-9 rounded-lg text-gray-600 transition-all duration-200 hover:bg-[#91C1FA]/10 hover:text-[#91C1FA] hover:shadow-md hover:shadow-[#91C1FA]/20 active:scale-[0.98]"
                                 size="sm"
                                 variant="tertiary"
-                                onPress={() => onPreview(imageUrl)}
+                                onPress={() => onPreview(task)}
                               >
                                 <ImageUp className="h-4 w-4" />
                               </Button>

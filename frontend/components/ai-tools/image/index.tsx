@@ -18,6 +18,7 @@ import { ProductSelector } from "./product-selector"
 import type {
   CategoriesResponse,
   GenerateImageResponse,
+  GenerationResult,
   GenerationTask,
   ProductsResponse,
   RuntimeImageConfigResponse,
@@ -31,6 +32,8 @@ const POLL_INTERVAL_MS = 2000
 const ELAPSED_TIME_INTERVAL_MS = 1000
 const PROGRESS_SIMULATION_INTERVAL_MS = 400
 const ENV_OSS_DOMAIN = process.env.NEXT_PUBLIC_ALIYUN_OSS_CUSTOM_DOMAIN ?? ""
+const LEGACY_HISTORY_UPLOAD_DISABLED_REASON =
+  "旧记录缺少归属商品信息，无法安全上传，请重新生成后再上传。"
 
 function isAbsoluteUrl(rawUrl: string | undefined): boolean {
   return Boolean(rawUrl && /^https?:\/\//i.test(rawUrl))
@@ -55,21 +58,36 @@ function buildImageUrl(
   return null
 }
 
-function extractTaskImageUrl(result: GenerationTask["result"]): string | null {
+function parseGenerationResult(
+  result: GenerationTask["result"]
+): GenerationResult | null {
   if (!result) {
     return null
   }
 
   if (typeof result === "string") {
     try {
-      const parsed = JSON.parse(result) as { image_url?: string }
-      return parsed.image_url ?? null
+      return JSON.parse(result) as GenerationResult
     } catch {
       return null
     }
   }
 
-  return result.image_url ?? null
+  return result
+}
+
+function extractTaskImageUrl(result: GenerationTask["result"]): string | null {
+  return parseGenerationResult(result)?.image_url ?? null
+}
+
+function extractTaskProductId(
+  result: GenerationTask["result"]
+): string | null {
+  const productId = parseGenerationResult(result)?.product_id
+
+  return typeof productId === "string" && productId.trim()
+    ? productId.trim()
+    : null
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -120,6 +138,9 @@ export default function ImageGenerator() {
   const [generationStartedAt, setGenerationStartedAt] = useState<number | null>(
     null
   )
+  const [previewSourceProductId, setPreviewSourceProductId] = useState<
+    string | null
+  >(null)
 
   const pollingRef = useRef<number | null>(null)
   const progressTimerRef = useRef<number | null>(null)
@@ -243,6 +264,18 @@ export default function ImageGenerator() {
     selectedProduct,
     selectedProductImageUrl,
   ])
+
+  const uploadDisabledReason = useMemo(() => {
+    if (!generatedImage) {
+      return null
+    }
+
+    if (!previewSourceProductId) {
+      return LEGACY_HISTORY_UPLOAD_DISABLED_REASON
+    }
+
+    return null
+  }, [generatedImage, previewSourceProductId])
 
   const clearPolling = useCallback((): void => {
     if (pollingRef.current !== null) {
@@ -498,9 +531,14 @@ export default function ImageGenerator() {
           }
 
           if (currentTask.status === "completed") {
+            const nextImageUrl = extractTaskImageUrl(currentTask.result)
+            const nextProductId =
+              extractTaskProductId(currentTask.result) ?? selectedProductId
+
             setProgress(100)
             setStatusText("生成完成")
-            setGeneratedImage(extractTaskImageUrl(currentTask.result))
+            setGeneratedImage(nextImageUrl)
+            setPreviewSourceProductId(nextProductId)
             setGenerationStartedAt(null)
             stopGeneration()
             setTaskId(null)
@@ -532,7 +570,7 @@ export default function ImageGenerator() {
         }
       }, POLL_INTERVAL_MS)
     },
-    [clearPolling, fetchHistory, stopGeneration]
+    [clearPolling, fetchHistory, selectedProductId, stopGeneration]
   )
 
   const handleCategoryChange = useCallback((category: string): void => {
@@ -540,6 +578,8 @@ export default function ImageGenerator() {
       setSelectedCategory(category)
       setSelectedProductId(null)
       setGeneratedImage(null)
+      setPreviewSourceProductId(null)
+      setTaskId(null)
     })
   }, [])
 
@@ -547,11 +587,13 @@ export default function ImageGenerator() {
     startTransition(() => {
       setSelectedProductId(productId)
       setGeneratedImage(null)
+      setPreviewSourceProductId(null)
+      setTaskId(null)
     })
   }, [])
 
   const handleGenerate = useCallback(async (): Promise<void> => {
-    if (!selectedProductImageUrl) {
+    if (!selectedProductImageUrl || !selectedProductId) {
       toast.warning(generateDisabledReason ?? "请先选择可用商品主图")
       return
     }
@@ -561,11 +603,15 @@ export default function ImageGenerator() {
     setElapsedTime(0)
     setStatusText("任务提交中...")
     setGeneratedImage(null)
+    setPreviewSourceProductId(null)
     setGenerationStartedAt(Date.now())
 
     try {
       const response = await fetch("/api/generate_img2img", {
-        body: JSON.stringify({ image_url: selectedProductImageUrl }),
+        body: JSON.stringify({
+          image_url: selectedProductImageUrl,
+          product_id: selectedProductId,
+        }),
         headers: {
           "Content-Type": "application/json",
         },
@@ -596,14 +642,20 @@ export default function ImageGenerator() {
     fetchHistory,
     generateDisabledReason,
     pollTaskStatus,
+    selectedProductId,
     selectedProductImageUrl,
     startProgressSimulation,
     stopGeneration,
   ])
 
   const handleUpload = useCallback(async (): Promise<void> => {
-    if (!generatedImage || !selectedProductId) {
-      toast.warning("请先生成图片并绑定商品")
+    if (!generatedImage) {
+      toast.warning("请先生成或预览图片")
+      return
+    }
+
+    if (!previewSourceProductId) {
+      toast.warning(LEGACY_HISTORY_UPLOAD_DISABLED_REASON)
       return
     }
 
@@ -617,7 +669,7 @@ export default function ImageGenerator() {
             generated_at: new Date().toISOString(),
             task_id: taskId,
           },
-          product_id: selectedProductId,
+          product_id: previewSourceProductId,
           type: "image",
         }),
         headers: {
@@ -640,7 +692,7 @@ export default function ImageGenerator() {
     } finally {
       setIsUploading(false)
     }
-  }, [generatedImage, selectedProductId, taskId])
+  }, [generatedImage, previewSourceProductId, taskId])
 
   const handleViewImage = useCallback((imageUrl: string): void => {
     window.open(imageUrl, "_blank", "noopener,noreferrer")
@@ -654,8 +706,17 @@ export default function ImageGenerator() {
     handleViewImage(generatedImage)
   }, [generatedImage, handleViewImage])
 
-  const handlePreviewHistory = useCallback((imageUrl: string): void => {
+  const handlePreviewHistory = useCallback((task: GenerationTask): void => {
+    const imageUrl = extractTaskImageUrl(task.result)
+
+    if (!imageUrl) {
+      toast.warning("该历史记录没有可预览的图片")
+      return
+    }
+
     setGeneratedImage(imageUrl)
+    setPreviewSourceProductId(extractTaskProductId(task.result))
+    setTaskId(task.id)
   }, [])
 
   const hasProgressPanel = isGenerating || progress > 0
@@ -716,6 +777,7 @@ export default function ImageGenerator() {
                 <PostActions
                   imageUrl={generatedImage}
                   isUploading={isUploading}
+                  uploadDisabledReason={uploadDisabledReason}
                   onUpload={handleUpload}
                   onViewOriginal={handleViewOriginal}
                 />

@@ -85,6 +85,12 @@ import oss2
 import redis
 import random
 from gui.platforms import PLATFORM_CONFIG, COST_CONFIG
+from gui.ai_tools_task_result_utils import (
+    build_image_task_result,
+    build_video_task_result,
+    extract_task_product_id,
+    merge_saved_video_result,
+)
 
 # 初始化Flask并配置一些基本设置
 app = Flask(__name__, static_url_path="/static")  # 指定静态文件的URL路径为/static
@@ -848,7 +854,7 @@ def index():
 
 
 # ----------------- Dashboard Redirects -----------------
-def video_generation_worker(task_id, ak, sk, generate_uuid):
+def video_generation_worker(task_id, ak, sk, generate_uuid, product_id=None):
     db = Task_Db()
     try:
         print(f"Task {task_id}: Starting video generation wait for {generate_uuid}")
@@ -870,6 +876,7 @@ def video_generation_worker(task_id, ak, sk, generate_uuid):
                     "视频生成成功！",
                 ],
             }
+            result = build_video_task_result(video_data, product_id)
             db.update_task_status(task_id, "completed", result=result)
             print(f"Task {task_id}: Video generation completed")
         else:
@@ -885,10 +892,14 @@ def video_generation_worker(task_id, ak, sk, generate_uuid):
 def handle_generate_video():
     data = request.get_json()
     image_url = data.get("image_url")
+    product_id = data.get("product_id")
     text_description = data.get("text_description", "")  # 获取文本描述
 
     if not image_url:
         return jsonify({"status": "error", "error": "缺少图片URL"}), 400
+
+    if product_id and not product_id.startswith("prod_"):
+        return jsonify({"status": "error", "error": "无效的商品ID格式"}), 400
 
     # 检查 LiblibAI 配置是否已加载
     if not LIBLIB_CONFIG:
@@ -949,7 +960,8 @@ def handle_generate_video():
 
             # Start background thread
             Thread(
-                target=video_generation_worker, args=(task_id, ak, sk, generate_uuid)
+                target=video_generation_worker,
+                args=(task_id, ak, sk, generate_uuid, product_id),
             ).start()
 
             return jsonify(
@@ -1262,7 +1274,7 @@ def get_img2img_handler():
 
 
 # -------------------------------------------------------------------------------------------
-def image_generation_worker(task_id, generate_uuid):
+def image_generation_worker(task_id, generate_uuid, product_id=None):
     db = Task_Db()
     try:
         print(f"Task {task_id}: Starting image generation wait for {generate_uuid}")
@@ -1291,7 +1303,7 @@ def image_generation_worker(task_id, generate_uuid):
                 images = data.get("images", [])
                 if images and len(images) > 0:
                     image_url = images[0].get("imageUrl")
-                    result = {"image_url": image_url, "percent": 100}
+                    result = build_image_task_result(image_url, product_id)
                     db.update_task_status(task_id, "completed", result=result)
                     print(f"Task {task_id}: Image generation completed")
                     return
@@ -1335,6 +1347,10 @@ def generate_img2img():
         if not data or not data.get("image_url"):
             return jsonify({"code": 1, "msg": "缺少image_url参数", "data": None}), 400
 
+        product_id = data.get("product_id")
+        if product_id and not product_id.startswith("prod_"):
+            return jsonify({"code": 1, "msg": "无效的商品ID格式", "data": None}), 400
+
         # 提交任务
         handler = get_img2img_handler()
         submit_response = handler.submit_task(data["image_url"])
@@ -1356,7 +1372,10 @@ def generate_img2img():
         Task_Db().add_task(task_id, "image_generation")
 
         # Start background thread
-        Thread(target=image_generation_worker, args=(task_id, generate_uuid)).start()
+        Thread(
+            target=image_generation_worker,
+            args=(task_id, generate_uuid, product_id),
+        ).start()
 
         return jsonify(
             {
@@ -3024,6 +3043,7 @@ def save_generated_content():
         content_type = data["type"]  # 'image' 或 'video'
         file_url = data["file_url"]
         custom_path = data.get("custom_path", "")
+        task_id = data.get("task_id")
 
         # 验证商品ID格式
         if not product_id.startswith("prod_"):
@@ -3086,6 +3106,16 @@ def save_generated_content():
             # 返回OSS访问URL
             oss_url = f"https://{OSS_CONFIG['CUSTOM_DOMAIN']}/{save_path}"
             print(f"[OSS上传] 上传成功: {oss_url}")
+
+            if content_type == "video" and task_id:
+                db = Task_Db()
+                task = db.get_task(task_id)
+                if task:
+                    merged_result = merge_saved_video_result(
+                        task.get("result"), oss_url
+                    )
+                    task_status = task.get("status") or "completed"
+                    db.update_task_status(task_id, task_status, result=merged_result)
 
             return jsonify(
                 {"status": "success", "oss_url": oss_url, "save_path": save_path}

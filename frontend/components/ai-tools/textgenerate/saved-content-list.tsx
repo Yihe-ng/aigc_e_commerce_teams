@@ -14,9 +14,13 @@ interface SavedContent {
 
 interface SavedContentListProps {
   onSelect?: (content: SavedContent) => void
+  refreshKey?: number
 }
 
-export function SavedContentList({ onSelect }: SavedContentListProps) {
+export function SavedContentList({
+  onSelect,
+  refreshKey = 0,
+}: SavedContentListProps) {
   const [savedContents, setSavedContents] = useState<SavedContent[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -35,7 +39,7 @@ export function SavedContentList({ onSelect }: SavedContentListProps) {
       }
     }
     fetchSavedContents()
-  }, [])
+  }, [refreshKey])
 
   const handleSelect = (content: SavedContent) => {
     onSelect?.(content)

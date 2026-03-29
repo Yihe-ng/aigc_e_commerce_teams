@@ -1,8 +1,9 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { startTransition, useCallback, useRef, useState } from "react"
 import { ScrollShadow } from "@heroui/react"
 import { Sparkles } from "lucide-react"
+
 import {
   extractQuestionsFromContent,
   normalizeQuestionsPayload,
@@ -12,6 +13,7 @@ import { AppleInput } from "./apple-input"
 import { ChatContainer } from "./chat-container"
 import { ModeSwitcher } from "./mode-switcher"
 import { ProductInfoForm } from "./product-info-form"
+import { SaveDraftPanel, type SaveDraftValue } from "./save-draft-panel"
 import { SavedContentList } from "./saved-content-list"
 import { UserMessage } from "./user-message"
 
@@ -35,7 +37,7 @@ function EmptyState() {
         输入文案需求开始创作
       </p>
       <p className="text-sm text-gray-400">
-        例如：帮我写一款防晒霜的小红书文案
+        例如：帮我写一款防晒霜的小红书营销文案
       </p>
     </div>
   )
@@ -45,6 +47,13 @@ export default function TextGenerateChat() {
   const [activeMode, setActiveMode] = useState<ModeType>("marketing")
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isSavingDraft, setIsSavingDraft] = useState(false)
+  const [savedContentsRefreshKey, setSavedContentsRefreshKey] = useState(0)
+  const [saveDraft, setSaveDraft] = useState<SaveDraftValue>({
+    product_name: "",
+    copy_type: "marketing",
+    ad_best: "",
+  })
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const handleSend = useCallback(async (content: string) => {
@@ -63,7 +72,9 @@ export default function TextGenerateChat() {
         body: JSON.stringify({ query: content }),
       })
 
-      if (!response.ok) throw new Error("请求失败")
+      if (!response.ok) {
+        throw new Error("请求失败")
+      }
 
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
@@ -83,61 +94,68 @@ export default function TextGenerateChat() {
 
       while (reader) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
 
         const chunk = decoder.decode(value)
         const lines = chunk.split("\n")
 
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6))
-              if (data.chunk) {
-                aiContent += data.chunk
-                const { cleanContent, questions } =
-                  extractQuestionsFromContent(aiContent)
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === aiMsgId
-                      ? {
-                          ...msg,
-                          content: cleanContent,
-                          questions:
-                            msg.questions && msg.questions.length > 0
-                              ? msg.questions
-                              : questions,
-                        }
-                      : msg
-                  )
-                )
-              }
-              if (data.done) {
-                const { cleanContent, questions: parsedQuestions } =
-                  extractQuestionsFromContent(aiContent)
-                const normalizedQuestions = normalizeQuestionsPayload(
-                  data.questions
-                )
-                const questions =
-                  normalizedQuestions.length > 0
-                    ? normalizedQuestions
-                    : parsedQuestions
-                const tags = data.hashtags
-                  ? data.hashtags
-                      .match(/#[\u4e00-\u9fa5\w]+/g)
-                      ?.map((t: string) => t.slice(1)) || []
-                  : []
+          if (!line.startsWith("data: ")) {
+            continue
+          }
 
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === aiMsgId
-                      ? { ...msg, content: cleanContent, questions, tags }
-                      : msg
-                  )
+          try {
+            const data = JSON.parse(line.slice(6))
+
+            if (data.chunk) {
+              aiContent += data.chunk
+              const { cleanContent, questions } =
+                extractQuestionsFromContent(aiContent)
+
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === aiMsgId
+                    ? {
+                        ...msg,
+                        content: cleanContent,
+                        questions:
+                          msg.questions && msg.questions.length > 0
+                            ? msg.questions
+                            : questions,
+                      }
+                    : msg
                 )
-              }
-            } catch {
-              // Ignore parsing errors
+              )
             }
+
+            if (data.done) {
+              const { cleanContent, questions: parsedQuestions } =
+                extractQuestionsFromContent(aiContent)
+              const normalizedQuestions = normalizeQuestionsPayload(
+                data.questions
+              )
+              const questions =
+                normalizedQuestions.length > 0
+                  ? normalizedQuestions
+                  : parsedQuestions
+              const tags = data.hashtags
+                ? data.hashtags
+                    .match(/#[\u4e00-\u9fa5\w]+/g)
+                    ?.map((tag: string) => tag.slice(1)) || []
+                : []
+
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === aiMsgId
+                    ? { ...msg, content: cleanContent, questions, tags }
+                    : msg
+                )
+              )
+            }
+          } catch {
+            // Ignore transient stream parsing errors.
           }
         }
       }
@@ -174,6 +192,13 @@ export default function TextGenerateChat() {
           throw new Error(result.message || result.error || "保存失败")
         }
 
+        startTransition(() => {
+          setSaveDraft((current) => ({
+            ...current,
+            product_name: data.product_name,
+          }))
+        })
+
         alert("产品信息已保存")
       } catch (error) {
         console.error("保存失败:", error)
@@ -183,6 +208,61 @@ export default function TextGenerateChat() {
     },
     []
   )
+
+  const handleAdopt = useCallback(
+    (content: string, copyType: SaveDraftValue["copy_type"]) => {
+      startTransition(() => {
+        setSaveDraft((current) => ({
+          ...current,
+          copy_type: copyType,
+          ad_best: content,
+        }))
+        setActiveMode("save")
+      })
+    },
+    []
+  )
+
+  const handleSaveDraftChange = useCallback((value: SaveDraftValue) => {
+    setSaveDraft(value)
+  }, [])
+
+  const handleSaveDraft = useCallback(async () => {
+    const payload = {
+      product_name: saveDraft.product_name.trim(),
+      ad_best: saveDraft.ad_best.trim(),
+      copy_type: saveDraft.copy_type,
+    }
+
+    if (!payload.product_name || !payload.ad_best) {
+      alert("请先完善商品名称和最终文案")
+      return
+    }
+
+    setIsSavingDraft(true)
+
+    try {
+      const response = await fetch("/submit-form-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+
+      const result = await response.json()
+      if (!response.ok || result.status !== "success") {
+        throw new Error(result.message || result.error || "保存失败")
+      }
+
+      setSavedContentsRefreshKey((current) => current + 1)
+      alert("最终方案已保存到商品营销素材库")
+    } catch (error) {
+      console.error("保存失败:", error)
+      const message = error instanceof Error ? error.message : "保存失败"
+      alert(message)
+    } finally {
+      setIsSavingDraft(false)
+    }
+  }, [saveDraft])
 
   const renderModeContent = () => {
     switch (activeMode) {
@@ -221,7 +301,13 @@ export default function TextGenerateChat() {
                             onRegenerate={() =>
                               handleSend(messages[index - 1]?.content || "")
                             }
-                            onQuestionClick={(q) => handleSend(q)}
+                            onQuestionClick={(question) => handleSend(question)}
+                            onAdopt={(content) =>
+                              handleAdopt(
+                                content,
+                                activeMode === "guide" ? "guide" : "marketing"
+                              )
+                            }
                           />
                         ) : (
                           <UserMessage content={msg.content} />
@@ -239,7 +325,19 @@ export default function TextGenerateChat() {
         return <ProductInfoForm onSubmit={handleProductSubmit} />
 
       case "save":
-        return <SavedContentList />
+        return (
+          <div className="flex h-full min-h-0 flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+              <SaveDraftPanel
+                value={saveDraft}
+                isSaving={isSavingDraft}
+                onChange={handleSaveDraftChange}
+                onSave={handleSaveDraft}
+              />
+              <SavedContentList refreshKey={savedContentsRefreshKey} />
+            </div>
+          </div>
+        )
 
       default:
         return null
@@ -255,7 +353,9 @@ export default function TextGenerateChat() {
         <ModeSwitcher activeMode={activeMode} onModeChange={setActiveMode} />
       }
       inputArea={
-        isChatMode ? <AppleInput onSend={handleSend} disabled={isLoading} /> : null
+        isChatMode ? (
+          <AppleInput onSend={handleSend} disabled={isLoading} />
+        ) : null
       }
     >
       {renderModeContent()}

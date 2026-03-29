@@ -1,11 +1,11 @@
-'use client'
+"use client"
 
 import type {
   CategoriesResponse,
   Product,
   ProductsResponse,
   TaskStatus,
-} from '@/lib/types/ai-tools'
+} from "@/lib/types/ai-tools"
 
 export type { CategoriesResponse, Product, ProductsResponse, TaskStatus }
 
@@ -14,11 +14,13 @@ export interface VideoGenerationResult {
   cover_url?: string
   points_cost?: number
   log?: string[]
+  product_id?: string
+  oss_url?: string
 }
 
 export interface VideoGenerationTask {
   id: string
-  type: 'video_generation' | 'video'
+  type: "video_generation" | "video"
   status: TaskStatus
   result?: VideoGenerationResult | string | null
   error?: string | null
@@ -53,4 +55,10 @@ export interface RuntimeImageConfigResponse {
   data?: RuntimeImageConfig
   error?: string
   message?: string
+}
+
+export interface SaveGeneratedContentResponse {
+  status: string
+  error?: string
+  oss_url?: string
 }

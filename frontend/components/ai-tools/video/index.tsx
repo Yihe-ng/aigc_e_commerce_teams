@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import {
   startTransition,
@@ -7,7 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
-} from 'react'
+} from "react"
 import {
   Button,
   Card,
@@ -18,29 +18,31 @@ import {
   TextArea,
   Toast,
   toast,
-} from '@heroui/react'
-import { FolderTree, Package2, Sparkles } from 'lucide-react'
+} from "@heroui/react"
+import { FolderTree, Package2, Sparkles } from "lucide-react"
 
-import { GenerationProgress } from '@/components/ai-tools/common/generation-progress'
+import { GenerationProgress } from "@/components/ai-tools/common/generation-progress"
 
-import { VideoGenerationArea } from './video-generation-area'
-import { VideoGenerationHistory } from './video-generation-history'
+import { VideoGenerationArea } from "./video-generation-area"
+import { VideoGenerationHistory } from "./video-generation-history"
 import type {
   CategoriesResponse,
   GenerateVideoResponse,
   Product,
   ProductsResponse,
   RuntimeImageConfigResponse,
+  SaveGeneratedContentResponse,
   TaskHistoryResponse,
   TaskStatusResponse,
+  VideoGenerationResult,
   VideoGenerationTask,
-} from './types'
+} from "./types"
 
 const HISTORY_REFRESH_MS = 5000
 const POLL_INTERVAL_MS = 2000
 const ELAPSED_TIME_INTERVAL_MS = 1000
 const PROGRESS_SIMULATION_INTERVAL_MS = 400
-const ENV_OSS_DOMAIN = process.env.NEXT_PUBLIC_ALIYUN_OSS_CUSTOM_DOMAIN ?? ''
+const ENV_OSS_DOMAIN = process.env.NEXT_PUBLIC_ALIYUN_OSS_CUSTOM_DOMAIN ?? ""
 
 function isAbsoluteUrl(rawUrl: string | undefined): boolean {
   return Boolean(rawUrl && /^https?:\/\//i.test(rawUrl))
@@ -59,7 +61,7 @@ function buildImageUrl(
   }
 
   if (ossCustomDomain) {
-    return `https://${ossCustomDomain}/${rawUrl.replace(/^\/+/, '')}`
+    return `https://${ossCustomDomain}/${rawUrl.replace(/^\/+/, "")}`
   }
 
   return null
@@ -88,33 +90,50 @@ async function readJson<T>(
   return payload
 }
 
-function extractVideoUrl(task: VideoGenerationTask | undefined): string | null {
-  const result = task?.result
-
+function parseVideoResult(
+  result: VideoGenerationTask["result"]
+): VideoGenerationResult | null {
   if (!result) {
     return null
   }
 
-  if (typeof result === 'string') {
+  if (typeof result === "string") {
     try {
-      const parsed = JSON.parse(result) as { video_url?: string }
-      return parsed.video_url ?? null
+      return JSON.parse(result) as VideoGenerationResult
     } catch {
       return null
     }
   }
 
-  return result.video_url ?? null
+  return result
+}
+
+function getPreferredVideoUrl(task: VideoGenerationTask | undefined): string | null {
+  const result = parseVideoResult(task?.result)
+
+  return result?.oss_url ?? result?.video_url ?? null
+}
+
+function getRawVideoUrl(task: VideoGenerationTask | undefined): string | null {
+  return parseVideoResult(task?.result)?.video_url ?? null
+}
+
+function getTaskProductId(task: VideoGenerationTask | undefined): string | null {
+  const productId = parseVideoResult(task?.result)?.product_id
+
+  return typeof productId === "string" && productId.trim()
+    ? productId.trim()
+    : null
 }
 
 export default function VideoGenerator() {
   const [categories, setCategories] = useState<string[]>([])
-  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState("")
   const [products, setProducts] = useState<Product[]>([])
   const [selectedProductId, setSelectedProductId] = useState<string | null>(
     null
   )
-  const [videoDescription, setVideoDescription] = useState('')
+  const [videoDescription, setVideoDescription] = useState("")
   const [runtimeOssDomain, setRuntimeOssDomain] = useState<string | null>(null)
   const [runtimeConfigError, setRuntimeConfigError] = useState<string | null>(
     null
@@ -125,7 +144,7 @@ export default function VideoGenerator() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
   const [elapsedTime, setElapsedTime] = useState(0)
-  const [statusText, setStatusText] = useState('等待开始')
+  const [statusText, setStatusText] = useState("等待开始")
   const [taskId, setTaskId] = useState<string | null>(null)
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(
     null
@@ -134,6 +153,8 @@ export default function VideoGenerator() {
   const [generationStartedAt, setGenerationStartedAt] = useState<number | null>(
     null
   )
+  const [activeVideoTaskId, setActiveVideoTaskId] = useState<string | null>(null)
+  const [savingTaskId, setSavingTaskId] = useState<string | null>(null)
 
   const pollingRef = useRef<number | null>(null)
   const progressTimerRef = useRef<number | null>(null)
@@ -181,21 +202,21 @@ export default function VideoGenerator() {
 
   const generateDisabledReason = useMemo(() => {
     if (isLoadingRuntimeConfig) {
-      return '正在加载图片配置'
+      return "正在加载图片配置"
     }
 
     if (!selectedProduct) {
-      return '请先选择商品'
+      return "请先选择商品"
     }
 
     if (!selectedProduct.main_image) {
-      return '当前商品缺少主图'
+      return "当前商品缺少主图"
     }
 
     if (hasBlockingConfigIssue) {
       return runtimeConfigError
-        ? '图片配置加载失败，暂时无法解析商品主图'
-        : '未获取到 OSS 域名配置，暂时无法解析商品主图'
+        ? "图片配置加载失败，暂时无法解析商品主图"
+        : "未获取到 OSS 域名配置，暂时无法解析商品主图"
     }
 
     return null
@@ -212,24 +233,24 @@ export default function VideoGenerator() {
     }
 
     if (isLoadingRuntimeConfig) {
-      return '正在加载图片配置，稍后会自动显示商品主图。'
+      return "正在加载图片配置，稍后会自动显示商品主图。"
     }
 
     if (selectedProduct && !selectedProduct.main_image) {
-      return '当前商品没有配置主图，请选择其他商品。'
+      return "当前商品没有配置主图，请选择其他商品。"
     }
 
     if (hasBlockingConfigIssue) {
       return runtimeConfigError
-        ? '图片配置加载失败，暂时无法解析商品主图，请稍后重试。'
-        : '未获取到 OSS 域名配置，暂时无法解析商品主图。'
+        ? "图片配置加载失败，暂时无法解析商品主图，请稍后重试。"
+        : "未获取到 OSS 域名配置，暂时无法解析商品主图。"
     }
 
     if (selectedCategory) {
-      return '选择具体商品后，这里会显示主图预览。'
+      return "选择具体商品后，这里会显示主图预览。"
     }
 
-    return '先选择商品分类和商品。'
+    return "先选择商品分类和商品。"
   }, [
     hasBlockingConfigIssue,
     isLoadingRuntimeConfig,
@@ -278,10 +299,10 @@ export default function VideoGenerator() {
       setIsLoadingRuntimeConfig(true)
 
       try {
-        const response = await fetch('/api/runtime-config/image', { signal })
+        const response = await fetch("/api/runtime-config/image", { signal })
         const payload = await readJson<RuntimeImageConfigResponse>(
           response,
-          '获取图片配置失败'
+          "获取图片配置失败"
         )
 
         startTransition(() => {
@@ -289,12 +310,12 @@ export default function VideoGenerator() {
           setRuntimeConfigError(null)
         })
       } catch (error) {
-        const message = getErrorMessage(error, '获取图片配置失败')
+        const message = getErrorMessage(error, "获取图片配置失败")
         startTransition(() => {
           setRuntimeOssDomain(null)
           setRuntimeConfigError(message)
           setStatusText((current) =>
-            current === '等待开始' ? '图片配置加载失败' : current
+            current === "等待开始" ? "图片配置加载失败" : current
           )
         })
       } finally {
@@ -305,10 +326,10 @@ export default function VideoGenerator() {
   )
 
   const fetchHistory = useCallback(async (signal?: AbortSignal): Promise<void> => {
-    const response = await fetch('/api/tasks/video', { signal })
+    const response = await fetch("/api/tasks/video", { signal })
     const payload = await readJson<TaskHistoryResponse>(
       response,
-      '获取视频生成历史失败'
+      "获取视频生成历史失败"
     )
 
     startTransition(() => {
@@ -321,14 +342,14 @@ export default function VideoGenerator() {
       setIsLoadingCategories(true)
 
       try {
-        const response = await fetch('/api/oss/categories', { signal })
+        const response = await fetch("/api/oss/categories", { signal })
         const payload = await readJson<CategoriesResponse>(
           response,
-          '获取分类失败'
+          "获取分类失败"
         )
 
-        if (payload.status !== 'success' && payload.code !== 200) {
-          throw new Error(payload.error ?? payload.message ?? '获取分类失败')
+        if (payload.status !== "success" && payload.code !== 200) {
+          throw new Error(payload.error ?? payload.message ?? "获取分类失败")
         }
 
         startTransition(() => {
@@ -361,11 +382,11 @@ export default function VideoGenerator() {
         )
         const payload = await readJson<ProductsResponse>(
           response,
-          '获取商品失败'
+          "获取商品失败"
         )
 
-        if (payload.status !== 'success') {
-          throw new Error(payload.error ?? payload.message ?? '获取商品失败')
+        if (payload.status !== "success") {
+          throw new Error(payload.error ?? payload.message ?? "获取商品失败")
         }
 
         startTransition(() => {
@@ -386,7 +407,7 @@ export default function VideoGenerator() {
       fetchCategories(controller.signal),
       fetchHistory(controller.signal),
     ]).catch((error) => {
-      const message = getErrorMessage(error, '初始化数据加载失败')
+      const message = getErrorMessage(error, "初始化数据加载失败")
       toast.danger(message)
       setStatusText(message)
     })
@@ -400,7 +421,7 @@ export default function VideoGenerator() {
     if (selectedCategory) {
       fetchProductsByCategory(selectedCategory, controller.signal).catch(
         (error) => {
-          const message = getErrorMessage(error, '获取商品失败')
+          const message = getErrorMessage(error, "获取商品失败")
           toast.danger(message)
           setStatusText(message)
         }
@@ -498,28 +519,29 @@ export default function VideoGenerator() {
           const response = await fetch(`/api/check_task_status/${nextTaskId}`)
           const payload = await readJson<TaskStatusResponse>(
             response,
-            '查询任务状态失败'
+            "查询任务状态失败"
           )
           const currentTask = payload.task
 
           if (!currentTask) {
-            throw new Error('任务状态不存在')
+            throw new Error("任务状态不存在")
           }
 
-          if (currentTask.status === 'completed') {
+          if (currentTask.status === "completed") {
             setProgress(100)
-            setStatusText('生成完成')
-            setGeneratedVideoUrl(extractVideoUrl(currentTask))
+            setStatusText("生成完成")
+            setGeneratedVideoUrl(getPreferredVideoUrl(currentTask))
+            setActiveVideoTaskId(currentTask.id)
             setGenerationStartedAt(null)
             stopGeneration()
             setTaskId(null)
             void fetchHistory()
-            toast.success('短视频生成成功')
+            toast.success("短视频生成成功")
             return
           }
 
-          if (currentTask.status === 'failed') {
-            const errorMessage = currentTask.error ?? '任务执行失败'
+          if (currentTask.status === "failed") {
+            const errorMessage = currentTask.error ?? "任务执行失败"
             setProgress(100)
             setStatusText(errorMessage)
             setGenerationStartedAt(null)
@@ -530,9 +552,9 @@ export default function VideoGenerator() {
             return
           }
 
-          setStatusText('AI 正在生成视频...')
+          setStatusText("AI 正在生成视频...")
         } catch (error) {
-          const message = getErrorMessage(error, '查询任务状态失败')
+          const message = getErrorMessage(error, "查询任务状态失败")
           stopGeneration()
           setTaskId(null)
           setGenerationStartedAt(null)
@@ -551,6 +573,7 @@ export default function VideoGenerator() {
       setProducts([])
       setGeneratedVideoUrl(null)
       setTaskId(null)
+      setActiveVideoTaskId(null)
     })
   }, [])
 
@@ -559,49 +582,52 @@ export default function VideoGenerator() {
       setSelectedProductId(productId)
       setGeneratedVideoUrl(null)
       setTaskId(null)
+      setActiveVideoTaskId(null)
     })
   }, [])
 
   const handleGenerate = useCallback(async (): Promise<void> => {
-    if (!selectedProductImageUrl) {
-      toast.warning(generateDisabledReason ?? '请先选择可用商品主图')
+    if (!selectedProductImageUrl || !selectedProductId) {
+      toast.warning(generateDisabledReason ?? "请先选择可用商品主图")
       return
     }
 
     setIsGenerating(true)
     setProgress(0)
     setElapsedTime(0)
-    setStatusText('任务提交中...')
+    setStatusText("任务提交中...")
     setGeneratedVideoUrl(null)
+    setActiveVideoTaskId(null)
     setGenerationStartedAt(Date.now())
 
     try {
-      const response = await fetch('/api/generate_video', {
+      const response = await fetch("/api/generate_video", {
         body: JSON.stringify({
           image_url: selectedProductImageUrl,
+          product_id: selectedProductId,
           text_description: videoDescription.trim(),
         }),
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        method: 'POST',
+        method: "POST",
       })
       const payload = await readJson<GenerateVideoResponse>(
         response,
-        '提交生成任务失败'
+        "提交生成任务失败"
       )
 
-      if (payload.status !== 'success' || !payload.task_id) {
-        throw new Error(payload.error ?? payload.message ?? '提交生成任务失败')
+      if (payload.status !== "success" || !payload.task_id) {
+        throw new Error(payload.error ?? payload.message ?? "提交生成任务失败")
       }
 
       setTaskId(payload.task_id)
-      setStatusText('任务已提交，后台生成中...')
+      setStatusText("任务已提交，后台生成中...")
       startProgressSimulation()
       pollTaskStatus(payload.task_id)
       void fetchHistory()
     } catch (error) {
-      const message = getErrorMessage(error, '提交生成任务失败')
+      const message = getErrorMessage(error, "提交生成任务失败")
       stopGeneration()
       setGenerationStartedAt(null)
       setStatusText(message)
@@ -611,55 +637,120 @@ export default function VideoGenerator() {
     fetchHistory,
     generateDisabledReason,
     pollTaskStatus,
+    selectedProductId,
     selectedProductImageUrl,
     startProgressSimulation,
     stopGeneration,
     videoDescription,
   ])
 
-  const handleViewVideo = useCallback((videoUrl: string): void => {
+  const handleViewVideo = useCallback((task: VideoGenerationTask): void => {
+    const nextVideoUrl = getPreferredVideoUrl(task)
+
+    if (!nextVideoUrl) {
+      toast.warning("该任务暂无可播放的视频")
+      return
+    }
+
     startTransition(() => {
-      setGeneratedVideoUrl(videoUrl)
+      setGeneratedVideoUrl(nextVideoUrl)
+      setActiveVideoTaskId(task.id)
     })
   }, [])
 
-  const handleDownloadVideo = useCallback((videoUrl: string): void => {
-    window.open(videoUrl, '_blank', 'noopener,noreferrer')
+  const handleDownloadVideo = useCallback((task: VideoGenerationTask): void => {
+    const nextVideoUrl = getPreferredVideoUrl(task)
+
+    if (!nextVideoUrl) {
+      toast.warning("该任务暂无可下载的视频")
+      return
+    }
+
+    window.open(nextVideoUrl, "_blank", "noopener,noreferrer")
   }, [])
+
+  const handleSaveVideo = useCallback(
+    async (task: VideoGenerationTask): Promise<void> => {
+      const rawVideoUrl = getRawVideoUrl(task)
+      const productId = getTaskProductId(task)
+
+      if (!rawVideoUrl || !productId) {
+        toast.warning("当前任务缺少保存所需的信息")
+        return
+      }
+
+      setSavingTaskId(task.id)
+
+      try {
+        const response = await fetch("/api/save_generated_content", {
+          body: JSON.stringify({
+            file_url: rawVideoUrl,
+            product_id: productId,
+            task_id: task.id,
+            type: "video",
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          method: "POST",
+        })
+        const payload = await readJson<SaveGeneratedContentResponse>(
+          response,
+          "保存视频到素材库失败"
+        )
+
+        if (payload.status !== "success") {
+          throw new Error(payload.error ?? "保存视频到素材库失败")
+        }
+
+        if (activeVideoTaskId === task.id && payload.oss_url) {
+          setGeneratedVideoUrl(payload.oss_url)
+        }
+
+        toast.success("视频已保存到素材库")
+        void fetchHistory()
+      } catch (error) {
+        toast.danger(getErrorMessage(error, "保存视频到素材库失败"))
+      } finally {
+        setSavingTaskId(null)
+      }
+    },
+    [activeVideoTaskId, fetchHistory]
+  )
 
   const generatorState = useMemo(() => {
     if (isGenerating || taskId) {
-      return 'generating' as const
+      return "generating" as const
     }
 
     if (generatedVideoUrl) {
-      return 'completed' as const
+      return "completed" as const
     }
 
-    return 'empty' as const
+    return "empty" as const
   }, [generatedVideoUrl, isGenerating, taskId])
 
   const hasProgressPanel = isGenerating || progress > 0
 
   return (
     <>
-      <Toast.Provider placement='bottom end' />
-      <Card className='w-full rounded-2xl border-0 bg-[#EFEFEF] shadow-[0_4px_12px_rgba(0,0,0,0.04)]'>
-        <Card.Header className='border-b border-gray-200 px-6 py-2.5'>
+      <Toast.Provider placement="bottom end" />
+      <Card className="w-full rounded-2xl border-0 bg-[#EFEFEF] shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+        <Card.Header className="border-b border-gray-200 px-6 py-2.5">
           <div>
-            <Card.Title className='text-lg font-semibold text-gray-800'>
+            <Card.Title className="text-lg font-semibold text-gray-800">
               短视频智造
             </Card.Title>
-            <Card.Description className='mt-1 text-sm text-gray-500'>
+            <Card.Description className="mt-1 text-sm text-gray-500">
               AI 驱动的商品短视频生成工具
             </Card.Description>
           </div>
         </Card.Header>
 
-        <Card.Content className='space-y-5 px-6 pb-6 pt-1.5'>
-          <div className='w-full'>
+        <Card.Content className="space-y-5 px-6 pb-6 pt-1.5">
+          <div className="w-full">
             <VideoGenerationArea
-              className='min-h-[520px]'
+              className="min-h-[520px]"
               elapsedTime={elapsedTime}
               progress={progress}
               state={generatorState}
@@ -668,83 +759,81 @@ export default function VideoGenerator() {
             />
           </div>
 
-          <div className='space-y-6'>
-            <Card className='rounded-xl border-0 bg-[#F8F8F8] shadow-none'>
-              <Card.Header className='border-b border-gray-200 px-5 py-4'>
-                <Card.Title className='text-base font-semibold text-gray-800'>
+          <div className="space-y-6">
+            <Card className="rounded-xl border-0 bg-[#F8F8F8] shadow-none">
+              <Card.Header className="border-b border-gray-200 px-5 py-4">
+                <Card.Title className="text-base font-semibold text-gray-800">
                   视频生成设置与描述
                 </Card.Title>
               </Card.Header>
 
-              <Card.Content className='space-y-4 p-5'>
-                <div className='grid gap-6 xl:grid-cols-[6fr_4fr]'>
-                  <div className='space-y-2'>
-                    <Label className='text-sm font-medium text-gray-700'>
+              <Card.Content className="space-y-4 p-5">
+                <div className="grid gap-6 xl:grid-cols-[6fr_4fr]">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">
                       描述文本
                     </Label>
                     <TextArea
-                      className='h-[200px] min-h-[200px] w-full resize-none rounded-xl border-0 bg-white px-4 py-3 text-sm text-gray-700 shadow-[inset_2px_2px_5px_rgba(203,213,225,0.6),inset_-2px_-2px_6px_rgba(255,255,255,0.9)] outline-none transition-shadow duration-200 focus:ring-2 focus:ring-[#91C1FA]/20'
+                      className="h-[200px] min-h-[200px] w-full resize-none rounded-xl border-0 bg-white px-4 py-3 text-sm text-gray-700 shadow-[inset_2px_2px_5px_rgba(203,213,225,0.6),inset_-2px_-2px_6px_rgba(255,255,255,0.9)] outline-none transition-shadow duration-200 focus:ring-2 focus:ring-[#91C1FA]/20"
                       disabled={isGenerating}
-                      placeholder='请输入视频描述内容，例如：视频是一个洗发露，背景出现花朵，镜头缓慢推进。'
+                      placeholder="请输入视频描述内容，例如：镜头围绕商品缓慢推进，突出包装、质地和使用场景。"
                       rows={8}
                       value={videoDescription}
                       onChange={(event) => setVideoDescription(event.target.value)}
                     />
                   </div>
 
-                  <div className='space-y-2'>
-                    <Label className='text-sm font-medium text-gray-700'>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">
                       商品主图预览
                     </Label>
-                    <div className='flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white p-4 shadow-[inset_2px_2px_5px_rgba(203,213,225,0.6),inset_-2px_-2px_6px_rgba(255,255,255,0.9)]'>
+                    <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white p-4 shadow-[inset_2px_2px_5px_rgba(203,213,225,0.6),inset_-2px_-2px_6px_rgba(255,255,255,0.9)]">
                       {selectedProductImageUrl ? (
                         <>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            alt={selectedProduct?.name ?? '商品主图'}
-                            className='max-h-48 max-w-full rounded-lg object-contain'
+                            alt={selectedProduct?.name ?? "商品主图"}
+                            className="max-h-48 max-w-full rounded-lg object-contain"
                             src={selectedProductImageUrl}
                           />
                         </>
                       ) : (
-                        <p className='text-center text-sm text-gray-400'>
-                          {previewDescription ?? '选择具体商品后，这里会显示主图预览。'}
+                        <p className="text-center text-sm text-gray-400">
+                          {previewDescription ?? "选择具体商品后，这里会显示主图预览。"}
                         </p>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className='grid gap-4 xl:grid-cols-[3fr_3fr_4fr]'>
-                  <div className='space-y-2'>
-                    <Label className='text-sm font-medium text-gray-700'>
+                <div className="grid gap-4 xl:grid-cols-[3fr_3fr_4fr]">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">
                       商品分类
                     </Label>
                     <Select
-                      className='w-full'
+                      className="w-full"
                       isDisabled={isGenerating || isLoadingCategories}
-                      placeholder={
-                        isLoadingCategories ? '加载中...' : '选择分类'
-                      }
+                      placeholder={isLoadingCategories ? "加载中..." : "选择分类"}
                       selectedKey={selectedCategory || null}
                       onSelectionChange={(key) =>
-                        handleCategoryChange(key ? key.toString() : '')
+                        handleCategoryChange(key ? key.toString() : "")
                       }
                     >
-                      <Select.Trigger className='h-11 w-full rounded-lg border-0 bg-[#F1F5F9] shadow-[inset_2px_2px_5px_rgba(203,213,225,0.6),inset_-2px_-2px_6px_rgba(255,255,255,0.9)]'>
-                        <FolderTree className='h-4 w-4 text-gray-400' />
+                      <Select.Trigger className="h-11 w-full rounded-lg border-0 bg-[#F1F5F9] shadow-[inset_2px_2px_5px_rgba(203,213,225,0.6),inset_-2px_-2px_6px_rgba(255,255,255,0.9)]">
+                        <FolderTree className="h-4 w-4 text-gray-400" />
                         <Select.Value />
                         {isLoadingCategories ? (
-                          <Spinner color='accent' size='sm' />
+                          <Spinner color="accent" size="sm" />
                         ) : (
                           <Select.Indicator />
                         )}
                       </Select.Trigger>
-                      <Select.Popover className='rounded-xl border border-gray-200 bg-white p-1 shadow-lg'>
-                        <ListBox className='max-h-60 overflow-auto py-1'>
+                      <Select.Popover className="rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
+                        <ListBox className="max-h-60 overflow-auto py-1">
                           {categories.map((category) => (
                             <ListBox.Item
-                              className='cursor-pointer rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-[#91C1FA]/10 hover:text-[#91C1FA]'
+                              className="cursor-pointer rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-[#91C1FA]/10 hover:text-[#91C1FA]"
                               id={category}
                               key={category}
                               textValue={category}
@@ -757,21 +846,21 @@ export default function VideoGenerator() {
                     </Select>
                   </div>
 
-                  <div className='space-y-2'>
-                    <Label className='text-sm font-medium text-gray-700'>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">
                       商品选择
                     </Label>
                     <Select
-                      className='w-full'
+                      className="w-full"
                       isDisabled={
                         !selectedCategory || isGenerating || isLoadingProducts
                       }
                       placeholder={
                         isLoadingProducts
-                          ? '加载中...'
+                          ? "加载中..."
                           : selectedCategory
-                            ? '选择商品'
-                            : '请先选择分类'
+                            ? "选择商品"
+                            : "请先选择分类"
                       }
                       selectedKey={selectedProductId || null}
                       onSelectionChange={(key) => {
@@ -779,20 +868,20 @@ export default function VideoGenerator() {
                         handleProductChange(value)
                       }}
                     >
-                      <Select.Trigger className='h-11 w-full rounded-lg border-0 bg-[#F1F5F9] shadow-[inset_2px_2px_5px_rgba(203,213,225,0.6),inset_-2px_-2px_6px_rgba(255,255,255,0.9)]'>
-                        <Package2 className='h-4 w-4 text-gray-400' />
+                      <Select.Trigger className="h-11 w-full rounded-lg border-0 bg-[#F1F5F9] shadow-[inset_2px_2px_5px_rgba(203,213,225,0.6),inset_-2px_-2px_6px_rgba(255,255,255,0.9)]">
+                        <Package2 className="h-4 w-4 text-gray-400" />
                         <Select.Value />
                         {isLoadingProducts ? (
-                          <Spinner color='accent' size='sm' />
+                          <Spinner color="accent" size="sm" />
                         ) : (
                           <Select.Indicator />
                         )}
                       </Select.Trigger>
-                      <Select.Popover className='rounded-xl border border-gray-200 bg-white p-1 shadow-lg'>
-                        <ListBox className='max-h-60 overflow-auto py-1'>
+                      <Select.Popover className="rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
+                        <ListBox className="max-h-60 overflow-auto py-1">
                           {products.map((product) => (
                             <ListBox.Item
-                              className='cursor-pointer rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-[#91C1FA]/10 hover:text-[#91C1FA]'
+                              className="cursor-pointer rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-[#91C1FA]/10 hover:text-[#91C1FA]"
                               id={product.product_id}
                               key={product.product_id}
                               textValue={product.name}
@@ -805,25 +894,25 @@ export default function VideoGenerator() {
                     </Select>
                   </div>
 
-                  <div className='flex items-end'>
+                  <div className="flex items-end">
                     <Button
-                      className='h-11 w-full rounded-xl bg-[#91C1FA] font-medium text-white hover:bg-[#7AB8FA]'
+                      className="h-11 w-full rounded-xl bg-[#91C1FA] font-medium text-white hover:bg-[#7AB8FA]"
                       isDisabled={!canGenerate || isGenerating}
                       isPending={isGenerating}
                       onPress={handleGenerate}
                     >
-                      <span className='flex items-center justify-center gap-2'>
-                        {!isGenerating ? <Sparkles className='h-4 w-4' /> : null}
-                        {isGenerating ? '生成中...' : '生成视频'}
+                      <span className="flex items-center justify-center gap-2">
+                        {!isGenerating ? <Sparkles className="h-4 w-4" /> : null}
+                        {isGenerating ? "生成中..." : "生成视频"}
                       </span>
                     </Button>
                   </div>
                 </div>
 
                 {generateDisabledReason ? (
-                  <p className='rounded-xl bg-white px-4 py-3 text-sm text-gray-500 shadow-sm'>
+                  <p className="rounded-xl bg-white px-4 py-3 text-sm text-gray-500 shadow-sm">
                     {isLoadingRuntimeConfig
-                      ? '正在准备图片配置，稍后即可发起生成。'
+                      ? "正在准备图片配置，稍后即可发起生成。"
                       : generateDisabledReason}
                   </p>
                 ) : null}
@@ -832,18 +921,20 @@ export default function VideoGenerator() {
 
             {hasProgressPanel ? (
               <GenerationProgress
-                ariaLabel='视频生成进度'
+                ariaLabel="视频生成进度"
                 elapsedTime={elapsedTime}
                 progress={progress}
                 statusText={statusText}
-                title='生成进度'
+                title="生成进度"
               />
             ) : null}
           </div>
 
           <VideoGenerationHistory
+            savingTaskId={savingTaskId}
             tasks={history}
             onDownload={handleDownloadVideo}
+            onSave={handleSaveVideo}
             onView={handleViewVideo}
           />
         </Card.Content>

@@ -1,17 +1,18 @@
-'use client'
+"use client"
 
 import type {
   CategoriesResponse,
   Product,
   ProductsResponse,
   TaskStatus,
-} from '@/lib/types/ai-tools'
+} from "@/lib/types/ai-tools"
 
 export type { CategoriesResponse, Product, ProductsResponse, TaskStatus }
 
 export interface GenerationResult {
   image_url: string
   percent?: number
+  product_id?: string
 }
 
 export interface GenerationTask {
