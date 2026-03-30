@@ -49,6 +49,38 @@ const nextConfig = {
         source: "/api/saved-marketing-contents/:path*",
         destination: "http://localhost:5000/api/saved-marketing-contents/:path*",
       },
+      {
+        source: "/api/products/library",
+        destination: "http://localhost:5000/get_products",
+      },
+      {
+        source: "/api/products/library/:id",
+        destination: "http://localhost:5000/get_product_detail/:id",
+      },
+      {
+        source: "/api/products/save",
+        destination: "http://localhost:5000/save_product",
+      },
+      {
+        source: "/api/products/save/:id",
+        destination: "http://localhost:5000/save_product/:id",
+      },
+      {
+        source: "/api/products/delete/:id",
+        destination: "http://localhost:5000/delete_product/:id",
+      },
+      {
+        source: "/api/products/upload-image",
+        destination: "http://localhost:5000/upload_image",
+      },
+      {
+        source: "/api/products/marketing-materials",
+        destination: "http://localhost:5000/get_all_marketing_products",
+      },
+      {
+        source: "/api/products/marketing-materials/delete",
+        destination: "http://localhost:5000/api/delete_marketing_materials",
+      },
     ];
   },
 };

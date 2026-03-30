@@ -1,3 +1,3 @@
 export default function ProductsLayout({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto max-w-6xl p-4 sm:p-6">{children}</div>
+  return <div className="h-full w-full">{children}</div>
 }

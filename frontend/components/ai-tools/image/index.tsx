@@ -9,6 +9,8 @@ import {
   useState,
 } from "react"
 import { Card, Toast, toast } from "@heroui/react"
+import { buildOssAssetUrl, isAbsoluteUrl, resolveOssCustomDomain } from "@/lib/oss/shared"
+import { fetchFallbackCategories, fetchFallbackProductsByCategory } from "@/lib/products/oss-fallback"
 
 import { GenerationHistory } from "./generation-history"
 import { GenerationPreview } from "./generation-preview"
@@ -31,32 +33,9 @@ const HISTORY_REFRESH_MS = 5000
 const POLL_INTERVAL_MS = 2000
 const ELAPSED_TIME_INTERVAL_MS = 1000
 const PROGRESS_SIMULATION_INTERVAL_MS = 400
-const ENV_OSS_DOMAIN = process.env.NEXT_PUBLIC_ALIYUN_OSS_CUSTOM_DOMAIN ?? ""
 const LEGACY_HISTORY_UPLOAD_DISABLED_REASON =
   "旧记录缺少归属商品信息，无法安全上传，请重新生成后再上传。"
 
-function isAbsoluteUrl(rawUrl: string | undefined): boolean {
-  return Boolean(rawUrl && /^https?:\/\//i.test(rawUrl))
-}
-
-function buildImageUrl(
-  rawUrl: string | undefined,
-  ossCustomDomain?: string | null
-): string | null {
-  if (!rawUrl) {
-    return null
-  }
-
-  if (isAbsoluteUrl(rawUrl)) {
-    return rawUrl
-  }
-
-  if (ossCustomDomain) {
-    return `https://${ossCustomDomain}/${rawUrl.replace(/^\/+/, "")}`
-  }
-
-  return null
-}
 
 function parseGenerationResult(
   result: GenerationTask["result"]
@@ -92,6 +71,10 @@ function extractTaskProductId(
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError"
 }
 
 async function readJson<T>(
@@ -166,11 +149,11 @@ export default function ImageGenerator() {
   )
 
   const resolvedOssCustomDomain = useMemo(() => {
-    return runtimeOssDomain || ENV_OSS_DOMAIN || null
+    return resolveOssCustomDomain(runtimeOssDomain)
   }, [runtimeOssDomain])
 
   const selectedProductImageUrl = useMemo(
-    () => buildImageUrl(selectedProduct?.main_image, resolvedOssCustomDomain),
+    () => buildOssAssetUrl(selectedProduct?.main_image, resolvedOssCustomDomain),
     [resolvedOssCustomDomain, selectedProduct]
   )
 
@@ -315,6 +298,9 @@ export default function ImageGenerator() {
           setRuntimeConfigError(null)
         })
       } catch (error) {
+        if (isAbortError(error)) {
+          return
+        }
         const message = getErrorMessage(error, "获取图片配置失败")
         startTransition(() => {
           setRuntimeOssDomain(null)
@@ -370,6 +356,15 @@ export default function ImageGenerator() {
         startTransition(() => {
           setCategories(payload.data ?? [])
         })
+      } catch (error) {
+        if (isAbortError(error)) {
+          return
+        }
+
+        const fallbackCategories = await fetchFallbackCategories(signal)
+        startTransition(() => {
+          setCategories(fallbackCategories)
+        })
       } finally {
         setIsLoadingCategories(false)
       }
@@ -407,6 +402,15 @@ export default function ImageGenerator() {
         startTransition(() => {
           setProducts(payload.data ?? [])
         })
+      } catch (error) {
+        if (isAbortError(error)) {
+          return
+        }
+
+        const fallbackProducts = await fetchFallbackProductsByCategory(category, signal)
+        startTransition(() => {
+          setProducts(fallbackProducts)
+        })
       } finally {
         setIsLoadingProducts(false)
       }
@@ -422,6 +426,9 @@ export default function ImageGenerator() {
       fetchCategories(controller.signal),
       fetchHistory(controller.signal),
     ]).catch((error) => {
+      if (isAbortError(error)) {
+        return
+      }
       const message = getErrorMessage(error, "初始化数据加载失败")
       toast.danger(message)
       setStatusText(message)
@@ -436,6 +443,9 @@ export default function ImageGenerator() {
     if (selectedCategory) {
       fetchProductsByCategory(selectedCategory, controller.signal).catch(
         (error) => {
+          if (isAbortError(error)) {
+            return
+          }
           const message = getErrorMessage(error, "获取商品失败")
           toast.danger(message)
           setStatusText(message)

@@ -20,6 +20,7 @@ import {
   toast,
 } from "@heroui/react"
 import { FolderTree, Package2, Sparkles } from "lucide-react"
+import { fetchFallbackCategories, fetchFallbackProductsByCategory } from "@/lib/products/oss-fallback"
 
 import { GenerationProgress } from "@/components/ai-tools/common/generation-progress"
 
@@ -69,6 +70,10 @@ function buildImageUrl(
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError"
 }
 
 async function readJson<T>(
@@ -312,6 +317,9 @@ export default function VideoGenerator() {
           setRuntimeConfigError(null)
         })
       } catch (error) {
+        if (isAbortError(error)) {
+          return
+        }
         const message = getErrorMessage(error, "获取图片配置失败")
         startTransition(() => {
           setRuntimeOssDomain(null)
@@ -367,6 +375,15 @@ export default function VideoGenerator() {
         startTransition(() => {
           setCategories(payload.data ?? [])
         })
+      } catch (error) {
+        if (isAbortError(error)) {
+          return
+        }
+
+        const fallbackCategories = await fetchFallbackCategories(signal)
+        startTransition(() => {
+          setCategories(fallbackCategories)
+        })
       } finally {
         setIsLoadingCategories(false)
       }
@@ -404,6 +421,15 @@ export default function VideoGenerator() {
         startTransition(() => {
           setProducts(payload.data ?? [])
         })
+      } catch (error) {
+        if (isAbortError(error)) {
+          return
+        }
+
+        const fallbackProducts = await fetchFallbackProductsByCategory(category, signal)
+        startTransition(() => {
+          setProducts(fallbackProducts)
+        })
       } finally {
         setIsLoadingProducts(false)
       }
@@ -419,6 +445,9 @@ export default function VideoGenerator() {
       fetchCategories(controller.signal),
       fetchHistory(controller.signal),
     ]).catch((error) => {
+      if (isAbortError(error)) {
+        return
+      }
       const message = getErrorMessage(error, "初始化数据加载失败")
       toast.danger(message)
       setStatusText(message)
@@ -433,6 +462,9 @@ export default function VideoGenerator() {
     if (selectedCategory) {
       fetchProductsByCategory(selectedCategory, controller.signal).catch(
         (error) => {
+          if (isAbortError(error)) {
+            return
+          }
           const message = getErrorMessage(error, "获取商品失败")
           toast.danger(message)
           setStatusText(message)

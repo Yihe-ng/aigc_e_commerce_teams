@@ -3155,26 +3155,7 @@ def get_oss_categories():
         if not OSS_CONFIG["ACCESS_KEY_ID"] or not OSS_CONFIG["ACCESS_KEY_SECRET"]:
             return jsonify({"status": "error", "error": "未配置OSS密钥"}), 500
 
-        local_auth = oss2.Auth(
-            OSS_CONFIG["ACCESS_KEY_ID"], OSS_CONFIG["ACCESS_KEY_SECRET"]
-        )
-        local_bucket = oss2.Bucket(
-            local_auth, OSS_CONFIG["ENDPOINT"], OSS_CONFIG["BUCKET_NAME"]
-        )
-        try:
-            local_bucket.get_bucket_info()
-        except oss2.exceptions.NoSuchBucket:
-            return jsonify(
-                {
-                    "status": "error",
-                    "error": f"OSS存储桶不存在或区域不匹配: {OSS_CONFIG['BUCKET_NAME']}",
-                    "hint": "请在阿里云控制台确认桶已创建且区域与ENDPOINT一致",
-                    "config": {
-                        "endpoint": OSS_CONFIG["ENDPOINT"],
-                        "bucket": OSS_CONFIG["BUCKET_NAME"],
-                    },
-                }
-            ), 500
+        local_bucket = _create_oss_bucket()
 
         prefix = "products/_index/by_category/"
         files = local_bucket.list_objects(prefix=prefix).object_list
