@@ -1,7 +1,6 @@
-  # config/platform
 import os
 
-#得到密钥直接在相应的平台替换即可
+# 1. 平台 API 配置 (之前的部分)
 PLATFORM_CONFIG = {
     'taobao': {
         'app_key': os.getenv('TAOBAO_APP_KEY', 'your_taobao_app_key'),
@@ -33,30 +32,10 @@ PLATFORM_CONFIG = {
     }
 }
 
-#各大平台成本计算（需要自己查询平台网页实时更新)
+# 2. 积分/成本配置 (补全这部分解决报错)
 COST_CONFIG = {
-    'taobao': {
-        'commission_rate': 0.02, #佣金
-        'payment_fee': 0.006,    #手续费
-        'logistics_cost': 8.0,   #物流成本
-        'marketing_rate': 0.05   #营销
-    },
-    'xiaohongshu': {
-        'commission_rate': 0.05,
-        'payment_fee': 0.006,
-        'logistics_cost': 7.0,
-        'marketing_rate': 0.12
-    },
-    'jd': {
-        'commission_rate': 0.05,
-        'payment_fee': 0.006,
-        'logistics_cost': 6.0,
-        'marketing_rate': 0.08
-    },
-    'douyin': {
-        'commission_rate': 0.03,
-        'payment_fee': 0.006,
-        'logistics_cost': 7.0,
-        'marketing_rate': 0.15
-    }
+    'generate_xiaohongshu': {'free': 5, 'plus': 2, 'pro': 0},
+    'generate_image': {'free': 10, 'plus': 5, 'pro': 0},
+    'generate_video': {'free': 50, 'plus': 20, 'pro': 0},
+    'analyze_customer': {'free': 5, 'plus': 1, 'pro': 0}
 }
