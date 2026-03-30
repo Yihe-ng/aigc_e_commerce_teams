@@ -9,10 +9,6 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: "/login",
-        destination: "/",
-      },
-      {
         source: "/api/login",
         destination: "http://localhost:3002/api/login", // Login server
       },
