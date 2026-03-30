@@ -205,3 +205,11 @@ tts/GPT-SoVITS/
 incremental_updates.db
 skills-lock.json
 incremental_updates.db
+nul
+skills-lock.json
+.codex/
+test/
+重构全面指南.md
+test2界面重构指南.md
+test3重构指南.md
+.gitignore
