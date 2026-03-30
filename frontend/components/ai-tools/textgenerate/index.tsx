@@ -1,6 +1,6 @@
 "use client"
 
-import { startTransition, useCallback, useRef, useState } from "react"
+import { startTransition, useCallback, useEffect, useRef, useState } from "react"
 import { ScrollShadow } from "@heroui/react"
 import { Sparkles } from "lucide-react"
 
@@ -55,12 +55,24 @@ export default function TextGenerateChat() {
     ad_best: "",
   })
   const scrollRef = useRef<HTMLDivElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const activeRequestIdRef = useRef(0)
 
   const handleSend = useCallback(async (content: string) => {
+    const normalizedContent = content.trim()
+    if (!normalizedContent || isLoading) {
+      return
+    }
+
+    const requestId = activeRequestIdRef.current + 1
+    activeRequestIdRef.current = requestId
+    const abortController = new AbortController()
+    abortControllerRef.current = abortController
+
     const userMsg: Message = {
       id: Date.now().toString(),
       type: "user",
-      content,
+      content: normalizedContent,
     }
     setMessages((prev) => [...prev, userMsg])
     setIsLoading(true)
@@ -69,7 +81,8 @@ export default function TextGenerateChat() {
       const response = await fetch("/generate_xiaohongshu_stream_post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: content }),
+        body: JSON.stringify({ query: normalizedContent }),
+        signal: abortController.signal,
       })
 
       if (!response.ok) {
@@ -77,6 +90,9 @@ export default function TextGenerateChat() {
       }
 
       const reader = response.body?.getReader()
+      if (!reader) {
+        throw new Error("响应流不可用")
+      }
       const decoder = new TextDecoder()
       let aiContent = ""
       const aiMsgId = (Date.now() + 1).toString()
@@ -92,13 +108,18 @@ export default function TextGenerateChat() {
         },
       ])
 
-      while (reader) {
+      while (true) {
         const { done, value } = await reader.read()
         if (done) {
           break
         }
 
-        const chunk = decoder.decode(value)
+        if (activeRequestIdRef.current !== requestId) {
+          await reader.cancel()
+          break
+        }
+
+        const chunk = decoder.decode(value, { stream: true })
         const lines = chunk.split("\n")
 
         for (const line of lines) {
@@ -160,9 +181,27 @@ export default function TextGenerateChat() {
         }
       }
     } catch (error) {
+      if (
+        error instanceof DOMException &&
+        error.name === "AbortError"
+      ) {
+        return
+      }
+
       console.error("生成失败:", error)
     } finally {
-      setIsLoading(false)
+      if (activeRequestIdRef.current === requestId) {
+        setIsLoading(false)
+      }
+      if (abortControllerRef.current === abortController) {
+        abortControllerRef.current = null
+      }
+    }
+  }, [isLoading])
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort()
     }
   }, [])
 
@@ -297,6 +336,7 @@ export default function TextGenerateChat() {
                             isStreaming={
                               index === messages.length - 1 && isLoading
                             }
+                            interactionsDisabled={isLoading}
                             onCopy={() => handleCopy(msg.content)}
                             onRegenerate={() =>
                               handleSend(messages[index - 1]?.content || "")

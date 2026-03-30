@@ -10,6 +10,7 @@ interface AIMessageProps {
   tags?: string[]
   questions?: string[]
   isStreaming?: boolean
+  interactionsDisabled?: boolean
   onRegenerate?: () => void
   onCopy?: () => void
   onQuestionClick?: (question: string) => void
@@ -21,6 +22,7 @@ export function AIMessage({
   tags = [],
   questions = [],
   isStreaming = false,
+  interactionsDisabled = false,
   onRegenerate,
   onCopy,
   onQuestionClick,
@@ -75,6 +77,7 @@ export function AIMessage({
                     variant="ghost"
                     size="sm"
                     aria-label={`Ask question: ${question}`}
+                    isDisabled={interactionsDisabled || isStreaming}
                     onPress={() => onQuestionClick?.(question)}
                     className="h-auto rounded-xl border-0 bg-[#EFEFEF] px-3 py-2 text-xs text-gray-700 transition-all duration-200 hover:bg-[#E5E5E5] hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#91C1FA] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                   >
@@ -90,7 +93,7 @@ export function AIMessage({
               <Button
                 size="sm"
                 variant="ghost"
-                isDisabled={isStreaming}
+                isDisabled={interactionsDisabled || isStreaming}
                 onPress={() => onAdopt(cleanContent)}
                 className="rounded-lg bg-[#EEF6FF] text-[#3B82F6] hover:bg-[#E0EEFF]"
               >
@@ -105,6 +108,7 @@ export function AIMessage({
                     isIconOnly
                     size="sm"
                     aria-label="Regenerate response"
+                    isDisabled={interactionsDisabled || isStreaming}
                     onPress={onRegenerate}
                     className="
                       rounded-lg

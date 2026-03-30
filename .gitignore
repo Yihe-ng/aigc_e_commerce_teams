@@ -213,3 +213,4 @@ test/
 test2界面重构指南.md
 test3重构指南.md
 .gitignore
+incremental_updates.db

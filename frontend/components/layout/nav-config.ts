@@ -34,7 +34,6 @@ export const DASHBOARD_MENU_KEYS = {
 
 export const DASHBOARD_GROUP_EXPANDED_KEY = "dashboard-analytics-group-expanded"
 
-/** 客户与营销分组 */
 export const CUSTOMERS_NAV = {
   label: "客户与营销",
   icon: Users,
@@ -53,14 +52,13 @@ export const CUSTOMERS_MENU_KEYS = {
 
 export const CUSTOMERS_GROUP_EXPANDED_KEY = "dashboard-customers-group-expanded"
 
-/** 工作台分组（无独立路由页，仅折叠标题 + 子链） */
 export const WORKSPACE_NAV = {
   label: "工作台",
   icon: LayoutDashboard,
   children: [
-    { href: "/workspace/copywriting", label: "文案智造器", icon: FileText },
-    { href: "/workspace/marketing-images", label: "营销图创作", icon: ImageIcon },
-    { href: "/workspace/short-video", label: "短视频智造", icon: Video },
+    { href: "/ai-tools/textgenerate", label: "文案智造器", icon: FileText },
+    { href: "/ai-tools/image", label: "营销图创作", icon: ImageIcon },
+    { href: "/ai-tools/video", label: "短视频智造", icon: Video },
   ],
 } as const
 
@@ -72,7 +70,6 @@ export const WORKSPACE_MENU_KEYS = {
 
 export const WORKSPACE_GROUP_EXPANDED_KEY = "dashboard-workspace-group-expanded"
 
-/** 商品管理分组（无独立路由页，仅折叠标题 + 子链） */
 export const PRODUCT_NAV = {
   label: "商品管理",
   icon: Package,
@@ -94,7 +91,6 @@ export const NAV_BOTTOM = [
   { href: "/settings", label: "系统设置", icon: Settings },
 ] as const
 
-/** 与 gui/static/images/智行合一logo.png 同源，构建时由 public/images 提供 */
 export const BRAND_LOGO_SRC = `/images/${encodeURIComponent("智行合一logo.png")}`
 
 export const SIDEBAR_COLLAPSED_KEY = "dashboard-sidebar-collapsed"

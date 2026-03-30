@@ -50,7 +50,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       {sidebarOpen ? (
         <button
           type="button"
@@ -69,13 +69,13 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         onNavigate={() => setSidebarOpen(false)}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <MainHeader
           sidebarCollapsed={sidebarCollapsed}
           onToggleCollapsed={toggleSidebarCollapsed}
           onOpenMobileSidebar={() => setSidebarOpen(true)}
         />
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="min-h-0 flex-1 overflow-auto">{children}</main>
       </div>
     </div>
   )

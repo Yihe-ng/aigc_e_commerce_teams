@@ -160,6 +160,8 @@ export default function VideoGenerator() {
   const progressTimerRef = useRef<number | null>(null)
   const historyTimerRef = useRef<number | null>(null)
   const elapsedTimerRef = useRef<number | null>(null)
+  const isFetchingHistoryRef = useRef(false)
+  const isPollingTaskRef = useRef(false)
 
   const productMap = useMemo(() => {
     const map = new Map<string, Product>()
@@ -326,15 +328,25 @@ export default function VideoGenerator() {
   )
 
   const fetchHistory = useCallback(async (signal?: AbortSignal): Promise<void> => {
-    const response = await fetch("/api/tasks/video", { signal })
-    const payload = await readJson<TaskHistoryResponse>(
-      response,
-      "获取视频生成历史失败"
-    )
+    if (isFetchingHistoryRef.current) {
+      return
+    }
 
-    startTransition(() => {
-      setHistory(payload.tasks ?? [])
-    })
+    isFetchingHistoryRef.current = true
+
+    try {
+      const response = await fetch("/api/tasks/video", { signal })
+      const payload = await readJson<TaskHistoryResponse>(
+        response,
+        "获取视频生成历史失败"
+      )
+
+      startTransition(() => {
+        setHistory(payload.tasks ?? [])
+      })
+    } finally {
+      isFetchingHistoryRef.current = false
+    }
   }, [])
 
   const fetchCategories = useCallback(
@@ -439,10 +451,6 @@ export default function VideoGenerator() {
   useEffect(() => {
     const controller = new AbortController()
 
-    fetchHistory(controller.signal).catch(() => {
-      // Ignore startup polling failures.
-    })
-
     historyTimerRef.current = window.setInterval(() => {
       fetchHistory(controller.signal).catch(() => {
         // Ignore transient polling failures.
@@ -513,8 +521,15 @@ export default function VideoGenerator() {
   const pollTaskStatus = useCallback(
     (nextTaskId: string): void => {
       clearPolling()
+      isPollingTaskRef.current = false
 
       pollingRef.current = window.setInterval(async () => {
+        if (isPollingTaskRef.current) {
+          return
+        }
+
+        isPollingTaskRef.current = true
+
         try {
           const response = await fetch(`/api/check_task_status/${nextTaskId}`)
           const payload = await readJson<TaskStatusResponse>(
@@ -560,6 +575,8 @@ export default function VideoGenerator() {
           setGenerationStartedAt(null)
           setStatusText(message)
           toast.danger(message)
+        } finally {
+          isPollingTaskRef.current = false
         }
       }, POLL_INTERVAL_MS)
     },
@@ -587,6 +604,10 @@ export default function VideoGenerator() {
   }, [])
 
   const handleGenerate = useCallback(async (): Promise<void> => {
+    if (isGenerating) {
+      return
+    }
+
     if (!selectedProductImageUrl || !selectedProductId) {
       toast.warning(generateDisabledReason ?? "请先选择可用商品主图")
       return
@@ -636,6 +657,7 @@ export default function VideoGenerator() {
   }, [
     fetchHistory,
     generateDisabledReason,
+    isGenerating,
     pollTaskStatus,
     selectedProductId,
     selectedProductImageUrl,

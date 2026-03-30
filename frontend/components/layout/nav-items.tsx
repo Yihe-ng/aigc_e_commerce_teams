@@ -47,7 +47,8 @@ export function NavItems({
   const isProductChildActive = (href: string) =>
     path === href || path.startsWith(`${href}/`)
 
-  const isOnWorkspaceChild = path.startsWith("/workspace/")
+  const isOnWorkspaceChild =
+    path.startsWith("/ai-tools/") || path.startsWith("/workspace/")
   const isOnProductChild =
     path.startsWith("/products/basic") || path.startsWith("/products/marketing")
   const isOnCustomersChild = path.startsWith("/customers")
@@ -237,9 +238,9 @@ export function NavItems({
 
   const onWorkspaceMenuAction = (key: string | number) => {
     const map: Record<string, string> = {
-      [WORKSPACE_MENU_KEYS.copywriting]: "/workspace/copywriting",
-      [WORKSPACE_MENU_KEYS.marketingImages]: "/workspace/marketing-images",
-      [WORKSPACE_MENU_KEYS.shortVideo]: "/workspace/short-video",
+      [WORKSPACE_MENU_KEYS.copywriting]: "/ai-tools/textgenerate",
+      [WORKSPACE_MENU_KEYS.marketingImages]: "/ai-tools/image",
+      [WORKSPACE_MENU_KEYS.shortVideo]: "/ai-tools/video",
     }
     const href = map[String(key)]
     if (href) {
@@ -440,9 +441,9 @@ export function NavItems({
                   <Dropdown.Item
                     key={href}
                     id={
-                      href.endsWith("/copywriting")
+                      href.endsWith("/textgenerate")
                         ? WORKSPACE_MENU_KEYS.copywriting
-                        : href.endsWith("/marketing-images")
+                        : href.endsWith("/image")
                           ? WORKSPACE_MENU_KEYS.marketingImages
                           : WORKSPACE_MENU_KEYS.shortVideo
                     }
