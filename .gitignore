@@ -28,6 +28,9 @@ pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
+
+# 例外：不忽略前端 lib 文件夹
+!frontend/lib/
 *.egg
 MANIFEST
 
