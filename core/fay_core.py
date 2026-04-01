@@ -143,8 +143,6 @@ class FeiFei:
             try:
                 index = interact.interact_type
                 if index == 1:  # 语音文字交互
-                    print("===== DEBUG: __process_interact 处理语音交互 =====")  # 新增
-                    print("用户消息:", interact.data.get("msg"))                # 新增
                     # 记录用户问题,方便obs等调用
                     self.write_to_file("./logs", "asr_result.txt", interact.data["msg"])
 
@@ -217,7 +215,6 @@ class FeiFei:
                         wsa_server.get_instance().add_cmd(content)
 
                     # 声音输出
-                    print("===== DEBUG: 准备调用 say 方法 =====")   # 新增
                     MyThread(target=self.say, args=[interact, text]).start()
 
                     return text
@@ -273,7 +270,6 @@ class FeiFei:
             # 触发语音交互
 
     def on_interact(self, interact: Interact):
-        print("===== DEBUG: on_interact 被调用 =====")   # 新增
         MyThread(target=self.__update_mood, args=[interact]).start()
         return self.__process_interact(interact)
 
@@ -382,7 +378,6 @@ class FeiFei:
         # 添加对GPT模型的支持
         if is_gpt_voice:
             if cfg.tts_module == "gpt":
-                print("===== __get_tts_speech 返回默认 GPT Speech 实例 =====")  # 新增
                 return self.sp
             sp = self._tts_cache.get("gpt")
             if sp is None:
@@ -393,7 +388,6 @@ class FeiFei:
                 except Exception as e:
                     util.log(1, f"GPT-TTS connect error: {e}")
                 self._tts_cache["gpt"] = sp
-            print("===== __get_tts_speech 返回缓存的 GPT Speech 实例 =====")  # 新增
             return sp
 
         if is_qwen_voice:
@@ -452,12 +446,10 @@ class FeiFei:
                 self._tts_cache["ms"] = sp
             return sp
 
-        print("===== __get_tts_speech 返回默认 Speech 实例 =====")  # 新增
         return self.sp
 
     # 合成声音
     def say(self, interact, text):
-        print("===== DEBUG: say 方法被调用，text =", text)
         try:
             result = None
             text = "" if text is None else str(text)
@@ -470,18 +462,14 @@ class FeiFei:
                 util.printInfo(1, interact.data.get('user'), '合成音频...')
                 tm = time.time()
                 sp = self.__get_tts_speech()
-                print("===== DEBUG: sp 类型:", type(sp).__name__)  # 新增
-                # 尝试调用 to_sample，并捕获详细异常
                 try:
                     result = sp.to_sample(text.replace("*", ""), self.__get_mood_voice())
-                    print(f"===== sp.to_sample 返回: {result} =====")  # 新增
                 except AttributeError as ae:
-                    print("===== DEBUG: to_sample 属性不存在，可能 sp 不是正确的 TTS 实例 =====")
-                    print("异常详情:", ae)
+                    util.log(1, f"[FAY-CORE] TTS 实例缺少 to_sample: {ae}")
                     traceback.print_exc()
                     result = None
                 except Exception as e:
-                    print("===== DEBUG: to_sample 抛出异常:", e)
+                    util.log(1, f"[FAY-CORE] to_sample 异常: {e}")
                     traceback.print_exc()
                     result = None
                 util.printInfo(1, interact.data.get('user'),
@@ -501,42 +489,8 @@ class FeiFei:
                            'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'}
                 wsa_server.get_instance().add_cmd(content)
         except Exception as e:
-            print(f"say error: {e}")
+            print(f"[FAY-CORE] say error: {e}")
             traceback.print_exc()  # 打印完整堆栈
-
-    def __process_output_audio(self, file, interact, text):
-        try:
-            # 播放音频
-            if config_util.config["interact"]["playSound"]:
-                util.printInfo(1, interact.data.get('user'), '播放音频...')
-                try:
-                    pygame.mixer.music.load(file)
-                    pygame.mixer.music.play()
-                    while pygame.mixer.music.get_busy():
-                        time.sleep(0.1)
-                except Exception as e:
-                    util.printInfo(1, interact.data.get('user'), '播放音频出错: {}'.format(e))
-                util.printInfo(1, interact.data.get('user'), '结束播放！')
-
-            # 发送给 UE5
-            # 注意：这里我们使用广播，确保无论 UE5 连的是哪个端口，都能收到指令
-            content = {
-                'Topic': 'Unreal',
-                'Data': {
-                    'Key': 'audio',
-                    'Value': os.path.abspath(file),  # 发送绝对路径
-                    'Text': text
-                },
-                'Username': interact.data.get('user')
-            }
-            wsa_server.get_instance().add_cmd(content)
-
-            # 发送给网页端
-            if wsa_server.get_web_instance().is_connected(interact.data.get('user')):
-                wsa_server.get_web_instance().add_cmd({"panelMsg": text, 'Username': interact.data.get('user')})
-
-        except Exception as e:
-            print(f"处理音频输出时出错: {e}")
 
     # 下载wav
     def download_wav(self, url, save_directory, filename):
@@ -652,7 +606,7 @@ class FeiFei:
                         consolidated_visemes = lip_sync_generator.consolidate_visemes(viseme_list)
                         content["Data"]["Lips"] = consolidated_visemes
                     except Exception as e:
-                        print(e)
+                        print(f"[FAY-CORE] lip sync error: {e}")
                         util.printInfo(1, interact.data.get("user"), "唇型数据生成失败")
                 wsa_server.get_instance().add_cmd(content)
                 util.printInfo(1, interact.data.get("user"), "数字人接口发送音频数据成功")
@@ -660,12 +614,8 @@ class FeiFei:
             # 播放完成通知
             threading.Timer(audio_length, self.send_play_end_msg, [interact]).start()
 
-            # 面板播放
-            if config_util.config["interact"]["playSound"]:
-                self.__play_sound(file_url, audio_length, interact)
-
         except Exception as e:
-            print(e)
+            print(f"[FAY-CORE] output audio error: {e}")
 
     def send_play_end_msg(self, interact):
         if wsa_server.get_web_instance().is_connected(interact.data.get('user')):
@@ -675,9 +625,6 @@ class FeiFei:
             content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': ""}, 'Username': interact.data.get('user'),
                        'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'}
             wsa_server.get_instance().add_cmd(content)
-        if config_util.config["interact"]["playSound"]:
-            util.printInfo(1, interact.data.get('user'), '结束播放！')
-
         # 恢复自动播放(如何有)
         global auto_play_lock
         global can_auto_play

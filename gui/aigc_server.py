@@ -57,6 +57,8 @@ from tts import qwen3
 from tts import volcano_tts
 from scheduler.thread_manager import MyThread
 from core import wsa_server
+from core import content_db
+from core import member_db
 from core.interact import Interact
 from core.task_db import Task_Db
 import fay_booter
@@ -2639,10 +2641,13 @@ def api_start_live():
     try:
         config_util.load_config()
         web = wsa_server.new_web_instance(port=10003)
-        web.start_server()
+        if not web.is_running():
+            web.start_server()
         human = wsa_server.new_instance(port=10004)
-        human.start_server()
-        fay_booter.start()
+        if not human.is_running():
+            human.start_server()
+        if not fay_booter.is_running():
+            fay_booter.start()
         wsa_server.get_web_instance().add_cmd({"liveState": 1})
         return '{"result":"successful"}'
     except Exception as e:
@@ -2652,11 +2657,46 @@ def api_start_live():
 @app.route("/api/stop-live", methods=["post"])
 def api_stop_live():
     try:
-        fay_booter.stop()
-        wsa_server.get_web_instance().add_cmd({"liveState": 0})
+        if fay_booter.is_running():
+            fay_booter.stop()
+        web = wsa_server.get_web_instance()
+        if web and web.is_running():
+            web.add_cmd({"liveState": 0})
         return '{"result":"successful"}'
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/get-msg", methods=["post"])
+def api_get_msg():
+    raw_data = request.form.get("data")
+    if not raw_data:
+        return jsonify({"list": []})
+
+    try:
+        payload = json.loads(raw_data)
+    except Exception:
+        return jsonify({"list": []})
+
+    username = payload.get("username", "User")
+    uid = member_db.new_instance().find_user(username)
+    if uid == 0:
+        return jsonify({"list": []})
+
+    rows = content_db.new_instance().get_list("all", "desc", 1000, uid)
+    result = []
+    for row in reversed(rows):
+        result.append(
+            {
+                "type": row[0],
+                "way": row[1],
+                "content": row[2],
+                "createtime": row[3],
+                "timetext": row[4],
+                "username": row[5],
+            }
+        )
+    return jsonify({"list": result})
 
 
 @app.route("/api/chat", methods=["post"])

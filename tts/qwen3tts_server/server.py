@@ -2,14 +2,13 @@ import base64
 import inspect
 import io
 import time
+from contextlib import asynccontextmanager
 
 import numpy as np
 import soundfile as sf
 import torch
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-
-app = FastAPI(title="Qwen3-TTS API Server")
 
 model = None
 model_error = None
@@ -18,6 +17,7 @@ model_generate_signature = None
 MODEL_ID = "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"
 DEFAULT_SAMPLE_RATE = 24000
 DEFAULT_CHUNK_SIZE = 8
+LOG_PREFIX = "[TTS-SERVER]"
 
 
 class TTSRequest(BaseModel):
@@ -25,6 +25,10 @@ class TTSRequest(BaseModel):
     instruct: str = "用自然、平稳的语气说话"
     speaker: str = "vivian"
     language: str = "Chinese"
+
+
+def _log(message: str):
+    print(f"{LOG_PREFIX} {message}")
 
 
 def _method_accepts_argument(name: str) -> bool:
@@ -91,22 +95,21 @@ def _collect_audio_from_stream(request: TTSRequest):
     return np.concatenate(audio_chunks, axis=0), sample_rate
 
 
-@app.on_event("startup")
 def load_model():
     global model
     global model_error
     global model_generate_signature
 
     try:
-        print("=" * 60)
-        print(f"正在加载 Faster Qwen3-TTS 模型: {MODEL_ID}")
+        _log("=" * 50)
+        _log(f"正在加载 Faster Qwen3-TTS 模型: {MODEL_ID}")
 
         from faster_qwen3_tts import FasterQwen3TTS
 
         if torch.cuda.is_available():
-            print(f"CUDA 可用: {torch.cuda.get_device_name(0)}")
+            _log(f"CUDA 可用: {torch.cuda.get_device_name(0)}")
         else:
-            print("警告: CUDA 不可用，将使用 CPU 推理")
+            _log("警告: CUDA 不可用，将使用 CPU 推理")
 
         model = FasterQwen3TTS.from_pretrained(MODEL_ID)
         model_error = None
@@ -121,17 +124,26 @@ def load_model():
                     **({"chunk_size": DEFAULT_CHUNK_SIZE} if _method_accepts_argument("chunk_size") else {}),
                 )
             )
-            print("模型预热完成")
+            _log("模型预热完成")
         except Exception as exc:
-            print(f"模型预热失败（非致命）: {exc}")
+            _log(f"模型预热失败（非致命）: {exc}")
 
-        print("Faster Qwen3-TTS 服务已就绪")
-        print("=" * 60)
+        _log("Faster Qwen3-TTS 服务已就绪")
+        _log("=" * 50)
     except Exception as exc:
         model = None
         model_generate_signature = None
         model_error = str(exc)
-        print(f"模型加载失败: {exc}")
+        _log(f"模型加载失败: {exc}")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    load_model()
+    yield
+
+
+app = FastAPI(title="Qwen3-TTS API Server", lifespan=lifespan)
 
 
 @app.post("/tts")
@@ -142,7 +154,7 @@ async def generate_tts(request: TTSRequest):
 
     try:
         start_time = time.time()
-        print(
+        _log(
             f"收到合成请求: text='{request.text[:20]}...', "
             f"speaker='{request.speaker}', instruct='{request.instruct}'"
         )
@@ -150,7 +162,7 @@ async def generate_tts(request: TTSRequest):
         inference_start = time.time()
         audio_data, sample_rate = _collect_audio_from_stream(request)
         inference_time = (time.time() - inference_start) * 1000
-        print(f"模型推理完成，耗时: {inference_time:.2f}ms")
+        _log(f"模型推理完成，耗时: {inference_time:.2f}ms")
 
         encoding_start = time.time()
         buffer = io.BytesIO()
@@ -160,7 +172,7 @@ async def generate_tts(request: TTSRequest):
 
         encoding_time = (time.time() - encoding_start) * 1000
         total_time = (time.time() - start_time) * 1000
-        print(f"音频编码完成，耗时: {encoding_time:.2f}ms，总耗时: {total_time:.2f}ms")
+        _log(f"音频编码完成，耗时: {encoding_time:.2f}ms，总耗时: {total_time:.2f}ms")
 
         return {
             "status": "success",
@@ -170,7 +182,7 @@ async def generate_tts(request: TTSRequest):
             "time_cost_ms": total_time,
         }
     except Exception as exc:
-        print(f"合成出错: {exc}")
+        _log(f"合成出错: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
 
 

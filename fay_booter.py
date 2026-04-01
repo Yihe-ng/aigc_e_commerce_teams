@@ -55,8 +55,6 @@ class RecorderListener(Recorder):
             device_info = self.paudio.get_device_info_by_index(device_id)
             self.channels = device_info.get('maxInputChannels', 1) #很多麦克风只支持单声道录音
             # self.sample_rate = int(device_info.get('defaultSampleRate', self.__RATE))
-            print(self.sample_rate)
-
             # 设置格式（这里以16位深度为例）
             format = pyaudio.paInt16
 
@@ -73,7 +71,7 @@ class RecorderListener(Recorder):
             self.__running = True
             MyThread(target=self.__pyaudio_clear).start()
         except Exception as e:
-            print(f"Error: {e}")
+            util.log(1, f"[BOOTER] 麦克风初始化失败: {e}")
             time.sleep(10)
         return self.stream
 
@@ -92,7 +90,7 @@ class RecorderListener(Recorder):
             self.stream.close()
             self.paudio.terminate()
         except Exception as e:
-                print(e)
+                util.log(1, f"[BOOTER] 录音设备停止失败: {e}")
                 util.log(1, "请检查设备是否有误，再重新启动!")
 
     def is_remote(self):
@@ -311,6 +309,9 @@ def start():
     global feiFei
     global recorderListener
     global __running
+    if __running and feiFei is not None:
+        util.log(1, "[BOOTER] 服务已在运行，跳过重复启动。")
+        return
     util.log(1, '开启服务...')
     __running = True
 

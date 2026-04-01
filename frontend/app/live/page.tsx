@@ -101,6 +101,7 @@ export default function LivePage() {
   const lastInteractionAtRef = useRef(0)
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null)
   const latestAudioRequestRef = useRef(0)
+  const lastPlayedAudioKeyRef = useRef('')
 
   const [activeTab, setActiveTab] = useState<LiveTab>('chat')
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -274,9 +275,15 @@ export default function LivePage() {
               return
             }
 
+            const audioKey = `${audio.filename ?? ''}:${audio.mtime_ms ?? ''}`
+            if (audioKey && lastPlayedAudioKeyRef.current === audioKey) {
+              return
+            }
+
             stopNativeAudio()
             const player = new window.Audio(`${getApiBaseUrl()}${audio.url}?t=${audio.mtime_ms ?? Date.now()}`)
             audioPlayerRef.current = player
+            lastPlayedAudioKeyRef.current = audioKey
             player.onplay = () => {
               setIsPlayingAudio(true)
               pulseSpeakingState(3200)

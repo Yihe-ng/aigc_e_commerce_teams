@@ -46,7 +46,7 @@ class MyServer:
         except websockets.exceptions.ConnectionClosedError as e:
             # 从客户端列表中移除已断开的连接
             await self.remove_client(websocket)
-            util.printInfo(1, "User" if  username is None else username, f"WebSocket 连接关闭: {e}")
+            util.printInfo(1, "User" if  username is None else username, f"[WS] WebSocket 连接关闭: {e}")
 
     # 发送处理        
     async def __producer_handler(self, websocket, path):
@@ -74,11 +74,11 @@ class MyServer:
         try:
             await asyncio.wait_for(self.send_message(client, message, username), timeout=timeout)
         except asyncio.TimeoutError:
-            util.printInfo(1, "User" if username is None else username, f"发送消息超时: 用户名 {username}")
+            util.printInfo(1, "User" if username is None else username, f"[WS] 发送消息超时: 用户名 {username}")
         except websockets.exceptions.ConnectionClosed as e:
             # 从客户端列表中移除已断开的连接
             await self.remove_client(client)
-            util.printInfo(1, "User" if username is None else username, f"WebSocket 连接关闭: {e}")
+            util.printInfo(1, "User" if username is None else username, f"[WS] WebSocket 连接关闭: {e}")
 
     # 发送消息
     async def send_message(self, client, message, username):
@@ -87,12 +87,12 @@ class MyServer:
         except websockets.exceptions.ConnectionClosed as e:
             # 从客户端列表中移除已断开的连接
             await self.remove_client(client)
-            util.printInfo(1, "User" if username is None else username, f"WebSocket 连接关闭: {e}")
+            util.printInfo(1, "User" if username is None else username, f"[WS] WebSocket 连接关闭: {e}")
 
                 
     async def __handler(self, websocket, path):
         self.isConnect = True
-        util.log(1,"websocket连接上:{}".format(self.__port))
+        util.log(1,"[WS] websocket连接上:{}".format(self.__port))
         self.on_connect_handler()
         remote_address = websocket.remote_address
         unique_id = f"{remote_address[0]}:{remote_address[1]}"
@@ -111,7 +111,7 @@ class MyServer:
             
         # 从客户端列表中移除已断开的连接
         await self.remove_client(websocket)
-        util.log(1, "websocket连接断开:{}".format(unique_id))
+        util.log(1, "[WS] websocket连接断开:{}".format(unique_id))
                 
     async def __consumer(self, message):
         self.on_revice_handler(message)
@@ -167,7 +167,7 @@ class MyServer:
         asyncio.set_event_loop(self.__event_loop)
         self.__isExecute = True
         if self.__server:
-            util.log(1, 'server already exist')
+            util.log(1, '[WS] server already exist')
             return
         self.__server = websockets.serve(self.__handler, self.__host, self.__port)
         asyncio.get_event_loop().run_until_complete(self.__server)
@@ -194,7 +194,7 @@ class MyServer:
         self.__server.close()
         self.__server = None
         self.__clients = []
-        util.log(1, "WebSocket server stopped.")
+        util.log(1, "[WS] WebSocket server stopped.")
 
     def is_running(self):
         return self.__server is not None and self.__running
@@ -315,7 +315,7 @@ def start_port_forwarder(listen_port, target_port, host='0.0.0.0', target_host='
             dock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             dock_socket.bind((host, listen_port))
             dock_socket.listen(5)
-            util.log(1, f"Port forwarding started: {host}:{listen_port} -> {target_host}:{target_port}")
+            util.log(1, f"[WS] Port forwarding started: {host}:{listen_port} -> {target_host}:{target_port}")
             while True:
                 client_socket, client_addr = dock_socket.accept()
                 try:
@@ -324,10 +324,10 @@ def start_port_forwarder(listen_port, target_port, host='0.0.0.0', target_host='
                     MyThread(target=forward, args=(client_socket, server_socket)).start()
                     MyThread(target=forward, args=(server_socket, client_socket)).start()
                 except Exception as e:
-                    util.log(1, f"Forwarding connection failed: {e}")
+                    util.log(1, f"[WS] Forwarding connection failed: {e}")
                     client_socket.close()
         except Exception as e:
-            util.log(1, f"Port forwarding failed to start: {e}")
+            util.log(1, f"[WS] Port forwarding failed to start: {e}")
 
     MyThread(target=serve, args=(listen_port, target_port)).start()
     _PORT_FORWARDERS.add(key)
