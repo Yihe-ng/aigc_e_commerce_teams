@@ -499,7 +499,7 @@ class FeiFei:
                 content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': ''},
                            'Username': interact.data.get('user'),
                            'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'}
-                wsa_server.add_cmd_to_all(content)
+                wsa_server.get_instance().add_cmd(content)
         except Exception as e:
             print(f"say error: {e}")
             traceback.print_exc()  # 打印完整堆栈
@@ -529,7 +529,7 @@ class FeiFei:
                 },
                 'Username': interact.data.get('user')
             }
-            wsa_server.add_cmd_to_all(content)
+            wsa_server.get_instance().add_cmd(content)
 
             # 发送给网页端
             if wsa_server.get_web_instance().is_connected(interact.data.get('user')):
