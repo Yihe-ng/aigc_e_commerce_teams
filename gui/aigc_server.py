@@ -601,7 +601,7 @@ def dify_chat_stream():
 
 @app.route('/')
 def index():
-    return redirect("http://localhost:3000/login") # Redirect to Login Server
+    return redirect("http://localhost:3002/login") # Redirect to Login Server
 
 # ----------------- Dashboard Redirects -----------------
 def video_generation_worker(task_id, ak, sk, generate_uuid):
@@ -1961,7 +1961,7 @@ def generate_img2img(image_url):
         return {'status': 'error', 'error': str(e)}
 
 def run():
-    server = pywsgi.WSGIServer(('0.0.0.0', 5000), app)
+    server = pywsgi.WSGIServer(('0.0.0.0', 8000), app)
     server.serve_forever()
 
 def start():

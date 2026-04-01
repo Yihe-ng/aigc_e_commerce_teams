@@ -14,7 +14,7 @@ azure-cognitiveservices-speech
 aliyun-python-sdk-core
 simhash
 pytz
-gevent~=22.10.1
+
 edge_tts~=6.1.13
 pydub
 langchain==0.0.336

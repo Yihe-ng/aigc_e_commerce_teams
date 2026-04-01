@@ -259,7 +259,7 @@ def get_xhs_auth_url():
         f"{config['api_url']}/oauth/authorize"
         f"?app_id={config['app_id']}"
         f"&response_type=code"
-        f"&redirect_uri=http://localhost:5000/api/callback/xiaohongshu"
+        f"&redirect_uri=http://localhost:8000/api/callback/xiaohongshu"
         f"&state=STATE"
     )
     return jsonify({'auth_url': auth_url})
@@ -683,7 +683,7 @@ def update_all_data():
 
 # 多平台数据并发获取
 async def fetch_products(session, platform):
-    url = f"http://localhost:5000/api/products?platform={platform}"
+    url = f"http://localhost:8000/api/products?platform={platform}"
     try:
         async with session.get(url) as response:
             if response.status == 200:
@@ -745,15 +745,15 @@ def get_auth_url(platform):
     config = PLATFORM_CONFIG[platform]
 
     if platform == 'taobao':
-        auth_url = f"https://oauth.taobao.com/authorize?response_type=code&client_id={config['app_key']}&redirect_uri=http://localhost:5000/api/callback/taobao&state=STATE"
+        auth_url = f"https://oauth.taobao.com/authorize?response_type=code&client_id={config['app_key']}&redirect_uri=http://localhost:8000/api/callback/taobao&state=STATE"
         return jsonify({'auth_url': auth_url})
 
     elif platform == 'jd':
-        auth_url = f"https://oauth.jd.com/oauth/authorize?response_type=code&client_id={config['app_key']}&redirect_uri=http://localhost:5000/api/callback/jd&state=STATE"
+        auth_url = f"https://oauth.jd.com/oauth/authorize?response_type=code&client_id={config['app_key']}&redirect_uri=http://localhost:8000/api/callback/jd&state=STATE"
         return jsonify({'auth_url': auth_url})
 
     elif platform == 'douyin':
-        auth_url = f"https://open.douyin.com/platform/oauth/connect/?client_key={config['app_key']}&response_type=code&scope=user_info&redirect_uri=http://localhost:5000/api/callback/douyin&state=STATE"
+        auth_url = f"https://open.douyin.com/platform/oauth/connect/?client_key={config['app_key']}&response_type=code&scope=user_info&redirect_uri=http://localhost:8000/api/callback/douyin&state=STATE"
         return jsonify({'auth_url': auth_url})
 
     return jsonify({'error': 'Platform not supported'}), 400
@@ -778,7 +778,7 @@ def handle_callback(platform):
             'code': code,
             'client_id': config['app_key'],
             'client_secret': config['app_secret'],
-            'redirect_uri': 'http://localhost:5000/api/callback/taobao'
+            'redirect_uri': 'http://localhost:8000/api/callback/taobao'
         }
         response = requests.post(config['auth_url'], data=data)
         token_data = response.json()
@@ -795,7 +795,7 @@ def handle_callback(platform):
             'client_id': config['app_key'],
             'client_secret': config['app_secret'],
             'code': code,
-            'redirect_uri': 'http://localhost:5000/api/callback/jd'
+            'redirect_uri': 'http://localhost:8000/api/callback/jd'
         }
         response = requests.post(config['auth_url'], data=data)
         token_data = response.json()

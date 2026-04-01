@@ -225,8 +225,8 @@ from utils import config_util
 
 @app.route('/home')
 def home_redirect():
-    # Redirect to the main AIGC server on port 5000
-    return redirect("http://localhost:5000/home")
+    # Redirect to the main AIGC server on port 8000
+    return redirect("http://localhost:8000/home")
 
 @app.route('/setting')
 def setting():
@@ -268,7 +268,7 @@ def is_precompute_enabled():
 # 在全局变量区域添加
 history_data_lock = threading.Lock()
 incremental_updates = {}  # 存储增量更新数据
-AIGC_SERVICE_URL = "http://localhost:5000"
+AIGC_SERVICE_URL = "http://localhost:8000"
 
 def refresh_token(platform):
     config = PLATFORM_CONFIG[platform]
@@ -282,7 +282,7 @@ def refresh_token(platform):
             return jsonify({'error': 'Internal server error'}), 500
 
 
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:5000"}})
+CORS(app, resources={r"/api/*": {"origins": "http://localhost:8000"}})
 
 # 配置缓存
 cache_config = {
@@ -505,7 +505,7 @@ def xiaohongshu_callback():
 def get_xiaohongshu_products():
     try:
         # 调用api.py服务获取小红书数据
-        response = requests.get('http://localhost:5000/api/products?platform=xiaohongshu')
+        response = requests.get('http://localhost:8000/api/products?platform=xiaohongshu')
         if response.status_code == 200:
             return response.json()
         else:

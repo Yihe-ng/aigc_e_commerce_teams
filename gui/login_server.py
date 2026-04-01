@@ -58,7 +58,7 @@ def login_phone():
     
     if code == '123456':
         session['user_id'] = phone
-        return jsonify({'status': 'success', 'message': 'Login successful', 'redirect': 'http://localhost:5000/home'})
+        return jsonify({'status': 'success', 'message': 'Login successful', 'redirect': 'http://localhost:8000/home'})
     
     return jsonify({'status': 'error', 'message': 'Invalid verification code'}), 401
 
