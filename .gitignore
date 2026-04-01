@@ -116,9 +116,6 @@ frontend/.env.local
 # TypeScript incremental 编译缓存（由 tsconfig incremental 生成）
 *.tsbuildinfo
 
-# samples 文件夹（音频样本文件）
-samples/
-
 # Binaries and Build Artifacts
 bin/Release_2.85/
 fay/Engine/
