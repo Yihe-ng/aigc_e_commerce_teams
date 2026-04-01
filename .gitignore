@@ -28,6 +28,9 @@ pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
+
+# 例外：不忽略前端 lib 文件夹
+!frontend/lib/
 *.egg
 MANIFEST
 
@@ -110,6 +113,8 @@ frontend/.next/
 frontend/next-env.d.ts
 frontend/.env
 frontend/.env.local
+# TypeScript incremental 编译缓存（由 tsconfig incremental 生成）
+*.tsbuildinfo
 
 # Binaries and Build Artifacts
 bin/Release_2.85/
@@ -202,4 +207,13 @@ tts/GPT-SoVITS/
 .gitignore
 incremental_updates.db
 skills-lock.json
+incremental_updates.db
+nul
+skills-lock.json
+.codex/
+test/
+重构全面指南.md
+test2界面重构指南.md
+test3重构指南.md
+.gitignore
 incremental_updates.db

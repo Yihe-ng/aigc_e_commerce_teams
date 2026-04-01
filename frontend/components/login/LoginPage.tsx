@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff, Sparkles, BarChart3, Share2, Video, User, Lock, ArrowRight } from "lucide-react"
 import ParticlesBackground from "@/components/ui/particles-background"
+import { ThemeToggle } from "@/components/theme/theme-toggle"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -64,8 +65,7 @@ export default function LoginPage() {
       const data = await response.json().catch(() => ({}))
 
       if (response.ok && (data?.status === 'success')) {
-        const targetHost = window.location.hostname
-        window.location.href = `http://${targetHost}:5000/home`
+        router.push("/home")
       } else {
         alert((data && data.message) ? data.message : `登录请求失败: ${response.status}`)
       }
@@ -78,7 +78,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden">
+    <div className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-sky-50 via-white to-indigo-50 transition-colors duration-300 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center">
+
+      <div className="fixed right-4 top-4 z-[100] md:right-6 md:top-6">
+        <ThemeToggle />
+      </div>
 
       {/* 粒子背景 */}
       <ParticlesBackground />
@@ -106,7 +110,7 @@ export default function LoginPage() {
             <div className="absolute -inset-2 rounded-[24px] bg-gradient-to-br from-blue-300/20 to-indigo-400/20 blur-xl opacity-60"></div>
             
             {/* 主体毛玻璃卡片 */}
-            <div className="relative rounded-[20px] border border-white/70 bg-white/25 backdrop-blur-2xl shadow-[0_25px_80px_-20px_rgba(59,130,246,0.25),0_0_0_1px_rgba(255,255,255,0.4)_inset,0_0_30px_rgba(147,197,253,0.2)] px-8 py-8 min-h-[510px] flex flex-col justify-center overflow-hidden">
+            <div className="relative rounded-[20px] border border-white/70 bg-white/25 backdrop-blur-2xl shadow-[0_25px_80px_-20px_rgba(59,130,246,0.25),0_0_0_1px_rgba(255,255,255,0.4)_inset,0_0_30px_rgba(147,197,253,0.2)] px-8 py-8 min-h-[510px] flex flex-col justify-center overflow-hidden dark:border-slate-600/50 dark:bg-slate-900/40 dark:shadow-[0_25px_80px_-20px_rgba(0,0,0,0.5),0_0_0_1px_rgba(148,163,184,0.15)_inset]">
               
               {/* 顶部高光 */}
               <div className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-white to-transparent"></div>
@@ -121,25 +125,25 @@ export default function LoginPage() {
               
               {/* 内容层 */}
               <div className="relative z-10" style={{ transform: 'translateZ(20px)' }}>
-                <div className="mb-4 text-slate-800 text-2xl font-bold tracking-[-0.02em]">项目介绍</div>
-                <div className="text-slate-700 font-medium leading-7 text-[15px]">
+                <div className="mb-4 text-slate-800 text-2xl font-bold tracking-[-0.02em] dark:text-slate-100">项目介绍</div>
+                <div className="text-slate-700 font-medium leading-7 text-[15px] dark:text-slate-300">
                   智创电商营销系统，集成内容生产、投放分发、数据看板与智能分析，助力商家实现全链路增长。
                 </div>
                 <div className="mt-8 grid grid-cols-2 gap-3 text-[13px]">
-                  <div className="group flex items-center gap-3 rounded-2xl p-4 bg-white/50 backdrop-blur-md border-2 border-white/80 shadow-sm text-slate-700 font-medium transition-all duration-300 hover:bg-white/70 hover:scale-[1.02] hover:shadow-md hover:border-white" style={{ transform: 'translateZ(30px)' }}>
-                    <Sparkles className="w-5 h-5 text-blue-600/90" />
+                  <div className="group flex items-center gap-3 rounded-2xl p-4 bg-white/50 backdrop-blur-md border-2 border-white/80 shadow-sm text-slate-700 font-medium transition-all duration-300 hover:bg-white/70 hover:scale-[1.02] hover:shadow-md hover:border-white dark:border-slate-600/60 dark:bg-slate-800/50 dark:text-slate-200 dark:hover:bg-slate-800/80" style={{ transform: 'translateZ(30px)' }}>
+                    <Sparkles className="w-5 h-5 text-blue-600/90 dark:text-sky-400" />
                     <span>AI文案/图片生成</span>
                   </div>
-                  <div className="group flex items-center gap-3 rounded-2xl p-4 bg-white/50 backdrop-blur-md border-2 border-white/80 shadow-sm text-slate-700 font-medium transition-all duration-300 hover:bg-white/70 hover:scale-[1.02] hover:shadow-md hover:border-white" style={{ transform: 'translateZ(30px)' }}>
-                    <BarChart3 className="w-5 h-5 text-indigo-600/90" />
+                  <div className="group flex items-center gap-3 rounded-2xl p-4 bg-white/50 backdrop-blur-md border-2 border-white/80 shadow-sm text-slate-700 font-medium transition-all duration-300 hover:bg-white/70 hover:scale-[1.02] hover:shadow-md hover:border-white dark:border-slate-600/60 dark:bg-slate-800/50 dark:text-slate-200 dark:hover:bg-slate-800/80" style={{ transform: 'translateZ(30px)' }}>
+                    <BarChart3 className="w-5 h-5 text-indigo-600/90 dark:text-indigo-400" />
                     <span>商品看板与洞察</span>
                   </div>
-                  <div className="group flex items-center gap-3 rounded-2xl p-4 bg-white/50 backdrop-blur-md border-2 border-white/80 shadow-sm text-slate-700 font-medium transition-all duration-300 hover:bg-white/70 hover:scale-[1.02] hover:shadow-md hover:border-white" style={{ transform: 'translateZ(30px)' }}>
-                    <Share2 className="w-5 h-5 text-cyan-600/90" />
+                  <div className="group flex items-center gap-3 rounded-2xl p-4 bg-white/50 backdrop-blur-md border-2 border-white/80 shadow-sm text-slate-700 font-medium transition-all duration-300 hover:bg-white/70 hover:scale-[1.02] hover:shadow-md hover:border-white dark:border-slate-600/60 dark:bg-slate-800/50 dark:text-slate-200 dark:hover:bg-slate-800/80" style={{ transform: 'translateZ(30px)' }}>
+                    <Share2 className="w-5 h-5 text-cyan-600/90 dark:text-cyan-400" />
                     <span>多渠道投放管理</span>
                   </div>
-                  <div className="group flex items-center gap-3 rounded-2xl p-4 bg-white/50 backdrop-blur-md border-2 border-white/80 shadow-sm text-slate-700 font-medium transition-all duration-300 hover:bg-white/70 hover:scale-[1.02] hover:shadow-md hover:border-white" style={{ transform: 'translateZ(30px)' }}>
-                    <Video className="w-5 h-5 text-violet-600/90" />
+                  <div className="group flex items-center gap-3 rounded-2xl p-4 bg-white/50 backdrop-blur-md border-2 border-white/80 shadow-sm text-slate-700 font-medium transition-all duration-300 hover:bg-white/70 hover:scale-[1.02] hover:shadow-md hover:border-white dark:border-slate-600/60 dark:bg-slate-800/50 dark:text-slate-200 dark:hover:bg-slate-800/80" style={{ transform: 'translateZ(30px)' }}>
+                    <Video className="w-5 h-5 text-violet-600/90 dark:text-violet-400" />
                     <span>数字人直播互动</span>
                   </div>
                 </div>
@@ -157,20 +161,20 @@ export default function LoginPage() {
             <div className="absolute inset-[-100%] w-[300%] h-[300%] bg-[conic-gradient(from_90deg_at_50%_50%,#0000_0%,#0000_50%,#bfdbfe_70%,#3b82f6_100%)] opacity-60 blur-md animate-spin-soft"></div>
             
             {/* ========== Layer 3: 内容遮罩层 - 纯白背景完全遮挡中间 ========== */}
-            <div className="relative h-full w-full bg-white rounded-[22px] shadow-[0_25px_80px_-20px_rgba(0,0,0,0.12),0_0_0_1px_rgba(255,255,255,0.8)_inset] z-10">
+            <div className="relative h-full w-full bg-white rounded-[22px] shadow-[0_25px_80px_-20px_rgba(0,0,0,0.12),0_0_0_1px_rgba(255,255,255,0.8)_inset] z-10 transition-colors dark:bg-slate-900 dark:shadow-[0_25px_80px_-20px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.06)_inset]">
               
               {/* 顶部装饰线 */}
-              <div className="h-1 w-full bg-blue-400 rounded-t-[20px]"></div>
+              <div className="h-1 w-full bg-blue-400 rounded-t-[20px] dark:bg-violet-500"></div>
               
               <CardHeader className="space-y-3 px-10 pt-10 pb-4">
-                <h1 className="text-3xl font-bold tracking-tight text-center text-slate-800 whitespace-nowrap leading-tight">
+                <h1 className="text-3xl font-bold tracking-tight text-center text-slate-800 whitespace-nowrap leading-tight dark:text-slate-100">
                   智创电商营销系统
                 </h1>
                 {/* 装饰性下划线 */}
                 <div className="flex justify-center">
                   <div className="w-16 h-[3px] bg-blue-400 rounded-full"></div>
                 </div>
-                <CardDescription className="text-center text-slate-500 text-sm tracking-wide pt-1">
+                <CardDescription className="text-center text-slate-500 text-sm tracking-wide pt-1 dark:text-slate-400">
                   请输入您的账号和密码登录系统
                 </CardDescription>
               </CardHeader>
@@ -179,7 +183,7 @@ export default function LoginPage() {
                 <CardContent className="space-y-6 max-w-md mx-auto mt-8 px-10">
                   {/* 账号输入框 - 轻拟态内凹风格 */}
                   <div className="space-y-2">
-                    <Label className="text-slate-700 text-sm font-medium" htmlFor="username">账号</Label>
+                    <Label className="text-slate-700 text-sm font-medium dark:text-slate-300" htmlFor="username">账号</Label>
                     <div className="relative group/input">
                       <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
                         <User className="h-5 w-5 text-slate-400 group-focus-within/input:text-blue-600 transition-colors duration-200" />
@@ -188,7 +192,7 @@ export default function LoginPage() {
                         id="username"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full h-14 rounded-2xl border-0 outline-none ring-0 focus:ring-0 focus:outline-none focus:border-0 focus-visible:ring-0 focus-visible:outline-none focus-visible:border-0 pl-12 pr-5 font-medium text-slate-700 placeholder:text-slate-400 bg-[#EFF4F9] shadow-[inset_2px_2px_3px_rgba(71,85,105,0.12),inset_6px_6px_12px_rgba(71,85,105,0.04),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] transition-all duration-400 ease-out focus:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus-visible:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus:text-blue-600 focus-visible:text-blue-600"
+                        className="w-full h-14 rounded-2xl border-0 outline-none ring-0 focus:ring-0 focus:outline-none focus:border-0 focus-visible:ring-0 focus-visible:outline-none focus-visible:border-0 pl-12 pr-5 font-medium text-slate-700 placeholder:text-slate-400 bg-[#EFF4F9] shadow-[inset_2px_2px_3px_rgba(71,85,105,0.12),inset_6px_6px_12px_rgba(71,85,105,0.04),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] transition-all duration-400 ease-out focus:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus-visible:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus:text-blue-600 focus-visible:text-blue-600 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-500 dark:shadow-[inset_2px_2px_8px_rgba(0,0,0,0.35),0_0_0_1000px_rgb(30_41_59_/_0.95)_inset] dark:focus:text-sky-300 dark:focus-visible:text-sky-300"
                         placeholder="请输入账号"
                         style={{ WebkitTextFillColor: "#334155" }}
                       />
@@ -198,7 +202,7 @@ export default function LoginPage() {
                   {/* 密码输入框 - 轻拟态内凹风格 */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label className="text-slate-700 text-sm font-medium" htmlFor="password">密码</Label>
+                      <Label className="text-slate-700 text-sm font-medium dark:text-slate-300" htmlFor="password">密码</Label>
                       <a href="#" className="text-sm text-blue-500 hover:text-blue-600 hover:underline">
                         忘记密码?
                       </a>
@@ -212,7 +216,7 @@ export default function LoginPage() {
                         type={showPassword ? "text" : "password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full h-14 rounded-2xl border-0 outline-none ring-0 focus:ring-0 focus:outline-none focus:border-0 focus-visible:ring-0 focus-visible:outline-none focus-visible:border-0 pl-12 pr-12 font-medium text-slate-700 placeholder:text-slate-400 bg-[#EFF4F9] shadow-[inset_2px_2px_3px_rgba(71,85,105,0.12),inset_6px_6px_12px_rgba(71,85,105,0.04),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] transition-all duration-400 ease-out focus:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus-visible:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus:text-blue-600 focus-visible:text-blue-600"
+                        className="w-full h-14 rounded-2xl border-0 outline-none ring-0 focus:ring-0 focus:outline-none focus:border-0 focus-visible:ring-0 focus-visible:outline-none focus-visible:border-0 pl-12 pr-12 font-medium text-slate-700 placeholder:text-slate-400 bg-[#EFF4F9] shadow-[inset_2px_2px_3px_rgba(71,85,105,0.12),inset_6px_6px_12px_rgba(71,85,105,0.04),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] transition-all duration-400 ease-out focus:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus-visible:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus:text-blue-600 focus-visible:text-blue-600 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-500 dark:shadow-[inset_2px_2px_8px_rgba(0,0,0,0.35),0_0_0_1000px_rgb(30_41_59_/_0.95)_inset] dark:focus:text-sky-300 dark:focus-visible:text-sky-300"
                         placeholder="请输入密码"
                         style={{ WebkitTextFillColor: "#334155" }}
                       />
@@ -263,7 +267,7 @@ export default function LoginPage() {
                   </Button>
                   
                   {/* 注册链接 */}
-                  <div className="text-center text-sm text-slate-500">
+                  <div className="text-center text-sm text-slate-500 dark:text-slate-400">
                     还没有账号？
                     <a
                       href="#"

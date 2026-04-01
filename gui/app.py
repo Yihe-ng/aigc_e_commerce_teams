@@ -74,6 +74,10 @@ precomputed_data = defaultdict(dict)
 # 全局退出标志
 exit_flag = threading.Event()
 
+# 后台线程句柄
+precompute_thread = None
+cleanup_thread = None
+
 # 添加全局变量
 TRACKED_PAGES = [
     '/dashboard',  #用户数据看板
@@ -133,9 +137,9 @@ def init_precompute_system():
     # 注册优雅关闭
     def shutdown_background_tasks():
         exit_flag.set()
-        if precompute_thread.is_alive():
+        if precompute_thread and precompute_thread.is_alive():
             precompute_thread.join(timeout=5.0)
-        if cleanup_thread.is_alive():
+        if cleanup_thread and cleanup_thread.is_alive():
             cleanup_thread.join(timeout=5.0)
 
     atexit.register(shutdown_background_tasks)
@@ -257,9 +261,14 @@ def run_exe():
 
 # 改为在app初始化后启动
 def init_precompute_thread():
-    # 避免隐藏外部作用域的precompute_thread
-    local_precompute_thread = threading.Thread(target=precompute_dashboard_data, daemon=True)
-    local_precompute_thread.start()
+    global precompute_thread
+    if precompute_thread and precompute_thread.is_alive():
+        return
+
+    precompute_thread = threading.Thread(
+        target=precompute_dashboard_data, daemon=True
+    )
+    precompute_thread.start()
 
 def is_precompute_enabled():
     v = os.getenv('DASHBOARD_PRECOMPUTE', '1')

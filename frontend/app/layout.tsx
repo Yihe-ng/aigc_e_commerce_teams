@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+
+import { ThemeProvider } from '@/components/theme/theme-provider'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -18,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
       <head>
         {/* 预连接 CDN 加速加载 */}
         <link rel="preconnect" href="https://cubism.live2d.com" />
@@ -27,7 +29,9 @@ export default function RootLayout({
         <link rel="preload" href="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js" as="script" /> 
         <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js" async />
       </head>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   )
 }
