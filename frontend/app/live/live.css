@@ -726,6 +726,25 @@
   gap: 8px;
 }
 
+.live-runtime-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.runtime-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 174, 236, 0.08);
+  color: #2a5278;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .neon-btn {
   padding: 6px 12px;
   font-size: 12px;
@@ -747,4 +766,37 @@
   background: linear-gradient(135deg, #00aeec, #0092c8);
   color: #fff;
   box-shadow: 0 2px 8px rgba(0, 174, 236, 0.3);
+}
+
+.neon-btn:disabled,
+.input-bar button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  transform: none;
+}
+
+.status-copy {
+  color: var(--text-second);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 8px 0 14px;
+}
+
+.input-bar .aux-btn {
+  width: 92px;
+  background: linear-gradient(135deg, #64748b, #475569);
+  box-shadow:
+    0 4px 12px rgba(71, 85, 105, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+}
+
+.input-bar .aux-btn::before {
+  content: '';
+}
+
+.input-bar .aux-btn:hover {
+  background: linear-gradient(135deg, #475569, #334155);
+  box-shadow:
+    0 6px 16px rgba(51, 65, 85, 0.32),
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset;
 }

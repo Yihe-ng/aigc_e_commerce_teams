@@ -62,14 +62,16 @@ class Recorder:
     def save_buffer_to_file(self, buffer):
         if not os.path.exists("cache_data"):
             os.makedirs("cache_data")
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav", dir="cache_data")
-        wf = wave.open(temp_file.name, 'wb')
+        # 使用 mkstemp 创建临时文件，避免 Windows 上的文件锁定问题
+        fd, temp_path = tempfile.mkstemp(suffix=".wav", dir="cache_data")
+        os.close(fd)  # 关闭文件描述符，让 wave 模块可以打开
+        wf = wave.open(temp_path, 'wb')
         wf.setnchannels(1)
         wf.setsampwidth(2)  
         wf.setframerate(16000)
         wf.writeframes(buffer)
         wf.close()
-        return temp_file.name
+        return temp_path
 
     def __get_history_average(self, number):
         total = 0

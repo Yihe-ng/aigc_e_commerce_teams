@@ -51,9 +51,25 @@ class Qwen3ASR:
     def _send_request(self, file_path):
         try:
             util.printInfo(1, self.username, f"正在发送音频到 Qwen3-ASR: {file_path}")
+            
+            # 验证本地文件是否存在且有效
+            if not os.path.exists(file_path):
+                util.printInfo(1, self.username, f"音频文件不存在: {file_path}")
+                self.finalResults = ""
+                return
+                
+            file_size = os.path.getsize(file_path)
+            util.printInfo(1, self.username, f"音频文件大小: {file_size} bytes")
+            
+            if file_size < 100:
+                util.printInfo(1, self.username, f"音频文件太小，可能无效")
+                self.finalResults = ""
+                return
+            
+            # 正确设置文件名和 MIME 类型
+            filename = os.path.basename(file_path)
             with open(file_path, 'rb') as f:
-                files = {'file': f}
-                # 增加超时时间以适应初次运行或长音频
+                files = {'file': (filename, f, 'audio/wav')}
                 response = requests.post(self.url, files=files, timeout=120)
             
             if response.status_code == 200:
@@ -68,6 +84,8 @@ class Qwen3ASR:
              self.finalResults = ""
         except Exception as e:
             util.printInfo(1, self.username, f"Qwen3-ASR 异常: {e}")
+            import traceback
+            traceback.print_exc()
             self.finalResults = ""
         finally:
             self.done = True

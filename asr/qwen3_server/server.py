@@ -8,6 +8,8 @@ import shutil
 import sys
 from unittest.mock import MagicMock
 from modelscope import snapshot_download
+import numpy as np
+import soundfile as sf
 
 # Mock nagisa 以避免导入时的运行时错误
 class MockNagisa:
@@ -16,6 +18,9 @@ class MockNagisa:
 sys.modules['nagisa'] = MockNagisa()
 
 from qwen_asr.inference.qwen3_asr import Qwen3ASRModel
+
+# 最小音频时长（秒）
+MIN_AUDIO_SECONDS = 0.5
 
 # 初始化 FastAPI
 app = FastAPI(title="Qwen3-ASR API Server")
@@ -74,7 +79,64 @@ async def asr_endpoint(file: UploadFile = File(...)):
     try:
         # 执行推理
         print(f"Processing file: {tmp_path}, Size: {os.path.getsize(tmp_path)} bytes")
-        result = asr_model.transcribe(tmp_path)
+        
+        # 使用 soundfile 读取音频（绕过 librosa 的 PySoundFile 问题）
+        audio = None
+        sr = None
+        
+        # 方法1: 尝试 soundfile
+        try:
+            audio, sr = sf.read(tmp_path, dtype="float32", always_2d=False)
+            print(f"Audio loaded via soundfile: shape={audio.shape}, sr={sr}")
+        except Exception as sf_err:
+            print(f"soundfile failed: {sf_err}, trying wave module...")
+            
+            # 方法2: 使用 wave 模块读取
+            import wave
+            try:
+                with wave.open(tmp_path, 'rb') as wf:
+                    sr = wf.getframerate()
+                    n_channels = wf.getnchannels()
+                    sampwidth = wf.getsampwidth()
+                    n_frames = wf.getnframes()
+                    raw_data = wf.readframes(n_frames)
+                    
+                    # 转换为 numpy 数组
+                    if sampwidth == 2:
+                        audio = np.frombuffer(raw_data, dtype=np.int16).astype(np.float32) / 32768.0
+                    elif sampwidth == 4:
+                        audio = np.frombuffer(raw_data, dtype=np.int32).astype(np.float32) / 2147483648.0
+                    else:
+                        raise ValueError(f"Unsupported sample width: {sampwidth}")
+                    
+                    # 转换为单声道
+                    if n_channels > 1:
+                        audio = audio.reshape(-1, n_channels)
+                        audio = np.mean(audio, axis=1).astype(np.float32)
+                    
+                    print(f"Audio loaded via wave: shape={audio.shape}, sr={sr}")
+            except Exception as wave_err:
+                print(f"wave module also failed: {wave_err}")
+                raise HTTPException(status_code=400, detail=f"无法读取音频文件: {sf_err}")
+        
+        if audio is None or sr is None:
+            raise HTTPException(status_code=400, detail="音频加载失败")
+            
+        print(f"Audio info: shape={audio.shape}, sr={sr}, duration={len(audio)/sr:.2f}s")
+        
+        # 检查音频时长是否足够
+        duration = len(audio) / sr
+        if duration < MIN_AUDIO_SECONDS:
+            print(f"Audio too short: {duration:.2f}s < {MIN_AUDIO_SECONDS}s")
+            return {"text": ""}
+        
+        # 确保是单声道
+        if audio.ndim == 2:
+            audio = np.mean(audio, axis=-1).astype(np.float32)
+            print(f"Converted to mono: shape={audio.shape}")
+        
+        # 传递 (audio, sr) 元组给模型，而不是文件路径
+        result = asr_model.transcribe((audio, sr))
         print(f"Raw inference result: {result}, Type: {type(result)}")
         
         text = ""
@@ -93,7 +155,12 @@ async def asr_endpoint(file: UploadFile = File(...)):
              text = str(result)
              
         return {"text": text}
+    except HTTPException:
+        raise
     except Exception as e:
+        import traceback
+        print(f"ASR inference error: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"推理失败: {e}")
     finally:
         # 清理

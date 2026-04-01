@@ -38,6 +38,7 @@ from flask import (
     Flask,
     request,
     jsonify,
+    send_file,
     send_from_directory,
     render_template,
     redirect,
@@ -2684,6 +2685,111 @@ def api_chat():
         return jsonify({"status": "success", "message": "Interaction started"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/asr", methods=["post"])
+def api_asr():
+    upload = request.files.get("file")
+    if upload is None or upload.filename == "":
+        return jsonify({"error": "Missing audio file"}), 400
+
+    asr_url = getattr(config_util, "qwen3_asr_url", "http://127.0.0.1:8001/asr")
+    safe_name = secure_filename(upload.filename) or "recording.webm"
+    
+    # 读取上传的音频数据
+    audio_data = upload.read()
+    
+    # 检查是否需要转换格式（WebM/OGG 等需要转换为 WAV）
+    needs_conversion = not safe_name.lower().endswith('.wav')
+    
+    if needs_conversion:
+        # 使用 pydub 将音频转换为 WAV 格式
+        try:
+            from pydub import AudioSegment
+            import io
+            
+            # 从上传的数据创建 AudioSegment
+            audio = AudioSegment.from_file(io.BytesIO(audio_data))
+            
+            # 转换为 16kHz 单声道 WAV
+            audio = audio.set_frame_rate(16000)
+            audio = audio.set_channels(1)
+            
+            # 导出为 WAV 格式
+            wav_buffer = io.BytesIO()
+            audio.export(wav_buffer, format="wav")
+            wav_buffer.seek(0)
+            
+            # 更新文件名和数据
+            safe_name = safe_name.rsplit('.', 1)[0] + '.wav' if '.' in safe_name else safe_name + '.wav'
+            audio_data = wav_buffer.read()
+            
+        except Exception as e:
+            print(f"Audio conversion error: {e}")
+            return jsonify({"error": f"Audio conversion failed: {e}"}), 400
+
+    try:
+        response = requests.post(
+            asr_url,
+            files={
+                "file": (
+                    safe_name,
+                    audio_data,
+                    "audio/wav",
+                )
+            },
+            timeout=180,
+        )
+    except requests.RequestException as exc:
+        return jsonify({"error": f"ASR service unavailable: {exc}"}), 502
+
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = {"error": response.text or "Invalid ASR response"}
+
+    return jsonify(payload), response.status_code
+
+
+@app.route("/audio/<path:filename>")
+def serve_audio(filename):
+    audio_dir = os.path.join(os.getcwd(), "samples")
+    audio_path = os.path.join(audio_dir, filename)
+    if not os.path.isfile(audio_path):
+        return jsonify({"error": "Audio file not found"}), 404
+    return send_file(audio_path)
+
+
+@app.route("/api/latest-audio")
+def api_latest_audio():
+    samples_dir = Path(os.getcwd()) / "samples"
+    since = request.args.get("since", type=int)
+
+    if not samples_dir.exists():
+        return jsonify({"audio": None})
+
+    candidates = [path for path in samples_dir.glob("sample-*.wav") if path.is_file()]
+    if since is not None:
+        candidates = [
+            path
+            for path in candidates
+            if int(path.stat().st_mtime * 1000) >= since
+        ]
+
+    if not candidates:
+        return jsonify({"audio": None})
+
+    latest = max(candidates, key=lambda path: path.stat().st_mtime)
+    mtime_ms = int(latest.stat().st_mtime * 1000)
+    return jsonify(
+        {
+            "audio": {
+                "filename": latest.name,
+                "mtime_ms": mtime_ms,
+                "url": f"/audio/{latest.name}",
+            }
+        }
+    )
 
 
 @app.route("/api/ws-status")
