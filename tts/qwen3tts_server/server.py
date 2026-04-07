@@ -1,6 +1,7 @@
 import base64
 import inspect
 import io
+import os
 import time
 from contextlib import asynccontextmanager
 
@@ -10,10 +11,14 @@ import torch
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+# 设置环境变量，使用魔搭作为模型源（必须在导入 faster_qwen3_tts 之前设置）
+os.environ["MODELSCOPE_CACHE"] = os.path.join(os.path.expanduser("~"), ".cache", "modelscope")
+
 model = None
 model_error = None
 model_generate_signature = None
 
+# 从魔搭（ModelScope）加载模型，国内访问更稳定
 MODEL_ID = "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"
 DEFAULT_SAMPLE_RATE = 24000
 DEFAULT_CHUNK_SIZE = 8
@@ -102,16 +107,24 @@ def load_model():
 
     try:
         _log("=" * 50)
-        _log(f"正在加载 Faster Qwen3-TTS 模型: {MODEL_ID}")
+        _log(f"正在加载 Faster Qwen3-TTS 模型：{MODEL_ID}")
+        _log("使用魔搭（ModelScope）作为模型源，国内访问更稳定")
 
         from faster_qwen3_tts import FasterQwen3TTS
 
         if torch.cuda.is_available():
-            _log(f"CUDA 可用: {torch.cuda.get_device_name(0)}")
+            _log(f"CUDA 可用：{torch.cuda.get_device_name(0)}")
         else:
-            _log("警告: CUDA 不可用，将使用 CPU 推理")
+            _log("警告：CUDA 不可用，将使用 CPU 推理")
 
-        model = FasterQwen3TTS.from_pretrained(MODEL_ID)
+        # 先从魔搭下载模型到本地缓存
+        _log("正在从魔搭下载模型...")
+        from modelscope import snapshot_download
+        model_dir = snapshot_download(MODEL_ID)
+        _log(f"模型已下载到：{model_dir}")
+
+        # 从本地缓存目录加载模型
+        model = FasterQwen3TTS.from_pretrained(model_dir)
         model_error = None
         model_generate_signature = inspect.signature(model.generate_custom_voice_streaming)
 
