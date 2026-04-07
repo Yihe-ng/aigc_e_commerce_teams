@@ -323,7 +323,7 @@ export default function ProductManagementContent() {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col gap-6 rounded-2xl border-0 bg-[#EFEFEF] p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)] md:p-6">
+    <div className="flex h-full min-h-0 w-full flex-col gap-4">
       {notice ? (
         <div
           className={`rounded-2xl border px-4 py-3 text-sm ${

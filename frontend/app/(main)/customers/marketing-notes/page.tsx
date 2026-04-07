@@ -75,7 +75,7 @@ export default function MarketingNotesPage() {
     setIsGenerating(true);
     setTimeout(() => {
       const baseTitle = originalTitleRef.current || "爆款好物";
-      let firstBlock = currentDraft.content.split(/━\s*━\s*━/)[0].trim();
+      const firstBlock = currentDraft.content.split(/━\s*━\s*━/)[0].trim();
       const aiKeywords = ["救命😱", "【真实体验】", "【深度评测】", "【避坑总结】", "【送礼理由】", "【省钱方案】", "家人们，谁懂啊", "给大家安利", "宝藏单品"];
       let isTainted = false;
       for (const kw of aiKeywords) {
