@@ -65,6 +65,57 @@ def load_index(index_name):
     vectordb = Chroma(persist_directory=index_path, embedding_function=embedding)
     return VectorStoreIndexWrapper(vectorstore=vectordb)
 
+def add_text_to_index(text, metadata, index_name="knowledge_data"):
+    """
+    将用户的最佳文案存入向量库
+    :param text: 文案内容
+    :param metadata: 元数据
+    :param index_name: 索引名称
+    """
+    try:
+        os.environ['OPENAI_API_KEY'] = cfg.key_gpt_api_key
+        os.environ['OPENAI_API_BASE'] = cfg.gpt_base_url
+        if cfg.proxy_config != None:
+            os.environ["OPENAI_PROXY"] = cfg.proxy_config
+
+        index_path = get_index_path(index_name)
+        embedding = OpenAIEmbeddings(model="text-embedding-ada-002")
+        # 使用 Chroma 存入文本
+        vectordb = Chroma(persist_directory=index_path, embedding_function=embedding)
+        vectordb.add_texts(texts=[text], metadatas=[metadata])
+        vectordb.persist()
+        util.log(1, f"已成功将新偏好记录存入 RAG 库: {metadata.get('product_name', '未知商品')}")
+        return True
+    except Exception as e:
+        util.log(1, f"存入 RAG 库失败: {e}")
+        return False
+
+def get_similar_texts(query, user_id=None, index_name="knowledge_data", k=3):
+    """
+    根据当前需求，检索出相似的历史最佳文案作为参考
+    :param query: 搜索词
+    :param user_id: 用户唯一标识，用于过滤个人偏好
+    :param k: 检索数量
+    """
+    try:
+        os.environ['OPENAI_API_KEY'] = cfg.key_gpt_api_key
+        os.environ['OPENAI_API_BASE'] = cfg.gpt_base_url
+        index_path = get_index_path(index_name)
+        embedding = OpenAIEmbeddings(model="text-embedding-ada-002")
+        vectordb = Chroma(persist_directory=index_path, embedding_function=embedding)
+        
+        # 构建过滤器
+        filter_dict = {}
+        if user_id:
+            filter_dict['user_id'] = user_id
+            
+        # 搜索最相似的 K 条记录
+        results = vectordb.similarity_search(query, k=k, filter=filter_dict if filter_dict else None)
+        return [doc.page_content for doc in results]
+    except Exception as e:
+        util.log(1, f"检索 RAG 库失败: {e}")
+        return []
+
 def save_all():
     os.environ['OPENAI_API_KEY'] = cfg.key_gpt_api_key
     os.environ['OPENAI_API_BASE'] = cfg.gpt_base_url

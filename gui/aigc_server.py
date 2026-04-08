@@ -59,6 +59,7 @@ from core import wsa_server
 from core.interact import Interact
 from core.task_db import Task_Db
 import fay_booter
+from llm import nlp_langchain
 import pandas as pd
 import subprocess
 from http import HTTPStatus
@@ -264,9 +265,20 @@ def analyze_customer():
         # 构建 Prompt
         # 这里我们利用 DashScope (通义千问) 或 OpenAI 接口
         # 为了演示，如果没配置key，我们返回模拟数据
+        # 【新增：RAG 偏好注入】
+        # 检索该用户历史保存过的最佳文案，作为生成参考
+        user_id = session.get('user_id', 'anonymous')
+        similar_copies = nlp_langchain.get_similar_texts(product_name, user_id=user_id, k=2)
+        
+        preference_context = ""
+        if similar_copies:
+            preference_context = "\n以下是该用户之前保存过的、最满意的营销文案案例，请参考其风格和偏好进行创作：\n"
+            for i, copy in enumerate(similar_copies):
+                preference_context += f"案例 {i+1}：{copy}\n"
 
         prompt = f"""
         你是一位专业的消费心理学家和金牌电商文案。
+        {preference_context}
         
         【任务 1：客户画像分析】
         请根据以下客户数据，分析该客户的：
@@ -502,6 +514,15 @@ def _submit_form_data_impl():
 
         text_path = f"products/{target_product_id}/generated_content/marketing.txt"
         local_bucket.put_object(text_path, ad_best)
+
+        # 【同步：RAG 文案偏好记录】
+        user_id = session.get('user_id', 'anonymous')
+        nlp_langchain.add_text_to_index(ad_best, {
+            'user_id': user_id,
+            'product_name': product_name,
+            'timestamp': str(time.time()),
+            'source': 'user_best_plan'
+        })
 
         return jsonify({"status": "success", "message": "已成功保存到商品营销素材库"})
     except ValueError as e:
