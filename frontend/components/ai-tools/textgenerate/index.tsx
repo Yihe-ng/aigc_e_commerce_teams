@@ -58,7 +58,11 @@ export default function TextGenerateChat() {
   const abortControllerRef = useRef<AbortController | null>(null)
   const activeRequestIdRef = useRef(0)
 
-  const handleSend = useCallback(async (content: string) => {
+  const handleSend = useCallback(async (content: unknown) => {
+    /** HeroUI/React Aria 的 onPress 可能传入 PressEvent；若当字符串用会触发异常或产生 "[object Event]" */
+    if (typeof content !== "string") {
+      return
+    }
     const normalizedContent = content.trim()
     if (!normalizedContent || isLoading) {
       return
@@ -205,8 +209,11 @@ export default function TextGenerateChat() {
     }
   }, [])
 
-  const handleCopy = useCallback((content: string) => {
-    navigator.clipboard.writeText(content)
+  const handleCopy = useCallback((content: unknown) => {
+    if (typeof content !== "string") {
+      return
+    }
+    void navigator.clipboard.writeText(content)
   }, [])
 
   const handleProductSubmit = useCallback(
@@ -249,7 +256,10 @@ export default function TextGenerateChat() {
   )
 
   const handleAdopt = useCallback(
-    (content: string, copyType: SaveDraftValue["copy_type"]) => {
+    (content: unknown, copyType: SaveDraftValue["copy_type"]) => {
+      if (typeof content !== "string") {
+        return
+      }
       startTransition(() => {
         setSaveDraft((current) => ({
           ...current,

@@ -757,13 +757,13 @@ export default function ImageGenerator() {
   return (
     <>
       <Toast.Provider placement="bottom end" />
-      <Card className="w-full rounded-2xl border-0 bg-[#EFEFEF] shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
-        <Card.Header className="border-b border-gray-200 px-6 py-2.5">
+      <Card className="w-full rounded-2xl border-0 bg-[#EFEFEF] shadow-[0_4px_12px_rgba(0,0,0,0.04)] dark:bg-slate-900/85 dark:shadow-[0_4px_12px_rgba(0,0,0,0.35)]">
+        <Card.Header className="border-b border-gray-200 px-6 py-2.5 dark:border-slate-700">
           <div>
-            <Card.Title className="text-lg font-semibold text-gray-800">
+            <Card.Title className="text-lg font-semibold text-gray-800 dark:text-slate-100">
               营销图创作
             </Card.Title>
-            <Card.Description className="mt-1 text-sm text-gray-500">
+            <Card.Description className="mt-1 text-sm text-gray-500 dark:text-slate-400">
               AI 驱动的商品营销图生成工具
             </Card.Description>
           </div>

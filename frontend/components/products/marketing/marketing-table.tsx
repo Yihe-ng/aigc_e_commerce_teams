@@ -31,16 +31,16 @@ export default function MarketingTable(props: MarketingTableProps) {
   } = props
 
   return (
-    <Card className="mt-6 overflow-hidden rounded-3xl border-none bg-[#F8F8F8] shadow-xl">
-      <Card.Header className="flex items-center justify-between border-b border-slate-100 px-8 pb-4 pt-8">
+    <Card className="mt-6 overflow-hidden rounded-3xl border-none bg-[#F8F8F8] shadow-xl dark:bg-slate-900/90 dark:shadow-black/30 dark:ring-1 dark:ring-white/10">
+      <Card.Header className="flex items-center justify-between border-b border-slate-100 px-8 pb-4 pt-8 dark:border-slate-800">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#91C1FA]/10 text-[#91C1FA]">
             <List className="h-5 w-5" />
           </div>
-          <Card.Title className="text-xl font-bold text-slate-800">已生成素材列表</Card.Title>
+          <Card.Title className="text-xl font-bold text-slate-800 dark:text-slate-100">已生成素材列表</Card.Title>
         </div>
         {!isLoading ? (
-          <span className="text-sm font-medium text-slate-400">共 {products.length} 个商品素材</span>
+          <span className="text-sm font-medium text-slate-400 dark:text-slate-500">共 {products.length} 个商品素材</span>
         ) : null}
       </Card.Header>
 
@@ -48,7 +48,7 @@ export default function MarketingTable(props: MarketingTableProps) {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center space-y-4 py-24">
             <Spinner size="lg" color="current" />
-            <p className="font-medium text-slate-500">正在加载营销数据，请稍候...</p>
+            <p className="font-medium text-slate-500 dark:text-slate-400">正在加载营销数据，请稍候...</p>
           </div>
         ) : errorMsg ? (
           <div className="flex flex-col items-center justify-center space-y-4 bg-red-50/30 py-24">
@@ -64,15 +64,15 @@ export default function MarketingTable(props: MarketingTableProps) {
             </button>
           </div>
         ) : products.length === 0 ? (
-          <div className="flex flex-col items-center py-24 text-slate-400">
-            <SearchX className="mb-3 h-12 w-12 text-slate-300" />
-            <p className="text-lg font-medium text-slate-500">暂无营销素材</p>
-            <p className="mt-1 text-sm">请先前往文案智造器或营销图创作生成内容。</p>
+          <div className="flex flex-col items-center py-24 text-slate-400 dark:text-slate-500">
+            <SearchX className="mb-3 h-12 w-12 text-slate-300 dark:text-slate-600" />
+            <p className="text-lg font-medium text-slate-500 dark:text-slate-400">暂无营销素材</p>
+            <p className="mt-1 text-sm dark:text-slate-500">请先前往文案智造器或营销图创作生成内容。</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed text-left text-sm text-slate-600">
-              <thead className="border-b border-slate-200 bg-[#EFEFEF] text-xs uppercase text-slate-500">
+            <table className="w-full table-fixed text-left text-sm text-slate-600 dark:text-slate-300">
+              <thead className="border-b border-slate-200 bg-[#EFEFEF] text-xs uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-400">
                 <tr>
                   <th style={{ width: "12%" }} className="px-6 py-4 font-semibold tracking-wider">商品名称</th>
                   <th style={{ width: "28%" }} className="px-6 py-4 font-semibold tracking-wider">营销文案</th>
@@ -81,7 +81,7 @@ export default function MarketingTable(props: MarketingTableProps) {
                   <th style={{ width: "10%" }} className="px-6 py-4 text-center font-semibold tracking-wider">操作</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {products.map((product) => {
                   const posterUrl = getMediaUrl(product.posters?.[0]?.url)
                   const videoUrl = getMediaUrl(product.videos?.[0]?.url)
@@ -92,15 +92,15 @@ export default function MarketingTable(props: MarketingTableProps) {
                       className={`group transition-all duration-300 ${
                         deletingItems.includes(product.product_name)
                           ? "scale-95 bg-red-50 opacity-0"
-                          : "opacity-100 hover:bg-gray-100"
+                          : "opacity-100 hover:bg-gray-100 dark:hover:bg-slate-800/60"
                       }`}
                     >
-                      <td className="truncate px-6 py-6 text-base font-bold text-slate-800" title={product.product_name}>
+                      <td className="truncate px-6 py-6 text-base font-bold text-slate-800 dark:text-slate-100" title={product.product_name}>
                         {product.product_name || "未命名商品"}
                       </td>
                       <td className="px-6 py-6">
                         {product.marketing_text ? (
-                          <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm leading-relaxed text-slate-600">
+                          <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm leading-relaxed text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
                             {product.marketing_text}
                           </div>
                         ) : (

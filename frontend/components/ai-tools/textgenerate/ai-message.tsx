@@ -79,7 +79,7 @@ export function AIMessage({
                     aria-label={`Ask question: ${question}`}
                     isDisabled={interactionsDisabled || isStreaming}
                     onPress={() => onQuestionClick?.(question)}
-                    className="h-auto rounded-xl border-0 bg-[#EFEFEF] px-3 py-2 text-xs text-gray-700 transition-all duration-200 hover:bg-[#E5E5E5] hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#91C1FA] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                    className="h-auto rounded-xl border-0 bg-[#EFEFEF] px-3 py-2 text-xs text-gray-700 transition-all duration-200 hover:bg-[#E5E5E5] hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#91C1FA] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-slate-100 dark:focus-visible:ring-offset-slate-900"
                   >
                     {question}
                   </Button>
@@ -95,7 +95,7 @@ export function AIMessage({
                 variant="ghost"
                 isDisabled={interactionsDisabled || isStreaming}
                 onPress={() => onAdopt(cleanContent)}
-                className="rounded-lg bg-[#EEF6FF] text-[#3B82F6] hover:bg-[#E0EEFF]"
+                className="rounded-lg bg-[#EEF6FF] text-[#3B82F6] hover:bg-[#E0EEFF] dark:bg-sky-950/50 dark:text-sky-400 dark:hover:bg-sky-950/70"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 采纳此方案
@@ -109,7 +109,9 @@ export function AIMessage({
                     size="sm"
                     aria-label="Regenerate response"
                     isDisabled={interactionsDisabled || isStreaming}
-                    onPress={onRegenerate}
+                    onPress={() => {
+                      onRegenerate?.()
+                    }}
                     className="
                       rounded-lg
                       bg-transparent
@@ -135,7 +137,9 @@ export function AIMessage({
                     isIconOnly
                     size="sm"
                     aria-label="Copy message"
-                    onPress={onCopy}
+                    onPress={() => {
+                      onCopy?.()
+                    }}
                     className="
                       rounded-lg
                       bg-transparent

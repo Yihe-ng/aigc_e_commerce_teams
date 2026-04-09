@@ -21,13 +21,13 @@ export function PostActions({
   const isUploadDisabled = !imageUrl || Boolean(uploadDisabledReason)
 
   return (
-    <Card className="rounded-xl border-0 bg-[#F8F8F8] shadow-none">
-      <Card.Header className="border-b border-gray-200 px-5 py-4">
+    <Card className="rounded-xl border-0 bg-[#F8F8F8] shadow-none dark:bg-slate-900/90 dark:ring-1 dark:ring-white/10">
+      <Card.Header className="border-b border-gray-200 px-5 py-4 dark:border-slate-700">
         <div>
-          <Card.Title className="text-base font-semibold text-gray-800">
+          <Card.Title className="text-base font-semibold text-gray-800 dark:text-slate-100">
             后续操作
           </Card.Title>
-          <Card.Description className="mt-1 text-sm text-gray-500">
+          <Card.Description className="mt-1 text-sm text-gray-500 dark:text-slate-400">
             图片生成完成后，你可以查看原图，或在归属商品明确时上传到营销素材库。
           </Card.Description>
         </div>
@@ -43,7 +43,7 @@ export function PostActions({
           上传到素材库
         </Button>
         {uploadDisabledReason ? (
-          <p className="rounded-xl bg-white px-4 py-3 text-sm text-gray-500 shadow-sm">
+          <p className="rounded-xl bg-white px-4 py-3 text-sm text-gray-500 shadow-sm dark:bg-slate-800/80 dark:text-slate-300">
             {uploadDisabledReason}
           </p>
         ) : null}

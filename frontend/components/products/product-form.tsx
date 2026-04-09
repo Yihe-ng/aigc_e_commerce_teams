@@ -95,16 +95,16 @@ export default function ProductForm(props: ProductFormProps) {
   const currentImageCount = uploadedUrls.length + previewImages.length
 
   return (
-    <Card className="w-full rounded-2xl border-0 bg-[#EFEFEF] shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+    <Card className="w-full rounded-2xl border-0 bg-[#EFEFEF] shadow-[0_4px_12px_rgba(0,0,0,0.04)] dark:bg-slate-900/85 dark:shadow-[0_4px_12px_rgba(0,0,0,0.35)]">
       <form onSubmit={onSubmit}>
-        <Card.Header className="border-b border-gray-200 px-6 py-2.5">
+        <Card.Header className="border-b border-gray-200 px-6 py-2.5 dark:border-slate-700">
           <div className="flex items-center gap-2.5">
             {editingId ? (
               <Edit className="h-5 w-5 text-amber-500" />
             ) : (
               <PlusCircle className="h-5 w-5 text-[#91C1FA]" />
             )}
-            <Card.Title className="text-lg font-semibold text-gray-800">
+            <Card.Title className="text-lg font-semibold text-gray-800 dark:text-slate-100">
               {editingId ? "编辑商品信息" : "添加商品信息"}
             </Card.Title>
           </div>
@@ -129,7 +129,7 @@ export default function ProductForm(props: ProductFormProps) {
             <div className="flex flex-col gap-5">
               {/* 商品名称 - 双倍高度 */}
               <label className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-gray-700">
+                <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">
                   商品名称 <span className="text-red-500">*</span>
                 </span>
                 <input
@@ -138,13 +138,13 @@ export default function ProductForm(props: ProductFormProps) {
                   value={formData.name}
                   onChange={onChange}
                   placeholder="请输入商品名称"
-                  className="h-20 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-700 shadow-[0_2px_4px_rgba(0,0,0,0.01)] outline-none transition-all placeholder:text-gray-400 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  className="h-20 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-700 shadow-[0_2px_4px_rgba(0,0,0,0.01)] outline-none transition-all placeholder:text-gray-400 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-500"
                 />
               </label>
 
               {/* 商品类别 */}
               <label className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-gray-700">
+                <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">
                   商品类别 <span className="text-red-500">*</span>
                 </span>
                 <select
@@ -152,7 +152,7 @@ export default function ProductForm(props: ProductFormProps) {
                   name="category"
                   value={formData.category}
                   onChange={onChange}
-                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-700 shadow-[0_2px_4px_rgba(0,0,0,0.01)] outline-none transition-all hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-700 shadow-[0_2px_4px_rgba(0,0,0,0.01)] outline-none transition-all hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-500"
                 >
                   <option value="">选择分类</option>
                   {categories.map((category) => (
@@ -165,7 +165,7 @@ export default function ProductForm(props: ProductFormProps) {
 
               {/* 价格 */}
               <label className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-gray-700">
+                <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">
                   价格 <span className="text-red-500">*</span>
                 </span>
                 <div className="relative">
@@ -180,7 +180,7 @@ export default function ProductForm(props: ProductFormProps) {
                     value={formData.price}
                     onChange={onChange}
                     placeholder="0.00"
-                    className="h-11 w-full rounded-xl border border-gray-200 bg-white py-3 pl-9 pr-4 text-sm text-gray-700 shadow-[0_2px_4px_rgba(0,0,0,0.01)] outline-none transition-all hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                    className="h-11 w-full rounded-xl border border-gray-200 bg-white py-3 pl-9 pr-4 text-sm text-gray-700 shadow-[0_2px_4px_rgba(0,0,0,0.01)] outline-none transition-all hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-500"
                   />
                 </div>
               </label>
@@ -189,8 +189,8 @@ export default function ProductForm(props: ProductFormProps) {
             {/* 右侧：图片区域 - 上传框 + Carousel 预览 */}
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-700">商品图片</span>
-                <span className="text-xs text-gray-500">
+                <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">商品图片</span>
+                <span className="text-xs text-gray-500 dark:text-slate-400">
                   {currentImageCount} / {MAX_IMAGES} 张
                 </span>
               </div>
@@ -200,15 +200,15 @@ export default function ProductForm(props: ProductFormProps) {
                 {/* 左侧：上传框（28%） */}
                 <div className="h-full w-[28%]">
                   <label
-                    className="flex h-full cursor-pointer flex-col items-center justify-center rounded-[24px] border-2 border-dashed border-gray-300 bg-gray-50 transition-all hover:border-blue-400 hover:bg-blue-50/50"
+                    className="flex h-full cursor-pointer flex-col items-center justify-center rounded-[24px] border-2 border-dashed border-gray-300 bg-gray-50 transition-all hover:border-blue-400 hover:bg-blue-50/50 dark:border-slate-600 dark:bg-slate-800/50 dark:hover:border-sky-500 dark:hover:bg-slate-800/80"
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={handleDrop}
                   >
                     <UploadCloud className="mb-2 h-8 w-8 text-blue-400" />
-                    <p className="mb-1 text-center text-sm text-gray-600">
-                      <span className="font-semibold text-blue-500">点击选择</span>
+                    <p className="mb-1 text-center text-sm text-gray-600 dark:text-slate-300">
+                      <span className="font-semibold text-blue-500 dark:text-sky-400">点击选择</span>
                     </p>
-                    <p className="text-center text-xs text-gray-400">或拖拽图片</p>
+                    <p className="text-center text-xs text-gray-400 dark:text-slate-500">或拖拽图片</p>
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -239,7 +239,7 @@ export default function ProductForm(props: ProductFormProps) {
               </div>
 
               {/* 提示信息 */}
-              <p className="text-xs text-gray-400">支持 JPG、PNG、WEBP，最大 20MB</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500">支持 JPG、PNG、WEBP，最大 20MB</p>
             </div>
           </div>
 
@@ -256,7 +256,7 @@ export default function ProductForm(props: ProductFormProps) {
                 onChange={onChange}
                 rows={5}
                 placeholder="每行输入一个特点，这些特点会用于 AIGC 内容生成。"
-                className="min-h-[140px] w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm leading-6 text-gray-700 shadow-[0_2px_4px_rgba(0,0,0,0.01)] outline-none transition-all placeholder:text-gray-400 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                className="min-h-[140px] w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm leading-6 text-gray-700 shadow-[0_2px_4px_rgba(0,0,0,0.01)] outline-none transition-all placeholder:text-gray-400 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </label>
 
@@ -271,19 +271,19 @@ export default function ProductForm(props: ProductFormProps) {
                 onChange={onChange}
                 rows={5}
                 placeholder="请输入商品的详细描述信息，方便 AI 更全面地理解商品。"
-                className="min-h-[140px] w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm leading-6 text-gray-700 shadow-[0_2px_4px_rgba(0,0,0,0.01)] outline-none transition-all placeholder:text-gray-400 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                className="min-h-[140px] w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm leading-6 text-gray-700 shadow-[0_2px_4px_rgba(0,0,0,0.01)] outline-none transition-all placeholder:text-gray-400 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </label>
           </div>
         </Card.Content>
 
-        <Card.Footer className="flex justify-end gap-4 border-t border-gray-200 px-6 pb-6 pt-4">
+        <Card.Footer className="flex justify-end gap-4 border-t border-gray-200 px-6 pb-6 pt-4 dark:border-slate-700">
           <Button
             type="button"
             variant="secondary"
             onPress={onReset}
             isDisabled={isSubmitting}
-            className="rounded-xl border border-gray-200 bg-white px-6 font-medium text-gray-700 shadow-sm hover:bg-gray-100"
+            className="rounded-xl border border-gray-200 bg-white px-6 font-medium text-gray-700 shadow-sm hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             <RotateCcw className="mr-2 h-4 w-4" />
             重置清空

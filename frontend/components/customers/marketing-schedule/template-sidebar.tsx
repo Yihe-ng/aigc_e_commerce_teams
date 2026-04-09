@@ -17,16 +17,16 @@ export function TemplateSidebar({
 }: TemplateSidebarProps) {
   return (
     <aside className="w-full xl:w-72">
-      <div className="rounded-[32px] border border-slate-100 bg-white p-7 shadow-sm">
+      <div className="rounded-[32px] border border-slate-100 bg-white p-7 shadow-sm dark:border-slate-800 dark:bg-slate-900/85 dark:shadow-none">
         <div className="mb-6 flex items-center justify-between">
-          <h3 className="flex items-center font-black italic text-slate-800">
-            <Plus className="mr-1 h-4 w-4 text-blue-600" />
+          <h3 className="flex items-center font-black italic text-slate-800 dark:text-slate-100">
+            <Plus className="mr-1 h-4 w-4 text-blue-600 dark:text-sky-400" />
             可选择事件
           </h3>
           <button
             type="button"
             onClick={onOpenCreateTemplate}
-            className="rounded-xl p-1.5 text-blue-600 transition-colors hover:bg-blue-50"
+            className="rounded-xl p-1.5 text-blue-600 transition-colors hover:bg-blue-50 dark:text-sky-400 dark:hover:bg-slate-800"
           >
             <Plus className="h-4 w-4" />
           </button>

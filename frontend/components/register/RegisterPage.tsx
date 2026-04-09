@@ -53,9 +53,9 @@ export default function RegisterPage() {
     <main className="relative min-h-screen w-full overflow-hidden">
       <ParticlesBackground />
       <div className="absolute inset-0 flex items-center justify-center">
-        <Card className="relative w-full max-w-[420px] bg-white/30 backdrop-blur-xl border border-white/40 shadow-[0_20px_50px_rgba(37,99,235,0.12)] rounded-[20px] overflow-hidden">
+        <Card className="relative w-full max-w-[420px] bg-white/30 backdrop-blur-xl border border-white/40 shadow-[0_20px_50px_rgba(37,99,235,0.12)] dark:bg-slate-900/50 dark:border-white/12 dark:shadow-[0_20px_50px_rgba(0,0,0,0.45)] rounded-[20px] overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/50 via-white/25 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-white/50 via-white/25 to-transparent dark:from-white/10 dark:via-white/5 dark:to-transparent" />
             <div
               className="absolute inset-0 opacity-60"
               style={{
@@ -68,13 +68,17 @@ export default function RegisterPage() {
             <div className="flex flex-col items-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={logoUrl} alt="智行合一" className="h-[100px] md:h-[120px] w-auto object-contain" />
-              <CardTitle className="mt-1 text-xl font-bold text-slate-800 text-center">注册账号</CardTitle>
+              <CardTitle className="mt-1 text-xl font-bold text-slate-800 text-center dark:text-slate-100">
+                注册账号
+              </CardTitle>
             </div>
           </CardHeader>
           <form onSubmit={onSubmit}>
             <CardContent className="relative z-10 px-8 py-4 space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="username" className="text-slate-700 text-sm font-medium">账号</Label>
+                <Label htmlFor="username" className="text-slate-700 text-sm font-medium dark:text-slate-300">
+                  账号
+                </Label>
                 <div className="relative group/input">
                   <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
                     <User className="h-5 w-5 text-slate-400 group-focus-within/input:text-blue-600 transition-colors duration-200" />
@@ -83,14 +87,16 @@ export default function RegisterPage() {
                     id="username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full h-14 rounded-2xl border-0 outline-none ring-0 focus:ring-0 focus:outline-none focus:border-0 focus-visible:ring-0 focus-visible:outline-none focus-visible:border-0 pl-12 pr-5 font-medium text-slate-700 placeholder:text-slate-400 bg-[#EFF4F9] shadow-[inset_2px_2px_3px_rgba(71,85,105,0.12),inset_6px_6px_12px_rgba(71,85,105,0.04),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] transition-all duration-400 ease-out focus:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus-visible:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus:text-blue-600 focus-visible:text-blue-600"
+                    className="w-full h-14 rounded-2xl border-0 outline-none ring-0 focus:ring-0 focus:outline-none focus:border-0 focus-visible:ring-0 focus-visible:outline-none focus-visible:border-0 pl-12 pr-5 font-medium text-slate-700 placeholder:text-slate-400 bg-[#EFF4F9] shadow-[inset_2px_2px_3px_rgba(71,85,105,0.12),inset_6px_6px_12px_rgba(71,85,105,0.04),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] transition-all duration-400 ease-out focus:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus-visible:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus:text-blue-600 focus-visible:text-blue-600 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-500 dark:shadow-[inset_2px_2px_8px_rgba(0,0,0,0.35),0_0_0_1000px_rgb(30_41_59_/_0.95)_inset] dark:focus:text-sky-300 dark:focus-visible:text-sky-300"
                     placeholder="请输入账号"
                     style={{ WebkitTextFillColor: "#334155" }}
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-slate-700 text-sm font-medium">密码</Label>
+                <Label htmlFor="password" className="text-slate-700 text-sm font-medium dark:text-slate-300">
+                  密码
+                </Label>
                 <div className="relative group/input">
                   <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
                     <Lock className="h-5 w-5 text-slate-400 group-focus-within/input:text-blue-600 transition-colors duration-200" />
@@ -100,7 +106,7 @@ export default function RegisterPage() {
                     type={showPwd ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full h-14 rounded-2xl border-0 outline-none ring-0 focus:ring-0 focus:outline-none focus:border-0 focus-visible:ring-0 focus-visible:outline-none focus-visible:border-0 pl-12 pr-12 font-medium text-slate-700 placeholder:text-slate-400 bg-[#EFF4F9] shadow-[inset_2px_2px_3px_rgba(71,85,105,0.12),inset_6px_6px_12px_rgba(71,85,105,0.04),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] transition-all duration-400 ease-out focus:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus-visible:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus:text-blue-600 focus-visible:text-blue-600"
+                    className="w-full h-14 rounded-2xl border-0 outline-none ring-0 focus:ring-0 focus:outline-none focus:border-0 focus-visible:ring-0 focus-visible:outline-none focus-visible:border-0 pl-12 pr-12 font-medium text-slate-700 placeholder:text-slate-400 bg-[#EFF4F9] shadow-[inset_2px_2px_3px_rgba(71,85,105,0.12),inset_6px_6px_12px_rgba(71,85,105,0.04),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] transition-all duration-400 ease-out focus:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus-visible:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus:text-blue-600 focus-visible:text-blue-600 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-500 dark:shadow-[inset_2px_2px_8px_rgba(0,0,0,0.35),0_0_0_1000px_rgb(30_41_59_/_0.95)_inset] dark:focus:text-sky-300 dark:focus-visible:text-sky-300"
                     placeholder="请输入密码"
                     style={{ WebkitTextFillColor: "#334155" }}
                   />
@@ -115,7 +121,9 @@ export default function RegisterPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirm" className="text-slate-700 text-sm font-medium">确认密码</Label>
+                <Label htmlFor="confirm" className="text-slate-700 text-sm font-medium dark:text-slate-300">
+                  确认密码
+                </Label>
                 <div className="relative group/input">
                   <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
                     <Lock className="h-5 w-5 text-slate-400 group-focus-within/input:text-blue-600 transition-colors duration-200" />
@@ -125,7 +133,7 @@ export default function RegisterPage() {
                     type={showConfirm ? "text" : "password"}
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
-                    className="w-full h-14 rounded-2xl border-0 outline-none ring-0 focus:ring-0 focus:outline-none focus:border-0 focus-visible:ring-0 focus-visible:outline-none focus-visible:border-0 pl-12 pr-12 font-medium text-slate-700 placeholder:text-slate-400 bg-[#EFF4F9] shadow-[inset_2px_2px_3px_rgba(71,85,105,0.12),inset_6px_6px_12px_rgba(71,85,105,0.04),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] transition-all duration-400 ease-out focus:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus-visible:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus:text-blue-600 focus-visible:text-blue-600"
+                    className="w-full h-14 rounded-2xl border-0 outline-none ring-0 focus:ring-0 focus:outline-none focus:border-0 focus-visible:ring-0 focus-visible:outline-none focus-visible:border-0 pl-12 pr-12 font-medium text-slate-700 placeholder:text-slate-400 bg-[#EFF4F9] shadow-[inset_2px_2px_3px_rgba(71,85,105,0.12),inset_6px_6px_12px_rgba(71,85,105,0.04),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] transition-all duration-400 ease-out focus:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus-visible:shadow-[inset_0px_0px_8px_rgba(59,130,246,0.3),inset_0px_0px_24px_rgba(59,130,246,0.12),inset_-3px_-3px_8px_rgba(255,255,255,1),0_0_0_1000px_#EFF4F9_inset] focus:text-blue-600 focus-visible:text-blue-600 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-500 dark:shadow-[inset_2px_2px_8px_rgba(0,0,0,0.35),0_0_0_1000px_rgb(30_41_59_/_0.95)_inset] dark:focus:text-sky-300 dark:focus-visible:text-sky-300"
                     placeholder="请再次输入密码"
                     style={{ WebkitTextFillColor: "#334155" }}
                   />
@@ -150,7 +158,7 @@ export default function RegisterPage() {
               </Button>
             </CardFooter>
           </form>
-          <div className="px-8 pb-6 text-center text-xs text-slate-500">
+          <div className="px-8 pb-6 text-center text-xs text-slate-500 dark:text-slate-400">
             已有账号?{" "}
             <a
               href="#"
@@ -158,7 +166,7 @@ export default function RegisterPage() {
                 e.preventDefault()
                 router.push("/")
               }}
-              className="text-blue-600 hover:text-blue-700 hover:underline"
+              className="text-blue-600 hover:text-blue-700 hover:underline dark:text-sky-400 dark:hover:text-sky-300"
             >
               返回登录
             </a>

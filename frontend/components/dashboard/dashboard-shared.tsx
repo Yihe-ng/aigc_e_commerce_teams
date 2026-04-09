@@ -69,17 +69,18 @@ export function KpiCard(props: {
   trendLabel: string
   icon: ReactNode
   accentClass?: string
+  className?: string
 }) {
-  const { title, value, trendLabel, icon, accentClass = "text-sky-600 dark:text-sky-400" } = props
+  const { title, value, trendLabel, icon, accentClass = "text-sky-600 dark:text-sky-400", className } = props
   return (
-    <Card variant="default" className={cn("relative overflow-hidden", panelOnMutedBgClass, panelHoverClass)}>
-      <Card.Header className="relative z-10 pb-1">
+    <Card variant="default" className={cn("relative shrink-0 overflow-hidden", panelOnMutedBgClass, panelHoverClass, className)}>
+      <Card.Header className="relative z-10 pb-2 pt-1">
         <Card.Title className="text-sm font-medium text-slate-600 dark:text-slate-400">{title}</Card.Title>
       </Card.Header>
-      <Card.Content className="relative z-10 gap-2 pt-0">
+      <Card.Content className="relative z-10 gap-3 pb-5 pt-0">
         <p className={`text-3xl font-semibold tabular-nums tracking-tight ${accentClass}`}>{value}</p>
-        <p className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
-          <TrendingUp className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+        <p className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
+          <TrendingUp className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
           {trendLabel}
         </p>
       </Card.Content>
@@ -98,35 +99,44 @@ export function ChartCard(props: {
   variant: "donut" | "bars"
   legend?: { label: string; color: string }[]
   updatedAt?: string
+  className?: string
 }) {
-  const { title, variant, legend, updatedAt = UPDATED_AT } = props
+  const { title, variant, legend, updatedAt = UPDATED_AT, className } = props
   return (
-    <Card variant="default" className={cn("min-h-[280px]", panelOnMutedBgClass, panelHoverClass)}>
-      <Card.Header className="flex flex-row flex-wrap items-start justify-between gap-2 pb-2">
-        <Card.Title className="text-base">{title}</Card.Title>
-        <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400">更新于: {updatedAt}</span>
+    <Card
+      variant="default"
+      className={cn(
+        "min-h-[300px] shrink-0 sm:min-h-[320px]",
+        panelOnMutedBgClass,
+        panelHoverClass,
+        className,
+      )}
+    >
+      <Card.Header className="flex flex-row flex-wrap items-start justify-between gap-3 pb-3 pt-1">
+        <Card.Title className="text-base font-semibold sm:text-lg">{title}</Card.Title>
+        <span className="text-sm tabular-nums text-slate-500 dark:text-slate-400">更新于: {updatedAt}</span>
       </Card.Header>
-      <Card.Content className="flex flex-1 flex-col items-center justify-center gap-4 pt-0">
+      <Card.Content className="flex flex-col items-center justify-center gap-4 px-4 pb-6 pt-0 sm:px-6">
         {variant === "donut" ? (
           <div
-            className="size-40 shrink-0 rounded-full border-[14px] border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40"
+            className="size-44 shrink-0 rounded-full border-[14px] border-slate-200 bg-slate-50 sm:size-48 dark:border-slate-700 dark:bg-slate-900/40"
             aria-hidden
           />
         ) : (
-          <div className="flex h-40 w-full max-w-xs flex-col justify-end gap-2 px-2" aria-hidden>
+          <div className="flex h-44 w-full max-w-sm flex-col justify-end gap-2.5 px-1 sm:h-48" aria-hidden>
             {[0.45, 0.72, 0.55, 0.9, 0.38].map((h, i) => (
-              <div key={i} className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div key={i} className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                 <div
                   className="h-full rounded-full bg-slate-300 dark:bg-slate-600"
                   style={{ width: `${h * 100}%` }}
                 />
               </div>
             ))}
-            <span className="text-center text-xs text-slate-500">商家数量</span>
+            <span className="text-center text-sm text-slate-500">商家数量</span>
           </div>
         )}
         {legend && legend.length > 0 ? (
-          <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-slate-600 dark:text-slate-400">
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-slate-600 dark:text-slate-400">
             {legend.map((item) => (
               <span key={item.label} className="inline-flex items-center gap-1.5">
                 <span className="size-2 rounded-full" style={{ backgroundColor: item.color }} aria-hidden />
@@ -146,14 +156,24 @@ export function FilterSelect(props: {
   defaultValue?: string
   items: { id: string; label: string }[]
   className?: string
+  /** 与 onSelectionChange 同时传入时为受控模式 */
+  selectedKey?: string | null
+  onSelectionChange?: (key: string | null) => void
 }) {
-  const { label, placeholder = "请选择", defaultValue, items, className } = props
+  const { label, placeholder = "请选择", defaultValue, items, className, selectedKey, onSelectionChange } = props
+  const controlled = typeof onSelectionChange === "function" && selectedKey !== undefined
   return (
     <Select
       className={className ?? "min-w-[140px] flex-1"}
       placeholder={placeholder}
-      defaultValue={defaultValue}
       variant="secondary"
+      {...(controlled
+        ? {
+            selectedKey: selectedKey ?? null,
+            onSelectionChange: (key: unknown) =>
+              onSelectionChange?.(key == null || key === "" ? null : String(key)),
+          }
+        : { defaultValue })}
     >
       <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{label}</Label>
       <Select.Trigger>

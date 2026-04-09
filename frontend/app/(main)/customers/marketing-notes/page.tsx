@@ -166,20 +166,20 @@ export default function MarketingNotesPage() {
     <div className="space-y-6">
       {/* 仅仅保留了原版的标题 */}
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-gray-900">营销笔记发布</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-slate-100">营销笔记发布</h2>
       </div>
 
       {/* 👇 下方所有代码，100% 还原你昨晚写的原始代码结构与样式！绝没乱动一分一毫 👇 */}
-      <div className="h-full bg-slate-50 p-6 rounded-[40px] min-h-[85vh] flex flex-col xl:flex-row gap-6 animate-in fade-in duration-500 relative">
+      <div className="h-full bg-slate-50 p-6 rounded-[40px] min-h-[85vh] flex flex-col xl:flex-row gap-6 animate-in fade-in duration-500 relative dark:bg-slate-950">
         
         {/* ======== 左侧编辑器 ======== */}
         <div className="flex-[3] flex flex-col gap-6">
-          <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 flex items-center justify-between transition-all">
+          <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 flex items-center justify-between transition-all dark:border-slate-800 dark:bg-slate-900/85 dark:shadow-none">
             <div className="flex items-center space-x-2">
-              <Smartphone className="w-5 h-5 text-slate-400" />
-              <span className="font-black text-slate-800 tracking-tight">发布平台矩阵</span>
+              <Smartphone className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+              <span className="font-black text-slate-800 tracking-tight dark:text-slate-100">发布平台矩阵</span>
             </div>
-            <div className="flex bg-slate-50 p-1.5 rounded-2xl">
+            <div className="flex bg-slate-50 p-1.5 rounded-2xl dark:bg-slate-800/80">
               {platforms.map(p => (
                 <button key={p.name} onClick={() => setPlatform(p.name)} disabled={isGenerating} className={`px-8 py-2.5 rounded-xl text-sm font-black transition-all ${platform === p.name ? `${p.color} text-white shadow-lg` : `text-slate-400 hover:${p.color}/10 hover:text-${p.color.replace('bg-', '')}`} ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}>
                   {p.name}
@@ -188,29 +188,31 @@ export default function MarketingNotesPage() {
             </div>
           </div>
 
-          <div className="flex-1 bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 flex flex-col relative overflow-hidden group">
+          <div className="flex-1 bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 flex flex-col relative overflow-hidden group dark:border-slate-800 dark:bg-slate-900/85 dark:shadow-none">
             {isGenerating && (
-              <div className="absolute inset-0 bg-white/70 backdrop-blur-md z-10 flex flex-col items-center justify-center rounded-[32px] animate-in fade-in duration-300">
-                <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-                <p className="font-black text-blue-600 text-lg animate-pulse tracking-tighter">AI 正在为 {platform} 深度订制文案...</p>
+              <div className="absolute inset-0 bg-white/70 backdrop-blur-md z-10 flex flex-col items-center justify-center rounded-[32px] animate-in fade-in duration-300 dark:bg-slate-900/80">
+                <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4 dark:text-sky-400" />
+                <p className="font-black text-blue-600 text-lg animate-pulse tracking-tighter dark:text-sky-300">
+                  AI 正在为 {platform} 深度订制文案...
+                </p>
               </div>
             )}
 
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center">
-                <h3 className="font-black text-slate-800 text-xl tracking-tighter flex items-center mr-4">
-                  <Type className="w-5 h-5 mr-2 text-blue-600" /> 智能营销文案
+                <h3 className="font-black text-slate-800 text-xl tracking-tighter flex items-center mr-4 dark:text-slate-100">
+                  <Type className="w-5 h-5 mr-2 text-blue-600 dark:text-sky-400" /> 智能营销文案
                 </h3>
-                <span className="flex items-center px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded-lg">
+                <span className="flex items-center px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded-lg dark:bg-blue-950/50 dark:text-sky-300">
                   <Bot className="w-3.5 h-3.5 mr-1" /> 当前引擎: {currentPlatformInfo?.aiPrompt}
                 </span>
               </div>
               <div className="flex gap-2">
                 {/* 💡 你的橡皮擦回来了，去掉了丑陋的弹窗，一秒清空！ */}
-                <button onClick={handleClearAll} disabled={isGenerating} className="flex items-center px-4 py-2.5 bg-slate-100 text-slate-500 rounded-xl text-sm font-black hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-50" title="清空内容">
+                <button onClick={handleClearAll} disabled={isGenerating} className="flex items-center px-4 py-2.5 bg-slate-100 text-slate-500 rounded-xl text-sm font-black hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-400" title="清空内容">
                   <Eraser className="w-4 h-4 mr-1.5" /> 清空
                 </button>
-                <button onClick={handleAIPolish} disabled={isGenerating} className="flex items-center px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-black shadow-lg shadow-blue-200 hover:scale-105 active:scale-95 transition-all disabled:opacity-50">
+                <button onClick={handleAIPolish} disabled={isGenerating} className="flex items-center px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-black shadow-lg shadow-blue-200 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 dark:shadow-blue-900/40">
                   <Sparkles className="w-4 h-4 mr-1.5" /> {currentDraft.content ? "追加新版本" : "AI 一键润色"}
                 </button>
               </div>
@@ -218,22 +220,22 @@ export default function MarketingNotesPage() {
 
             <div className="space-y-6 flex-1 flex flex-col">
               <div>
-                <input placeholder={`填写吸引人的产品名称...`} value={globalTitle} onChange={(e) => { setGlobalTitle(e.target.value); originalTitleRef.current = e.target.value; }} className="w-full bg-slate-50 border-none rounded-2xl p-5 font-black text-lg focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300" maxLength={30} />
-                <div className="text-right text-[10px] font-black text-slate-300 mt-2">{globalTitle.length}/30</div>
+                <input placeholder={`填写吸引人的产品名称...`} value={globalTitle} onChange={(e) => { setGlobalTitle(e.target.value); originalTitleRef.current = e.target.value; }} className="w-full bg-slate-50 border-none rounded-2xl p-5 font-black text-lg focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500" maxLength={30} />
+                <div className="text-right text-[10px] font-black text-slate-300 mt-2 dark:text-slate-500">{globalTitle.length}/30</div>
               </div>
 
               <div className="flex-1 relative group/textarea">
-                <textarea ref={textareaRef} placeholder={`随便写点卖点，比如：'这款面霜很保湿'。连续点击右下角按钮，可生成多个版本对比。`} value={currentDraft.content} onChange={(e) => updateDraft("content", e.target.value)} className="w-full h-full min-h-[300px] bg-slate-50 border-none rounded-3xl p-6 font-bold text-slate-700 leading-relaxed focus:ring-4 focus:ring-blue-500/10 transition-shadow placeholder:text-slate-300 resize-y scroll-smooth custom-scrollbar pb-16" />
-                <button onClick={() => setIsFullscreen(true)} className="absolute top-4 right-4 p-2.5 bg-white text-slate-400 hover:text-blue-600 rounded-xl shadow-sm border border-slate-100 opacity-0 group-hover/textarea:opacity-100 hover:scale-105 active:scale-95 transition-all" title="全屏沉浸式编辑"><Maximize2 className="w-5 h-5" /></button>
-                <button onClick={handleAIPolish} disabled={isGenerating} className="absolute bottom-6 right-8 p-4 bg-white text-blue-600 rounded-2xl shadow-xl shadow-blue-100 border border-slate-50 hover:scale-110 hover:-rotate-12 hover:bg-blue-50 active:scale-95 transition-all disabled:opacity-50">
+                <textarea ref={textareaRef} placeholder={`随便写点卖点，比如：'这款面霜很保湿'。连续点击右下角按钮，可生成多个版本对比。`} value={currentDraft.content} onChange={(e) => updateDraft("content", e.target.value)} className="w-full h-full min-h-[300px] bg-slate-50 border-none rounded-3xl p-6 font-bold text-slate-700 leading-relaxed focus:ring-4 focus:ring-blue-500/10 transition-shadow placeholder:text-slate-300 resize-y scroll-smooth custom-scrollbar pb-16 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder:text-slate-500" />
+                <button onClick={() => setIsFullscreen(true)} className="absolute top-4 right-4 p-2.5 bg-white text-slate-400 hover:text-blue-600 rounded-xl shadow-sm border border-slate-100 opacity-0 group-hover/textarea:opacity-100 hover:scale-105 active:scale-95 transition-all dark:border-slate-700 dark:bg-slate-900 dark:hover:text-sky-400" title="全屏沉浸式编辑"><Maximize2 className="w-5 h-5" /></button>
+                <button onClick={handleAIPolish} disabled={isGenerating} className="absolute bottom-6 right-8 p-4 bg-white text-blue-600 rounded-2xl shadow-xl shadow-blue-100 border border-slate-50 hover:scale-110 hover:-rotate-12 hover:bg-blue-50 active:scale-95 transition-all disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-sky-400 dark:shadow-blue-900/40 dark:hover:bg-slate-800">
                   {isGenerating ? <Loader2 className="w-6 h-6 animate-spin"/> : <Wand2 className="w-6 h-6" />}
                 </button>
               </div>
 
               {platform !== "朋友圈" && (
-                <div className="flex items-center bg-slate-50 p-4 rounded-2xl transition-all focus-within:ring-4 focus-within:ring-blue-500/10 animate-in fade-in slide-in-from-top-2">
-                  <Hash className="w-5 h-5 text-slate-400 mr-3" />
-                  <input placeholder="添加话题标签，用空格隔开" value={currentDraft.tags} onChange={(e) => updateDraft("tags", e.target.value)} className="flex-1 bg-transparent border-none focus:ring-0 p-0 font-bold text-slate-600 placeholder:text-slate-300" />
+                <div className="flex items-center bg-slate-50 p-4 rounded-2xl transition-all focus-within:ring-4 focus-within:ring-blue-500/10 animate-in fade-in slide-in-from-top-2 dark:bg-slate-800/60">
+                  <Hash className="w-5 h-5 text-slate-400 mr-3 dark:text-slate-500" />
+                  <input placeholder="添加话题标签，用空格隔开" value={currentDraft.tags} onChange={(e) => updateDraft("tags", e.target.value)} className="flex-1 bg-transparent border-none focus:ring-0 p-0 font-bold text-slate-600 placeholder:text-slate-300 dark:text-slate-200 dark:placeholder:text-slate-500" />
                 </div>
               )}
             </div>
@@ -242,12 +244,12 @@ export default function MarketingNotesPage() {
 
         {/* ======== 右侧：媒体资产管理 ======== */}
         <div className="flex-[2] flex flex-col gap-6">
-          <div className="flex-1 bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 flex flex-col">
+          <div className="flex-1 bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 flex flex-col dark:border-slate-800 dark:bg-slate-900/85 dark:shadow-none">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="font-black text-slate-800 text-xl tracking-tighter flex items-center">
-                <ImagePlus className="w-5 h-5 mr-2 text-blue-600" /> 媒体资产管理
+              <h3 className="font-black text-slate-800 text-xl tracking-tighter flex items-center dark:text-slate-100">
+                <ImagePlus className="w-5 h-5 mr-2 text-blue-600 dark:text-sky-400" /> 媒体资产管理
               </h3>
-              <span className="text-xs font-black text-slate-400 bg-slate-50 px-3 py-1 rounded-lg">
+              <span className="text-xs font-black text-slate-400 bg-slate-50 px-3 py-1 rounded-lg dark:bg-slate-800 dark:text-slate-500">
                 {mediaList.length} / 9 张
               </span>
             </div>
@@ -257,7 +259,7 @@ export default function MarketingNotesPage() {
               {mediaList.length > 0 && (
                 <div className="grid grid-cols-3 gap-4 auto-rows-max animate-in fade-in duration-300">
                   {mediaList.map((media, index) => (
-                    <div key={media.id} className="relative aspect-[3/4] rounded-2xl overflow-hidden group border border-slate-100 shadow-sm">
+                    <div key={media.id} className="relative aspect-[3/4] rounded-2xl overflow-hidden group border border-slate-100 shadow-sm dark:border-slate-800">
                       <img src={media.url} alt="media" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                       <button onClick={() => setMediaList(mediaList.filter(m => m.id !== media.id))} className="absolute top-2 right-2 p-1.5 bg-slate-900/60 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 scale-90 group-hover:scale-100" title="删除素材">
                         <Trash2 className="w-4 h-4" />
@@ -271,9 +273,9 @@ export default function MarketingNotesPage() {
                   ))}
                   {/* 网格内的添加按钮 */}
                   {mediaList.length < 9 && (
-                    <label className="aspect-[3/4] rounded-2xl border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 transition-colors flex flex-col items-center justify-center cursor-pointer group">
-                      <Plus className="w-8 h-8 text-slate-300 group-hover:text-blue-500 mb-2 transition-colors" />
-                      <span className="text-xs font-bold text-slate-400 group-hover:text-blue-500 transition-colors">添加素材</span>
+                    <label className="aspect-[3/4] rounded-2xl border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 transition-colors flex flex-col items-center justify-center cursor-pointer group dark:border-slate-700 dark:hover:bg-slate-800/50">
+                      <Plus className="w-8 h-8 text-slate-300 group-hover:text-blue-500 mb-2 transition-colors dark:text-slate-600" />
+                      <span className="text-xs font-bold text-slate-400 group-hover:text-blue-500 transition-colors dark:text-slate-500">添加素材</span>
                       <input type="file" className="hidden" accept="image/*,video/*" multiple onChange={handleFileUpload} />
                     </label>
                   )}
@@ -282,54 +284,54 @@ export default function MarketingNotesPage() {
 
               {/* 空状态拖拽上传区 */}
               {mediaList.length === 0 && (
-                <label className="flex-1 min-h-[300px] border-4 border-dashed border-slate-100 rounded-[24px] bg-slate-50 hover:bg-slate-100/50 transition-all flex flex-col items-center justify-center cursor-pointer group relative overflow-hidden">
-                  <div className="w-20 h-20 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300">
-                    <UploadCloud className="w-8 h-8 text-blue-500" />
+                <label className="flex-1 min-h-[300px] border-4 border-dashed border-slate-100 rounded-[24px] bg-slate-50 hover:bg-slate-100/50 transition-all flex flex-col items-center justify-center cursor-pointer group relative overflow-hidden dark:border-slate-800 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
+                  <div className="w-20 h-20 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300 dark:bg-slate-900">
+                    <UploadCloud className="w-8 h-8 text-blue-500 dark:text-sky-400" />
                   </div>
-                  <p className="font-black text-slate-500 text-lg group-hover:text-blue-600 transition-colors">点击或拖拽上传图片/视频</p>
-                  <p className="text-xs font-bold text-slate-400 mt-2">支持 JPG, PNG, MP4 格式，单图最大 5MB</p>
+                  <p className="font-black text-slate-500 text-lg group-hover:text-blue-600 transition-colors dark:text-slate-400">点击或拖拽上传图片/视频</p>
+                  <p className="text-xs font-bold text-slate-400 mt-2 dark:text-slate-500">支持 JPG, PNG, MP4 格式，单图最大 5MB</p>
                   <input type="file" className="hidden" accept="image/*,video/*" multiple onChange={handleFileUpload} />
                 </label>
               )}
             </div>
 
-            <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50/30 rounded-[24px] border border-blue-100/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50/30 rounded-[24px] border border-blue-100/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 dark:border-blue-900/40 dark:from-slate-800/90 dark:to-slate-900/80">
               <div>
-                <h4 className="text-sm font-black text-slate-800 flex items-center">
-                  <Sparkles className="w-4 h-4 mr-1.5 text-blue-600" /> API: AI 场景图接口对接处
+                <h4 className="text-sm font-black text-slate-800 flex items-center dark:text-slate-100">
+                  <Sparkles className="w-4 h-4 mr-1.5 text-blue-600 dark:text-sky-400" /> API: AI 场景图接口对接处
                 </h4>
-                <p className="text-[11px] font-bold text-slate-500 mt-1.5">当前为 Mock 交互，后端开发可在此处挂载生图模型接口。</p>
+                <p className="text-[11px] font-bold text-slate-500 mt-1.5 dark:text-slate-400">当前为 Mock 交互，后端开发可在此处挂载生图模型接口。</p>
               </div>
-              <button onClick={handleAIGenerateImage} disabled={isGeneratingImage || mediaList.length >= 9} className="whitespace-nowrap px-5 py-2.5 bg-white text-blue-600 border border-blue-200/60 rounded-xl text-sm font-black hover:shadow-lg hover:shadow-blue-100 hover:border-blue-400 active:scale-95 transition-all disabled:opacity-50 flex items-center">
+              <button onClick={handleAIGenerateImage} disabled={isGeneratingImage || mediaList.length >= 9} className="whitespace-nowrap px-5 py-2.5 bg-white text-blue-600 border border-blue-200/60 rounded-xl text-sm font-black hover:shadow-lg hover:shadow-blue-100 hover:border-blue-400 active:scale-95 transition-all disabled:opacity-50 flex items-center dark:border-blue-800/60 dark:bg-slate-900 dark:text-sky-400 dark:hover:shadow-sky-900/30">
                 {isGeneratingImage ? <Loader2 className="w-4 h-4 animate-spin mr-1.5"/> : <Wand2 className="w-4 h-4 mr-1.5"/>}
                 {isGeneratingImage ? "Mock 加载中..." : "一键 Mock 生图"}
               </button>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 flex gap-4">
-            <button onClick={handleSaveDraft} className="flex-1 bg-slate-50 text-slate-500 font-black py-4 rounded-2xl hover:bg-slate-100 active:scale-95 transition-all">保存草稿</button>
-            <button className="flex-[2] bg-blue-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-200 hover:scale-[1.02] active:scale-95 transition-all">立即发布至 {platform}</button>
+          <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 flex gap-4 dark:border-slate-800 dark:bg-slate-900/85 dark:shadow-none">
+            <button onClick={handleSaveDraft} className="flex-1 bg-slate-50 text-slate-500 font-black py-4 rounded-2xl hover:bg-slate-100 active:scale-95 transition-all dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">保存草稿</button>
+            <button className="flex-[2] bg-blue-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-200 hover:scale-[1.02] active:scale-95 transition-all dark:shadow-blue-900/40">立即发布至 {platform}</button>
           </div>
         </div>
 
         {/* 💡 沉浸式弹窗：100% 原封不动恢复成了你昨晚写的原始代码结构！ */}
         {isFullscreen && (
           <div className="fixed inset-0 z-[1000] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6 sm:p-12 animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-5xl h-full max-h-[85vh] rounded-[40px] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-              <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div className="bg-white w-full max-w-5xl h-full max-h-[85vh] rounded-[40px] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 dark:bg-slate-900 dark:shadow-black/50">
+              <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/90">
                 <div className="flex items-center">
-                  <Maximize2 className="w-6 h-6 mr-3 text-blue-600" />
-                  <h3 className="font-black text-slate-800 text-2xl tracking-tighter">沉浸式排版编辑</h3>
-                  <span className="ml-4 px-3 py-1 bg-white border border-slate-200 text-slate-500 text-xs font-black rounded-lg">{platform}</span>
+                  <Maximize2 className="w-6 h-6 mr-3 text-blue-600 dark:text-sky-400" />
+                  <h3 className="font-black text-slate-800 text-2xl tracking-tighter dark:text-slate-100">沉浸式排版编辑</h3>
+                  <span className="ml-4 px-3 py-1 bg-white border border-slate-200 text-slate-500 text-xs font-black rounded-lg dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">{platform}</span>
                 </div>
-                <button onClick={() => setIsFullscreen(false)} className="p-3 bg-white hover:bg-slate-100 rounded-full shadow-sm border border-slate-100 transition-colors"><X className="w-6 h-6 text-slate-500" /></button>
+                <button onClick={() => setIsFullscreen(false)} className="p-3 bg-white hover:bg-slate-100 rounded-full shadow-sm border border-slate-100 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"><X className="w-6 h-6 text-slate-500" /></button>
               </div>
-              <div className="flex-1 p-8 bg-slate-50 overflow-hidden">
-                <textarea autoFocus value={currentDraft.content} onChange={(e) => updateDraft("content", e.target.value)} className="w-full h-full bg-white border border-slate-100 shadow-sm rounded-[32px] p-10 font-bold text-slate-700 text-lg leading-loose focus:ring-4 focus:ring-blue-500/10 resize-none custom-scrollbar" />
+              <div className="flex-1 p-8 bg-slate-50 overflow-hidden dark:bg-slate-950">
+                <textarea autoFocus value={currentDraft.content} onChange={(e) => updateDraft("content", e.target.value)} className="w-full h-full bg-white border border-slate-100 shadow-sm rounded-[32px] p-10 font-bold text-slate-700 text-lg leading-loose focus:ring-4 focus:ring-blue-500/10 resize-none custom-scrollbar dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200" />
               </div>
-              <div className="px-8 py-6 border-t border-slate-100 bg-white flex justify-end">
-                <button onClick={() => setIsFullscreen(false)} className="px-8 py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-200 hover:scale-105 active:scale-95 transition-all">完成编辑并收起</button>
+              <div className="px-8 py-6 border-t border-slate-100 bg-white flex justify-end dark:border-slate-800 dark:bg-slate-900">
+                <button onClick={() => setIsFullscreen(false)} className="px-8 py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-200 hover:scale-105 active:scale-95 transition-all dark:shadow-blue-900/40">完成编辑并收起</button>
               </div>
             </div>
           </div>

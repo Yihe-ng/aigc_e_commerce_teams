@@ -38,19 +38,19 @@ export function EventModal({
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xl">
       {/* 这里暂时保留原生弹窗结构，后续接 HeroUI Modal 时可以整体替换这个节点。 */}
-      <div className="w-full max-w-lg rounded-[48px] border border-white/20 bg-white p-10 shadow-2xl">
+      <div className="w-full max-w-lg rounded-[48px] border border-white/20 bg-white p-10 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
         <div className="mb-8 flex items-center justify-between">
-          <h3 className="text-3xl font-black tracking-tighter text-slate-800">
+          <h3 className="text-3xl font-black tracking-tighter text-slate-800 dark:text-slate-100">
             {isEditModalOpen ? "日程详情" : "新建事件模板"}
           </h3>
-          <button type="button" onClick={onClose}>
+          <button type="button" onClick={onClose} className="text-slate-600 dark:text-slate-300">
             <X />
           </button>
         </div>
 
         <div className="space-y-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-500">
               任务名称
             </label>
             <input
@@ -63,7 +63,7 @@ export function EventModal({
                 }
                 onChangeNewTemplateTitle(event.target.value)
               }}
-              className="w-full rounded-3xl border-none bg-slate-50 p-6 text-xl font-black"
+              className="w-full rounded-3xl border-none bg-slate-50 p-6 text-xl font-black text-slate-900 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
 
@@ -75,7 +75,7 @@ export function EventModal({
                 onChange={(event) =>
                   onChangeEditingEvent({ ...editingEvent, start: event.target.value })
                 }
-                className="rounded-3xl border-none bg-slate-50 p-5 font-black"
+                className="rounded-3xl border-none bg-slate-50 p-5 font-black text-slate-900 dark:bg-slate-800 dark:text-slate-100"
               />
               <input
                 type="time"
@@ -83,7 +83,7 @@ export function EventModal({
                 onChange={(event) =>
                   onChangeEditingEvent({ ...editingEvent, end: event.target.value })
                 }
-                className="rounded-3xl border-none bg-slate-50 p-5 font-black"
+                className="rounded-3xl border-none bg-slate-50 p-5 font-black text-slate-900 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
           ) : null}
@@ -107,7 +107,7 @@ export function EventModal({
                     onChangeNewTemplateColor(option.value)
                   }}
                   className={`flex h-10 w-10 items-center justify-center rounded-full ${option.value} ${
-                    isActive ? "ring-4 ring-slate-200" : ""
+                    isActive ? "ring-4 ring-slate-200 dark:ring-slate-500" : ""
                   }`}
                 >
                   {isActive ? <Check className="h-5 w-5 text-white" /> : null}
@@ -118,13 +118,17 @@ export function EventModal({
         </div>
 
         <div className="mt-8 flex gap-6">
-          <button type="button" onClick={onClose} className="flex-1 py-5 font-black">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-5 font-black text-slate-600 dark:text-slate-400"
+          >
             取消
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="flex-[2] rounded-3xl bg-blue-600 py-5 font-black text-white shadow-xl shadow-blue-100"
+            className="flex-[2] rounded-3xl bg-blue-600 py-5 font-black text-white shadow-xl shadow-blue-100 dark:shadow-blue-900/50"
           >
             确认
           </button>

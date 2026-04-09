@@ -290,7 +290,7 @@ export function NavItems({
   const DashboardIcon = DASHBOARD_NAV.icon
 
   return (
-    <nav className={cn("flex flex-1 flex-col gap-1 px-3 py-4", collapsed && "md:px-1.5")}>
+    <nav className={cn("flex flex-col gap-1 px-3 py-4", collapsed && "md:px-1.5")}>
       <p
         className={cn(
           "mb-2 px-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase",

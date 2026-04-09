@@ -134,7 +134,7 @@ export default function MarketingScheduleContent() {
 
   const shellClassName = useMemo(
     () =>
-      "flex min-h-0 flex-col gap-6 rounded-[40px] bg-slate-50 p-4 md:p-6 xl:flex-row",
+      "flex min-h-0 flex-col gap-6 rounded-[40px] bg-slate-50 p-4 md:p-6 dark:bg-slate-950 xl:flex-row",
     []
   )
 
@@ -149,7 +149,7 @@ export default function MarketingScheduleContent() {
       />
 
       {/* 这里是页面视觉主容器，后续若要继续强化视觉层，可优先调整这一层而不是改布局壳。 */}
-      <section className="flex min-h-[720px] min-w-0 flex-1 flex-col overflow-hidden rounded-[40px] border border-slate-100 bg-white shadow-sm">
+      <section className="flex min-h-[720px] min-w-0 flex-1 flex-col overflow-hidden rounded-[40px] border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/85 dark:shadow-none">
         <CalendarToolbar
           currentDate={currentDate}
           view={view}

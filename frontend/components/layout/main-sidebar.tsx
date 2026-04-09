@@ -30,14 +30,14 @@ export function MainSidebar({
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-50 flex w-[260px] shrink-0 flex-col overflow-x-hidden border-r border-border transition-[width,transform] duration-200 ease-out md:static md:translate-x-0",
+        "fixed inset-y-0 left-0 z-50 flex w-[260px] shrink-0 flex-col overflow-hidden border-r border-border transition-[width,transform] duration-200 ease-out md:static md:translate-x-0",
         sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         sidebarCollapsed && "md:w-[72px]",
       )}
     >
       <Surface
         variant="secondary"
-        className="flex h-full min-h-0 flex-col rounded-none border-0 shadow-none"
+        className="flex h-full min-h-0 flex-col overflow-hidden rounded-none border-0 shadow-none"
       >
         <div
           className={cn(
@@ -86,8 +86,10 @@ export function MainSidebar({
             <X className="size-5" />
           </Button>
         </div>
-        <NavItems pathname={pathname} collapsed={sidebarCollapsed} onNavigate={onNavigate} />
-        <div className={cn("mt-auto border-t border-border p-3", sidebarCollapsed && "md:p-2")}>
+        <div className="main-sidebar-nav-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
+          <NavItems pathname={pathname} collapsed={sidebarCollapsed} onNavigate={onNavigate} />
+        </div>
+        <div className={cn("shrink-0 border-t border-border p-3", sidebarCollapsed && "md:p-2")}>
           <Link
             href="/login"
             title="退出到登录"

@@ -65,13 +65,13 @@ export function GenerationHistory({
   const hasTasks = tasks.length > 0
 
   return (
-    <Card className="rounded-xl border-0 bg-[#F8F8F8] shadow-none">
-      <Card.Header className="border-b border-gray-200 px-5 py-4">
+    <Card className="rounded-xl border-0 bg-[#F8F8F8] shadow-none dark:bg-slate-900/90 dark:ring-1 dark:ring-white/10">
+      <Card.Header className="border-b border-gray-200 px-5 py-4 dark:border-slate-700">
         <div>
-          <Card.Title className="text-base font-semibold text-gray-800">
+          <Card.Title className="text-base font-semibold text-gray-800 dark:text-slate-100">
             生成历史
           </Card.Title>
-          <Card.Description className="mt-1 text-sm text-gray-500">
+          <Card.Description className="mt-1 text-sm text-gray-500 dark:text-slate-400">
             在此查看你的生成记录和结果。
           </Card.Description>
         </div>

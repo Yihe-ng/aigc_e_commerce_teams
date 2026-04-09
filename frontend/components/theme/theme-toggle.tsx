@@ -19,7 +19,8 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
     setMounted(true)
   }, [])
 
-  const isDark = resolvedTheme === "dark"
+  /** 在 mounted 之前不要用 resolvedTheme，否则客户端可能比 SSR 更早读到 localStorage，导致 hydration 不匹配 */
+  const isDark = mounted && resolvedTheme === "dark"
 
   return (
     <Button
@@ -31,8 +32,10 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         "dark:border-slate-600 dark:bg-slate-800/90 dark:hover:bg-slate-700",
         className,
       )}
-      aria-label={isDark ? "切换到日间模式" : "切换到夜间模式"}
-      aria-pressed={isDark}
+      aria-label={
+        mounted ? (isDark ? "切换到日间模式" : "切换到夜间模式") : "切换主题"
+      }
+      aria-pressed={mounted ? isDark : false}
       disabled={!mounted}
       onClick={() => setTheme(isDark ? "light" : "dark")}
     >

@@ -56,12 +56,12 @@ export function ImageCarousel({
   // 空状态
   if (totalImages === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-slate-100 bg-slate-50">
-        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
-          <ImagePlus className="h-5 w-5 text-slate-400" />
+      <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60">
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800">
+          <ImagePlus className="h-5 w-5 text-slate-400 dark:text-slate-500" />
         </div>
-        <p className="text-sm font-medium text-slate-500">等待上传商品图片</p>
-        <p className="mt-1 text-xs text-slate-400">上传后将在此处预览</p>
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">等待上传商品图片</p>
+        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">上传后将在此处预览</p>
       </div>
     )
   }
@@ -69,7 +69,7 @@ export function ImageCarousel({
   return (
     <div className="flex h-full flex-col gap-3">
       {/* 主图区域 */}
-      <div className="group relative flex-1 overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+      <div className="group relative flex-1 overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900/50">
         <img
           src={getImageSrc(currentImage.url, currentImage.isPreview)}
           alt={`商品图片 ${currentIndex + 1}`}
@@ -83,17 +83,17 @@ export function ImageCarousel({
               variant="ghost"
               size="sm"
               onPress={handlePrev}
-              className="absolute left-2 top-1/2 z-10 h-8 w-8 -translate-y-1/2 rounded-full bg-white/80 p-0 opacity-0 shadow-sm transition-opacity hover:bg-white group-hover:opacity-100"
+              className="absolute left-2 top-1/2 z-10 h-8 w-8 -translate-y-1/2 rounded-full bg-white/80 p-0 opacity-0 shadow-sm transition-opacity hover:bg-white group-hover:opacity-100 dark:bg-slate-800/90 dark:hover:bg-slate-800"
             >
-              <ChevronLeft className="h-4 w-4 text-slate-700" />
+              <ChevronLeft className="h-4 w-4 text-slate-700 dark:text-slate-200" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onPress={handleNext}
-              className="absolute right-2 top-1/2 z-10 h-8 w-8 -translate-y-1/2 rounded-full bg-white/80 p-0 opacity-0 shadow-sm transition-opacity hover:bg-white group-hover:opacity-100"
+              className="absolute right-2 top-1/2 z-10 h-8 w-8 -translate-y-1/2 rounded-full bg-white/80 p-0 opacity-0 shadow-sm transition-opacity hover:bg-white group-hover:opacity-100 dark:bg-slate-800/90 dark:hover:bg-slate-800"
             >
-              <ChevronRight className="h-4 w-4 text-slate-700" />
+              <ChevronRight className="h-4 w-4 text-slate-700 dark:text-slate-200" />
             </Button>
           </>
         )}
@@ -134,7 +134,7 @@ export function ImageCarousel({
               className={`h-1.5 rounded-full transition-all ${
                 index === currentIndex 
                   ? "w-4 bg-blue-500" 
-                  : "w-1.5 bg-slate-300 hover:bg-slate-400"
+                  : "w-1.5 bg-slate-300 hover:bg-slate-400 dark:bg-slate-600 dark:hover:bg-slate-500"
               }`}
             />
           ))}

@@ -14,21 +14,21 @@ interface ProductTableProps {
 
 export default function ProductTable({ products, onEdit, onDelete, getImageUrl }: ProductTableProps) {
   return (
-    <Card className="mt-8 overflow-hidden rounded-3xl border-none bg-[#F8F8F8] shadow-xl">
-      <Card.Header className="flex items-center justify-between border-b border-slate-100 px-8 pb-4 pt-8">
+    <Card className="mt-8 overflow-hidden rounded-3xl border-none bg-[#F8F8F8] shadow-xl dark:bg-slate-900/90 dark:shadow-black/30 dark:ring-1 dark:ring-white/10">
+      <Card.Header className="flex items-center justify-between border-b border-slate-100 px-8 pb-4 pt-8 dark:border-slate-800">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-inner">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-inner dark:bg-emerald-950/50 dark:text-emerald-400">
             <List className="h-5 w-5" />
           </div>
-          <Card.Title className="text-xl font-bold text-slate-800">已入库商品列表</Card.Title>
+          <Card.Title className="text-xl font-bold text-slate-800 dark:text-slate-100">已入库商品列表</Card.Title>
         </div>
-        <span className="text-sm font-medium text-slate-400">共 {products.length} 件商品</span>
+        <span className="text-sm font-medium text-slate-400 dark:text-slate-500">共 {products.length} 件商品</span>
       </Card.Header>
 
       <Card.Content className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-left text-sm text-slate-600">
-            <thead className="border-b border-slate-200 bg-[#EFEFEF] text-xs uppercase text-slate-500">
+          <table className="w-full table-fixed text-left text-sm text-slate-600 dark:text-slate-300">
+            <thead className="border-b border-slate-200 bg-[#EFEFEF] text-xs uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-400">
               <tr>
                 <th style={{ width: "12%" }} className="px-8 py-4 font-semibold tracking-wider">主图</th>
                 <th style={{ width: "20%" }} className="px-6 py-4 font-semibold tracking-wider">名称</th>
@@ -38,7 +38,7 @@ export default function ProductTable({ products, onEdit, onDelete, getImageUrl }
                 <th style={{ width: "15%" }} className="px-8 py-4 text-center font-semibold tracking-wider">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {products.map((product) => {
                 const featureText = Array.isArray(product.features)
                   ? product.features.join(" | ")
@@ -47,7 +47,7 @@ export default function ProductTable({ products, onEdit, onDelete, getImageUrl }
                 const resolvedPreviewImage = getImageUrl(previewImage)
 
                 return (
-                  <tr key={product.id} className="group transition-colors hover:bg-gray-100">
+                  <tr key={product.id} className="group transition-colors hover:bg-gray-100 dark:hover:bg-slate-800/60">
                     <td className="px-8 py-4">
                       <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-xs text-slate-400 shadow-sm">
                         {resolvedPreviewImage ? (

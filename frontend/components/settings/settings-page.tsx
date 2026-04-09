@@ -65,7 +65,7 @@ export function SettingsPage() {
           </Card.Description>
         </Card.Header>
         <Card.Content className="gap-0 pt-2">
-          <Tabs defaultSelectedKey="general" variant="secondary" className="w-full">
+          <Tabs defaultSelectedKey="general" variant="secondary" className={cn("settings-tabs w-full")}>
             <Tabs.ListContainer className="w-full overflow-x-auto">
               <Tabs.List aria-label="设置分类" className="min-w-0 flex-nowrap">
                 <Tabs.Tab id="general">通用偏好</Tabs.Tab>

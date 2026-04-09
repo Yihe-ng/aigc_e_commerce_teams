@@ -47,34 +47,34 @@ export function CalendarToolbar({
         : `${year}年 ${month + 1}月 ${currentDate.getDate()}日`
 
   return (
-    <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 md:flex-row md:items-center md:justify-between md:px-7">
+    <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 dark:border-slate-800 md:flex-row md:items-center md:justify-between md:px-7">
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={() => onNavigate(-1)}
-          className="rounded-2xl border border-slate-100 p-2.5 transition-colors hover:bg-slate-100"
+          className="rounded-2xl border border-slate-100 p-2.5 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4 dark:text-slate-200" />
         </button>
         <button
           type="button"
           onClick={() => onNavigate(1)}
-          className="rounded-2xl border border-slate-100 p-2.5 transition-colors hover:bg-slate-100"
+          className="rounded-2xl border border-slate-100 p-2.5 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-4 w-4 dark:text-slate-200" />
         </button>
         <button
           type="button"
           onClick={onResetToday}
-          className="rounded-2xl border border-slate-100 px-4 py-2 text-sm font-black transition-colors hover:bg-slate-100"
+          className="rounded-2xl border border-slate-100 px-4 py-2 text-sm font-black transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
         >
           今天
         </button>
       </div>
 
-      <label className="relative flex cursor-pointer items-center rounded-2xl px-4 py-2 transition-colors hover:bg-slate-50">
-        <CalendarDays className="mr-2 h-5 w-5 text-blue-600" />
-        <span className="text-xl font-black tracking-tight text-slate-800 md:text-2xl">{title}</span>
+      <label className="relative flex cursor-pointer items-center rounded-2xl px-4 py-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60">
+        <CalendarDays className="mr-2 h-5 w-5 text-blue-600 dark:text-sky-400" />
+        <span className="text-xl font-black tracking-tight text-slate-800 md:text-2xl dark:text-slate-100">{title}</span>
         {/* 这里保留原生 date input，后续如果要接 HeroUI DatePicker，可直接替换这层。 */}
         <input
           type="date"
@@ -89,7 +89,7 @@ export function CalendarToolbar({
         />
       </label>
 
-      <div className="flex w-fit rounded-2xl bg-slate-100 p-1.5">
+      <div className="flex w-fit rounded-2xl bg-slate-100 p-1.5 dark:bg-slate-800">
         {(["月", "周", "日"] as CalendarView[]).map((option) => (
           <button
             key={option}
@@ -97,8 +97,8 @@ export function CalendarToolbar({
             onClick={() => onChangeView(option)}
             className={`rounded-xl px-6 py-2 text-sm transition-all ${
               view === option
-                ? "bg-white font-black text-blue-600 shadow-md"
-                : "text-slate-400"
+                ? "bg-white font-black text-blue-600 shadow-md dark:bg-slate-700 dark:text-sky-400 dark:shadow-lg"
+                : "text-slate-400 dark:text-slate-500"
             }`}
           >
             {option}

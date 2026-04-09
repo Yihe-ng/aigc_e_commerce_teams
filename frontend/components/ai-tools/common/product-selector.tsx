@@ -73,13 +73,13 @@ export function ProductSelector({
   )
 
   return (
-    <Card className='rounded-xl border-0 bg-[#F8F8F8] shadow-none'>
-      <Card.Header className='border-b border-gray-200 px-5 py-4'>
+    <Card className='rounded-xl border-0 bg-[#F8F8F8] shadow-none dark:bg-slate-900/90 dark:ring-1 dark:ring-white/10'>
+      <Card.Header className='border-b border-gray-200 px-5 py-4 dark:border-slate-700'>
         <div>
-          <Card.Title className='text-base font-semibold text-gray-800'>
+          <Card.Title className='text-base font-semibold text-gray-800 dark:text-slate-100'>
             {title}
           </Card.Title>
-          <Card.Description className='mt-1 text-sm text-gray-500'>
+          <Card.Description className='mt-1 text-sm text-gray-500 dark:text-slate-400'>
             {description}
           </Card.Description>
         </div>
@@ -95,11 +95,11 @@ export function ProductSelector({
               onCategoryChange(key ? key.toString() : '')
             }
           >
-            <Label className='mb-2 block text-sm font-medium text-gray-700'>
+            <Label className='mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300'>
               商品分类
             </Label>
-            <Select.Trigger className='h-11 rounded-lg border-0 bg-[#F1F5F9] shadow-inner transition-all hover:shadow-md focus:ring-2 focus:ring-[#91C1FA]/30'>
-              <FolderTree className='h-4 w-4 text-gray-400' />
+            <Select.Trigger className='h-11 rounded-lg border-0 bg-[#F1F5F9] shadow-inner transition-all hover:shadow-md focus:ring-2 focus:ring-[#91C1FA]/30 dark:bg-slate-800 dark:shadow-none'>
+              <FolderTree className='h-4 w-4 text-gray-400 dark:text-slate-500' />
               <Select.Value />
               {isLoadingCategories ? (
                 <Spinner color='accent' size='sm' />
@@ -107,11 +107,11 @@ export function ProductSelector({
                 <Select.Indicator />
               )}
             </Select.Trigger>
-            <Select.Popover className='rounded-xl border border-gray-200 bg-white p-1 shadow-lg'>
+            <Select.Popover className='rounded-xl border border-gray-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900'>
               <ListBox className='max-h-60 overflow-auto py-1'>
                 {categories.map((category) => (
                   <ListBox.Item
-                    className='cursor-pointer rounded-lg px-3 py-2.5 text-sm text-gray-700 outline-none transition-colors hover:bg-[#91C1FA]/10 hover:text-[#91C1FA] data-[selected=true]:bg-[#91C1FA]/20 data-[selected=true]:font-medium data-[selected=true]:text-[#91C1FA]'
+                    className='cursor-pointer rounded-lg px-3 py-2.5 text-sm text-gray-700 outline-none transition-colors hover:bg-[#91C1FA]/10 hover:text-[#91C1FA] data-[selected=true]:bg-[#91C1FA]/20 data-[selected=true]:font-medium data-[selected=true]:text-[#91C1FA] dark:text-slate-200 dark:hover:bg-sky-950/50 dark:data-[selected=true]:bg-sky-950/60'
                     id={category}
                     key={category}
                     textValue={category}
@@ -136,11 +136,11 @@ export function ProductSelector({
               onProductChange(key ? key.toString() : null)
             }
           >
-            <Label className='mb-2 block text-sm font-medium text-gray-700'>
+            <Label className='mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300'>
               商品选择
             </Label>
-            <Select.Trigger className='h-11 rounded-lg border-0 bg-[#F1F5F9] shadow-inner transition-all hover:shadow-md focus:ring-2 focus:ring-[#91C1FA]/30'>
-              <Package2 className='h-4 w-4 text-gray-400' />
+            <Select.Trigger className='h-11 rounded-lg border-0 bg-[#F1F5F9] shadow-inner transition-all hover:shadow-md focus:ring-2 focus:ring-[#91C1FA]/30 dark:bg-slate-800 dark:shadow-none'>
+              <Package2 className='h-4 w-4 text-gray-400 dark:text-slate-500' />
               <Select.Value />
               {isLoadingProducts ? (
                 <Spinner color='accent' size='sm' />
@@ -148,11 +148,11 @@ export function ProductSelector({
                 <Select.Indicator />
               )}
             </Select.Trigger>
-            <Select.Popover className='rounded-xl border border-gray-200 bg-white p-1 shadow-lg'>
+            <Select.Popover className='rounded-xl border border-gray-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900'>
               <ListBox className='max-h-60 overflow-auto py-1'>
                 {products.map((product) => (
                   <ListBox.Item
-                    className='cursor-pointer rounded-lg px-3 py-2.5 text-sm text-gray-700 outline-none transition-colors hover:bg-[#91C1FA]/10 hover:text-[#91C1FA] data-[selected=true]:bg-[#91C1FA]/20 data-[selected=true]:font-medium data-[selected=true]:text-[#91C1FA]'
+                    className='cursor-pointer rounded-lg px-3 py-2.5 text-sm text-gray-700 outline-none transition-colors hover:bg-[#91C1FA]/10 hover:text-[#91C1FA] data-[selected=true]:bg-[#91C1FA]/20 data-[selected=true]:font-medium data-[selected=true]:text-[#91C1FA] dark:text-slate-200 dark:hover:bg-sky-950/50 dark:data-[selected=true]:bg-sky-950/60'
                     id={product.product_id}
                     key={product.product_id}
                     textValue={product.name}
@@ -167,12 +167,12 @@ export function ProductSelector({
         </div>
 
         {showPreview ? (
-          <div className='rounded-xl bg-white p-4 shadow-[inset_2px_2px_5px_rgba(203,213,225,0.6),inset_4px_4px_10px_rgba(203,213,225,0.3),inset_-2px_-2px_6px_rgba(255,255,255,0.9)]'>
-            <div className='mb-3 flex items-center gap-2 text-sm font-medium text-gray-700'>
+          <div className='rounded-xl bg-white p-4 shadow-[inset_2px_2px_5px_rgba(203,213,225,0.6),inset_4px_4px_10px_rgba(203,213,225,0.3),inset_-2px_-2px_6px_rgba(255,255,255,0.9)] dark:bg-slate-800/60 dark:shadow-[inset_2px_2px_8px_rgba(0,0,0,0.35)]'>
+            <div className='mb-3 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200'>
               <ImageIcon className='h-4 w-4 text-[#91C1FA]' />
               {previewTitle}
             </div>
-            <div className='flex min-h-[180px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-[#F8F8F8] p-3'>
+            <div className='flex min-h-[180px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-[#F8F8F8] p-3 dark:border-slate-600 dark:bg-slate-900/80'>
               {previewImageUrl ? (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -184,7 +184,7 @@ export function ProductSelector({
                   />
                 </>
               ) : (
-                <p className='text-center text-sm leading-6 text-gray-400'>
+                <p className='text-center text-sm leading-6 text-gray-400 dark:text-slate-500'>
                   {previewPlaceholder ?? '选择商品后，这里会显示主图预览。'}
                 </p>
               )}
@@ -194,7 +194,7 @@ export function ProductSelector({
 
         <div className='space-y-3'>
           {generateDisabledReason ? (
-            <p className='rounded-xl bg-white px-4 py-3 text-sm text-gray-500 shadow-sm'>
+            <p className='rounded-xl bg-white px-4 py-3 text-sm text-gray-500 shadow-sm dark:bg-slate-800/80 dark:text-slate-400'>
               {isLoadingRuntimeConfig
                 ? '正在准备图片配置，稍后即可发起生成。'
                 : generateDisabledReason}

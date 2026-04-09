@@ -33,8 +33,8 @@ export function EmptyState({
           <ImageIcon className="h-8 w-8" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
-          <p className="text-sm leading-6 text-gray-500">{description}</p>
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100">{title}</h3>
+          <p className="text-sm leading-6 text-gray-500 dark:text-slate-400">{description}</p>
         </div>
       </Card.Content>
     </Card>

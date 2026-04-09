@@ -10,6 +10,7 @@ import {
   FilterSelect,
   INDUSTRY_ITEMS,
   KpiCard,
+  cardDescriptionClass,
   panelHoverClass,
   panelOnMutedBgClass,
   RANGE_ITEMS,
@@ -28,12 +29,23 @@ export function AnalystPanel() {
   }, [])
 
   return (
-    <div className="space-y-5">
-      <div className="flex justify-end">
-        <RefreshAction onPress={handleRefresh} />
+    <div className="space-y-6 md:space-y-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <p className="max-w-2xl text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+          只读分析：基于已入库商家全量数据，查看来源、行业、区域与活跃表现。渠道信息登记请使用「商家来源统计」。
+        </p>
+        <div className="shrink-0 sm:pt-0.5">
+          <RefreshAction onPress={handleRefresh} />
+        </div>
       </div>
       <Card variant="default" className={cn(panelOnMutedBgClass, panelHoverClass)}>
-        <Card.Content className="flex flex-col gap-4 pt-4 sm:flex-row sm:flex-wrap sm:items-end">
+        <Card.Header className="space-y-1.5 pb-2">
+          <Card.Title className="text-lg font-semibold">分析筛选</Card.Title>
+          <Card.Description className={cn(cardDescriptionClass, "leading-relaxed")}>
+            按渠道、行业、区域、活跃状态与时间范围过滤；下方指标与图表将随筛选条件变化（接入接口后生效）。
+          </Card.Description>
+        </Card.Header>
+        <Card.Content className="flex flex-col gap-4 pt-2 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-4">
           <FilterSelect label="来源渠道" defaultValue="referral" items={[...SOURCE_ITEMS]} />
           <FilterSelect label="行业类别" defaultValue="mfg" items={[...INDUSTRY_ITEMS]} />
           <FilterSelect label="区域" defaultValue="sw" items={[...REGION_ITEMS]} />
@@ -41,11 +53,11 @@ export function AnalystPanel() {
           <FilterSelect label="时间范围" defaultValue="1y" items={[...RANGE_ITEMS]} />
         </Card.Content>
       </Card>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-2">
         <KpiCard title="总商家数" value="0" trendLabel="↑ -- 较去年" icon={<Users aria-hidden />} />
         <KpiCard title="活跃商家占比" value="0%" trendLabel="↑ -- 较去年" icon={<BadgeCheck aria-hidden />} />
       </div>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         <ChartCard
           title="商家来源分布"
           variant="donut"

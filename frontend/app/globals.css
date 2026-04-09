@@ -142,6 +142,69 @@ body {
   padding: 0;
 }
 
+/* 侧栏导航区：与浅灰背景统一的细滚动条（WebKit + Firefox） */
+.main-sidebar-nav-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border) / 0.85) hsl(var(--secondary));
+}
+
+.main-sidebar-nav-scroll::-webkit-scrollbar {
+  width: 7px;
+}
+
+.main-sidebar-nav-scroll::-webkit-scrollbar-track {
+  margin: 4px 0;
+  border-radius: 9999px;
+  background: hsl(var(--secondary));
+}
+
+.main-sidebar-nav-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: hsl(var(--border) / 0.95);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.main-sidebar-nav-scroll::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.28);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.dark .main-sidebar-nav-scroll {
+  scrollbar-color: hsl(var(--border)) hsl(var(--secondary));
+}
+
+.dark .main-sidebar-nav-scroll::-webkit-scrollbar-track {
+  background: hsl(var(--secondary));
+}
+
+.dark .main-sidebar-nav-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+}
+
+/* 系统设置页 Tabs：HeroUI secondary 未选中为 text-muted，且 hover 时 opacity-70，浅灰底上几乎看不见 */
+.settings-tabs.tabs--secondary .tabs__tab:not([data-selected="true"]) {
+  color: rgb(15 23 42) !important; /* slate-900，与浅底区分更明显 */
+  opacity: 1 !important;
+}
+
+@media (hover: hover) {
+  .settings-tabs.tabs--secondary .tabs__tab:not([data-selected="true"]):hover,
+  .settings-tabs.tabs--secondary .tabs__tab:not([data-selected="true"])[data-hovered="true"] {
+    opacity: 1 !important;
+  }
+}
+
+.dark .settings-tabs.tabs--secondary .tabs__tab:not([data-selected="true"]) {
+  color: rgb(226 232 240) !important; /* slate-200 */
+}
+
+/* 选中态保持组件默认 foreground，略加重字重便于区分 */
+.settings-tabs.tabs--secondary .tabs__tab[data-selected="true"] {
+  font-weight: 600;
+}
+
 /* 打字机光标动画 */
 .typing-cursor {
   display: inline-block;

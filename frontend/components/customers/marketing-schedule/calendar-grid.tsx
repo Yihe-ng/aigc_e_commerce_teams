@@ -88,7 +88,7 @@ export function CalendarGrid({
             {WEEK_LABELS.map((label) => (
               <div
                 key={label}
-                className="border-b border-slate-50 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-300"
+                className="border-b border-slate-50 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-300 dark:border-slate-800 dark:text-slate-500"
               >
                 {label}
               </div>
@@ -96,7 +96,7 @@ export function CalendarGrid({
             {Array.from({ length: monthFirstDayIndex }).map((_, index) => (
               <div
                 key={`empty-${index}`}
-                className="h-36 border-b border-r border-slate-50 bg-slate-50/10"
+                className="h-36 border-b border-r border-slate-50 bg-slate-50/10 dark:border-slate-800 dark:bg-slate-900/30"
               />
             ))}
             {Array.from({ length: monthLastDay }).map((_, index) => {
@@ -109,13 +109,13 @@ export function CalendarGrid({
                   onClick={() => onCreateEvent(date)}
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={(event) => handleDropTemplate(event, date)}
-                  className="h-36 cursor-pointer border-b border-r border-slate-50 p-3 hover:bg-blue-50/20"
+                  className="h-36 cursor-pointer border-b border-r border-slate-50 p-3 hover:bg-blue-50/20 dark:border-slate-800 dark:hover:bg-slate-800/40"
                 >
                   <span
                     className={`text-xs font-black ${
                       sameDate(date, today)
-                        ? "rounded-lg bg-blue-600 px-2.5 py-1 text-white shadow-lg shadow-blue-100"
-                        : "text-slate-400"
+                        ? "rounded-lg bg-blue-600 px-2.5 py-1 text-white shadow-lg shadow-blue-100 dark:shadow-blue-900/50"
+                        : "text-slate-400 dark:text-slate-500"
                     }`}
                   >
                     {day}
@@ -139,17 +139,17 @@ export function CalendarGrid({
                 onClick={() => onCreateEvent(date)}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => handleDropTemplate(event, date)}
-                className="h-full cursor-pointer border-r border-slate-50 p-5 hover:bg-blue-50/10"
+                className="h-full cursor-pointer border-r border-slate-50 p-5 hover:bg-blue-50/10 dark:border-slate-800 dark:hover:bg-slate-800/30"
               >
                 <div className="mb-8 text-center">
-                  <div className="text-[10px] font-black uppercase text-slate-300">
+                  <div className="text-[10px] font-black uppercase text-slate-300 dark:text-slate-500">
                     {WEEK_LABELS[date.getDay()]}
                   </div>
                   <div
                     className={`inline-block h-12 w-12 rounded-2xl text-2xl font-black leading-[48px] ${
                       sameDate(date, today)
-                        ? "bg-blue-600 text-white shadow-xl shadow-blue-200"
-                        : "text-slate-800"
+                        ? "bg-blue-600 text-white shadow-xl shadow-blue-200 dark:shadow-blue-900/50"
+                        : "text-slate-800 dark:text-slate-100"
                     }`}
                   >
                     {date.getDate()}
@@ -172,17 +172,17 @@ export function CalendarGrid({
             onDrop={(event) => handleDropTemplate(event, currentDate)}
             className="mx-auto h-full max-w-4xl cursor-pointer p-6 md:p-10"
           >
-            <div className="mb-10 flex items-center justify-between rounded-[32px] border border-slate-100 bg-white p-8 shadow-sm">
+            <div className="mb-10 flex items-center justify-between rounded-[32px] border border-slate-100 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-none">
               <div className="flex items-center space-x-6">
-                <div className="text-6xl font-black leading-none tracking-tighter text-blue-600">
+                <div className="text-6xl font-black leading-none tracking-tighter text-blue-600 dark:text-sky-400">
                   {currentDate.getDate()}
                 </div>
-                <div className="hidden h-12 w-[2px] bg-slate-100 md:block" />
+                <div className="hidden h-12 w-[2px] bg-slate-100 md:block dark:bg-slate-700" />
                 <div>
-                  <div className="text-xl font-black text-slate-800">
+                  <div className="text-xl font-black text-slate-800 dark:text-slate-100">
                     {WEEKDAY_LABELS[currentDate.getDay()]}
                   </div>
-                  <div className="text-sm font-bold text-slate-400">
+                  <div className="text-sm font-bold text-slate-400 dark:text-slate-500">
                     {year}年 {month + 1}月
                   </div>
                 </div>

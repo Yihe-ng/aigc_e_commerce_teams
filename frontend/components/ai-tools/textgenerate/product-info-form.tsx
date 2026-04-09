@@ -34,15 +34,15 @@ export function ProductInfoForm({ onSubmit }: ProductInfoFormProps) {
 
   return (
     <div className="flex-1 p-4 md:p-6 overflow-y-auto">
-      <Card className="bg-gray-50 border border-gray-100 rounded-2xl">
+      <Card className="rounded-2xl border border-gray-100 bg-gray-50 dark:border-slate-800 dark:bg-slate-900/90 dark:ring-1 dark:ring-white/10">
         <Card.Content className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-slate-100">
             产品信息录入
           </h3>
 
           <div className="space-y-4">
             <TextField name="product_name" className="w-full">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
                 商品名称
               </Label>
               <Input
@@ -54,13 +54,13 @@ export function ProductInfoForm({ onSubmit }: ProductInfoFormProps) {
                   }))
                 }
                 placeholder="请输入商品名称"
-                className="bg-white border border-gray-200 rounded-lg"
+                className="rounded-lg border border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-500"
                 variant="secondary"
               />
             </TextField>
 
             <TextField name="product_desc" className="w-full">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
                 商品描述
               </Label>
               <Input
@@ -72,13 +72,13 @@ export function ProductInfoForm({ onSubmit }: ProductInfoFormProps) {
                   }))
                 }
                 placeholder="请输入商品描述、卖点或特点"
-                className="bg-white border border-gray-200 rounded-lg"
+                className="rounded-lg border border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-500"
                 variant="secondary"
               />
             </TextField>
 
             <TextField name="target_audience" className="w-full">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
                 目标人群
               </Label>
               <Input
@@ -90,16 +90,18 @@ export function ProductInfoForm({ onSubmit }: ProductInfoFormProps) {
                   }))
                 }
                 placeholder="请输入目标用户画像或适用人群"
-                className="bg-white border border-gray-200 rounded-lg"
+                className="rounded-lg border border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-500"
                 variant="secondary"
               />
             </TextField>
           </div>
 
           <Button
-            onPress={handleSubmit}
+            onPress={() => {
+              void handleSubmit()
+            }}
             isDisabled={!formData.product_name.trim() || isSubmitting}
-            className="w-full mt-6 bg-blue-500 text-white hover:bg-blue-600 rounded-lg"
+            className="mt-6 w-full rounded-lg bg-blue-500 text-white hover:bg-blue-600 dark:bg-sky-600 dark:hover:bg-sky-500"
           >
             <Send className="w-4 h-4 mr-2" />
             保存产品信息

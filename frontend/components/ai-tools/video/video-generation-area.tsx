@@ -162,15 +162,15 @@ export function VideoGenerationArea({
     return (
       <Card
         className={cn(
-          'h-full min-h-[520px] rounded-xl border-0 bg-[#F8F8F8] shadow-none',
+          'h-full min-h-[520px] rounded-xl border-0 bg-[#F8F8F8] shadow-none dark:bg-slate-900/90 dark:ring-1 dark:ring-white/10',
           className
         )}
       >
         <Card.Content className='flex h-full min-h-[520px] flex-col items-center justify-center gap-4 p-6 text-center'>
-          <Film className='h-16 w-16 text-gray-300' />
+          <Film className='h-16 w-16 text-gray-300 dark:text-slate-600' />
           <div>
-            <p className='text-lg font-medium text-gray-700'>等待生成视频</p>
-            <p className='mt-2 text-sm text-gray-400'>
+            <p className='text-lg font-medium text-gray-700 dark:text-slate-200'>等待生成视频</p>
+            <p className='mt-2 text-sm text-gray-400 dark:text-slate-500'>
               选择商品并填写视频描述后，这里会展示生成结果。
             </p>
           </div>
@@ -183,7 +183,7 @@ export function VideoGenerationArea({
     return (
       <Card
         className={cn(
-          'h-full min-h-[520px] rounded-xl border-0 bg-[#F8F8F8] shadow-none',
+          'h-full min-h-[520px] rounded-xl border-0 bg-[#F8F8F8] shadow-none dark:bg-slate-900/90 dark:ring-1 dark:ring-white/10',
           className
         )}
       >
@@ -191,15 +191,15 @@ export function VideoGenerationArea({
           <FallingPetalsLoader />
 
           <div className='space-y-2 text-center'>
-            <p className='text-lg font-medium text-gray-700'>{statusText}</p>
-            <p className='text-sm text-gray-500'>
+            <p className='text-lg font-medium text-gray-700 dark:text-slate-200'>{statusText}</p>
+            <p className='text-sm text-gray-500 dark:text-slate-400'>
               已耗时 {formatElapsedTime(elapsedTime)}
             </p>
           </div>
 
           <div className='w-full max-w-72'>
             <ProgressBar aria-label='视频生成进度' className='w-full' value={progress}>
-              <ProgressBar.Track className='h-3 rounded-full bg-white'>
+              <ProgressBar.Track className='h-3 rounded-full bg-white dark:bg-slate-800'>
                 <ProgressBar.Fill className='rounded-full bg-[#91C1FA]' />
               </ProgressBar.Track>
             </ProgressBar>
@@ -215,7 +215,7 @@ export function VideoGenerationArea({
   return (
     <Card
       className={cn(
-        'h-full min-h-[520px] rounded-xl border-0 bg-[#F8F8F8] shadow-none',
+        'h-full min-h-[520px] rounded-xl border-0 bg-[#F8F8F8] shadow-none dark:bg-slate-900/90 dark:ring-1 dark:ring-white/10',
         className
       )}
     >
@@ -230,8 +230,8 @@ export function VideoGenerationArea({
             />
           </div>
         ) : (
-          <div className='flex h-full min-h-[400px] flex-col items-center justify-center gap-3 rounded-xl bg-white text-center text-gray-400'>
-            <PlayCircle className='h-14 w-14 text-gray-300' />
+          <div className='flex h-full min-h-[400px] flex-col items-center justify-center gap-3 rounded-xl bg-white text-center text-gray-400 dark:bg-slate-800/80 dark:text-slate-500'>
+            <PlayCircle className='h-14 w-14 text-gray-300 dark:text-slate-600' />
             <p className='text-sm'>视频地址缺失，暂时无法播放。</p>
           </div>
         )}
