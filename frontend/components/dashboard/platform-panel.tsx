@@ -9,6 +9,10 @@ import {
   ChartCard,
   FilterSelect,
   KpiCard,
+  PLATFORM_SALES_DONUT_LEGEND,
+  PLATFORM_SALES_ITEMS,
+  PLATFORM_SALES_PROFIT_DONUT_DEMO_SEGMENTS,
+  PLATFORM_SALES_REVENUE_DONUT_DEMO_SEGMENTS,
   panelHoverClass,
   panelOnMutedBgClass,
   RANGE_ITEMS,
@@ -40,14 +44,7 @@ export function PlatformPanel() {
           </Card.Description>
         </Card.Header>
         <Card.Content className="space-y-4">
-          {(
-            [
-              { id: "jd", name: "京东" },
-              { id: "dy", name: "抖音" },
-              { id: "xhs", name: "小红书" },
-              { id: "tb", name: "淘宝" },
-            ] as const
-          ).map((p) => (
+          {PLATFORM_SALES_ITEMS.map((p) => (
             <div
               key={p.id}
               className="flex flex-col gap-3 border-b border-border pb-4 last:border-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
@@ -58,7 +55,7 @@ export function PlatformPanel() {
                 </Checkbox.Control>
                 <Checkbox.Content>
                   <Label htmlFor={`plat-${p.id}`} className="font-medium">
-                    {p.name}
+                    {p.label}
                   </Label>
                 </Checkbox.Content>
               </Checkbox>
@@ -73,27 +70,25 @@ export function PlatformPanel() {
         </Card.Content>
       </Card>
       <div className="grid gap-4 sm:grid-cols-2">
-        <KpiCard title="总销售额" value="¥0" trendLabel="↑ --% 较上月" icon={<Banknote aria-hidden />} />
-        <KpiCard title="总利润" value="¥0" trendLabel="↑ --% 较上月" icon={<CircleDollarSign aria-hidden />} />
+        <KpiCard title="总销售额" value="¥284.76万" trendLabel="↑ 9.2% 较上月" icon={<Banknote aria-hidden />} />
+        <KpiCard title="总利润" value="¥42.31万" trendLabel="↑ 11.4% 较上月" icon={<CircleDollarSign aria-hidden />} />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard
           title="销售额来源分布"
           variant="donut"
           updatedAt={dataUpdatedAt}
-          legend={[
-            { label: "渠道 A", color: "#64748b" },
-            { label: "渠道 B", color: "#94a3b8" },
-          ]}
+          donutSummary={{ value: "¥284.76万", caption: "销售合计" }}
+          legend={[...PLATFORM_SALES_DONUT_LEGEND]}
+          donutSegments={[...PLATFORM_SALES_REVENUE_DONUT_DEMO_SEGMENTS]}
         />
         <ChartCard
           title="利润来源分布"
           variant="donut"
           updatedAt={dataUpdatedAt}
-          legend={[
-            { label: "渠道 A", color: "#64748b" },
-            { label: "渠道 B", color: "#94a3b8" },
-          ]}
+          donutSummary={{ value: "¥42.31万", caption: "利润合计" }}
+          legend={[...PLATFORM_SALES_DONUT_LEGEND]}
+          donutSegments={[...PLATFORM_SALES_PROFIT_DONUT_DEMO_SEGMENTS]}
         />
       </div>
     </div>

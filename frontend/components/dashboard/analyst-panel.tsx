@@ -10,6 +10,10 @@ import {
   FilterSelect,
   INDUSTRY_ITEMS,
   KpiCard,
+  MERCHANT_FORM_REGION_DONUT_DEMO_SEGMENTS,
+  MERCHANT_FORM_REGION_DONUT_LEGEND,
+  MERCHANT_FORM_SOURCE_DONUT_DEMO_SEGMENTS,
+  MERCHANT_FORM_SOURCE_DONUT_LEGEND,
   cardDescriptionClass,
   panelHoverClass,
   panelOnMutedBgClass,
@@ -54,28 +58,31 @@ export function AnalystPanel() {
         </Card.Content>
       </Card>
       <div className="grid gap-6 sm:grid-cols-2">
-        <KpiCard title="总商家数" value="0" trendLabel="↑ -- 较去年" icon={<Users aria-hidden />} />
-        <KpiCard title="活跃商家占比" value="0%" trendLabel="↑ -- 较去年" icon={<BadgeCheck aria-hidden />} />
+        <KpiCard title="总商家数" value="1,286" trendLabel="↑ 12.3% 较去年" icon={<Users aria-hidden />} />
+        <KpiCard title="活跃商家占比" value="68.4%" trendLabel="↑ 5.8% 较去年" icon={<BadgeCheck aria-hidden />} />
       </div>
       <div className="grid gap-6 lg:grid-cols-3">
         <ChartCard
           title="商家来源分布"
           variant="donut"
           updatedAt={dataUpdatedAt}
-          legend={[
-            { label: "来源分布", color: "#94a3b8" },
-            { label: "其他", color: "#cbd5e1" },
-          ]}
+          donutSummary={{ value: "1,286", caption: "合计商家" }}
+          legend={[...MERCHANT_FORM_SOURCE_DONUT_LEGEND]}
+          donutSegments={[...MERCHANT_FORM_SOURCE_DONUT_DEMO_SEGMENTS]}
         />
-        <ChartCard title="商家行业类别" variant="bars" updatedAt={dataUpdatedAt} />
+        <ChartCard
+          title="商家行业类别"
+          variant="bars"
+          updatedAt={dataUpdatedAt}
+          barsFooter="单位：家 · 与登记表「行业类别」一致（演示）"
+        />
         <ChartCard
           title="商家区域分布"
           variant="donut"
           updatedAt={dataUpdatedAt}
-          legend={[
-            { label: "区域分布", color: "#94a3b8" },
-            { label: "其他", color: "#cbd5e1" },
-          ]}
+          donutSummary={{ value: "1,286", caption: "合计商家" }}
+          legend={[...MERCHANT_FORM_REGION_DONUT_LEGEND]}
+          donutSegments={[...MERCHANT_FORM_REGION_DONUT_DEMO_SEGMENTS]}
         />
       </div>
     </div>

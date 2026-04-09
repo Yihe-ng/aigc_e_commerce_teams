@@ -94,14 +94,186 @@ export function KpiCard(props: {
   )
 }
 
+/** 圆环图中心汇总（占位演示，接入接口后由接口数据填充） */
+export type ChartDonutSummary = {
+  value: string
+  /** 主数值下方说明，如「合计商家」 */
+  caption?: string
+}
+
+/** 圆环分段：颜色 + 占比（0–1），各段之和建议为 1（将自动归一化） */
+export type ChartDonutSegment = {
+  color: string
+  percent: number
+}
+
+function normalizeDonutSegments(segments: ChartDonutSegment[]): ChartDonutSegment[] {
+  const sum = segments.reduce((acc, s) => acc + s.percent, 0)
+  if (sum <= 0) return segments
+  return segments.map((s) => ({ color: s.color, percent: s.percent / sum }))
+}
+
+/** 未传 donutSegments 时，按图例颜色生成演示占比 */
+function buildDonutSegmentsFromLegend(
+  legend: { label: string; color: string }[] | undefined,
+): ChartDonutSegment[] {
+  if (!legend?.length) {
+    return normalizeDonutSegments([
+      { color: "#64748b", percent: 0.38 },
+      { color: "#94a3b8", percent: 0.34 },
+      { color: "#cbd5e1", percent: 0.28 },
+    ])
+  }
+  if (legend.length === 2) {
+    return normalizeDonutSegments([
+      { color: legend[0].color, percent: 0.52 },
+      { color: legend[1].color, percent: 0.48 },
+    ])
+  }
+  if (legend.length === 3) {
+    return normalizeDonutSegments([
+      { color: legend[0].color, percent: 0.38 },
+      { color: legend[1].color, percent: 0.34 },
+      { color: legend[2].color, percent: 0.28 },
+    ])
+  }
+  const n = legend.length
+  return normalizeDonutSegments(legend.map((l) => ({ color: l.color, percent: 1 / n })))
+}
+
+/** 横向条形图一行：标签 + 比例条 + 数值（占位演示，接入接口后替换） */
+export type ChartBarItem = {
+  label: string
+  /** 用于条长度（将与最大值为比） */
+  value: number
+  /** 右侧展示，默认使用 value 千分位 */
+  valueLabel?: string
+  /** 填色，默认 sky */
+  barColorClassName?: string
+}
+
+function BarChartRows({ items, title }: { items: ChartBarItem[]; title: string }) {
+  const max = Math.max(...items.map((i) => i.value), 1)
+  const defaultBar = "bg-sky-500/90 dark:bg-sky-500/75"
+
+  return (
+    <div
+      className="w-full max-w-lg space-y-3 px-0.5"
+      role="list"
+      aria-label={`${title}，各分类商家数量`}
+    >
+      {items.map((item) => (
+        <div key={item.label} className="flex items-center gap-2 sm:gap-3" role="listitem">
+          <span
+            className="w-[4.5rem] shrink-0 truncate text-right text-xs font-medium text-slate-700 dark:text-slate-200 sm:w-28 sm:text-sm"
+            title={item.label}
+          >
+            {item.label}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div
+                className={cn("h-full rounded-full", item.barColorClassName ?? defaultBar)}
+                style={{ width: `${(item.value / max) * 100}%` }}
+              />
+            </div>
+          </div>
+          <span className="w-12 shrink-0 text-right text-xs tabular-nums text-slate-600 dark:text-slate-300 sm:w-14 sm:text-sm">
+            {item.valueLabel ?? item.value.toLocaleString("zh-CN")}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function DonutRingSvg({
+  segments,
+  className,
+}: {
+  segments: ChartDonutSegment[]
+  className?: string
+}) {
+  const cx = 50
+  const cy = 50
+  const r = 38
+  const strokeWidth = 10
+  const c = 2 * Math.PI * r
+  let offset = 0
+  const segs = normalizeDonutSegments(segments)
+
+  return (
+    <svg className={cn("size-full", className)} viewBox="0 0 100 100" aria-hidden>
+      <g transform={`rotate(-90 ${cx} ${cy})`}>
+        <circle
+          cx={cx}
+          cy={cy}
+          r={r}
+          fill="none"
+          className="text-slate-200 dark:text-slate-700"
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+        />
+        {segs.map((seg, i) => {
+          const dash = seg.percent * c
+          const node = (
+            <circle
+              key={i}
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill="none"
+              stroke={seg.color}
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${dash} ${c}`}
+              strokeDashoffset={-offset}
+              strokeLinecap="butt"
+            />
+          )
+          offset += dash
+          return node
+        })}
+      </g>
+    </svg>
+  )
+}
+
 export function ChartCard(props: {
   title: string
   variant: "donut" | "bars"
   legend?: { label: string; color: string }[]
+  /** 仅 variant 为 donut：各段颜色与占比；不传则根据 legend 生成演示数据 */
+  donutSegments?: ChartDonutSegment[]
+  /** 仅 variant 为 donut 时生效：圆环中心展示的汇总 */
+  donutSummary?: ChartDonutSummary
+  /** 仅 variant 为 bars：各行标签与数值；不传则使用内置行业演示数据 */
+  barItems?: ChartBarItem[]
+  /** 条形图底部说明，如「单位：家」 */
+  barsFooter?: string
   updatedAt?: string
   className?: string
 }) {
-  const { title, variant, legend, updatedAt = UPDATED_AT, className } = props
+  const {
+    title,
+    variant,
+    legend,
+    donutSegments,
+    donutSummary,
+    barItems,
+    barsFooter = "单位：家",
+    updatedAt = UPDATED_AT,
+    className,
+  } = props
+
+  const resolvedDonutSegments =
+    variant === "donut"
+      ? donutSegments?.length
+        ? normalizeDonutSegments(donutSegments)
+        : buildDonutSegmentsFromLegend(legend)
+      : []
+
+  const resolvedBarItems =
+    variant === "bars" ? (barItems?.length ? barItems : MERCHANT_FORM_INDUSTRY_BAR_DEMO) : []
   return (
     <Card
       variant="default"
@@ -119,20 +291,36 @@ export function ChartCard(props: {
       <Card.Content className="flex flex-col items-center justify-center gap-4 px-4 pb-6 pt-0 sm:px-6">
         {variant === "donut" ? (
           <div
-            className="size-44 shrink-0 rounded-full border-[14px] border-slate-200 bg-slate-50 sm:size-48 dark:border-slate-700 dark:bg-slate-900/40"
-            aria-hidden
-          />
-        ) : (
-          <div className="flex h-44 w-full max-w-sm flex-col justify-end gap-2.5 px-1 sm:h-48" aria-hidden>
-            {[0.45, 0.72, 0.55, 0.9, 0.38].map((h, i) => (
-              <div key={i} className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                <div
-                  className="h-full rounded-full bg-slate-300 dark:bg-slate-600"
-                  style={{ width: `${h * 100}%` }}
-                />
+            className="relative flex size-44 shrink-0 items-center justify-center sm:size-48"
+            {...{
+              role: "img" as const,
+              "aria-label": donutSummary
+                ? `${title}，汇总 ${donutSummary.value}${
+                    donutSummary.caption ? `，${donutSummary.caption}` : ""
+                  }`
+                : `${title}，演示分布`,
+            }}
+          >
+            <div className="absolute inset-0 drop-shadow-sm">
+              <DonutRingSvg segments={resolvedDonutSegments} />
+            </div>
+            {donutSummary ? (
+              <div className="relative z-10 flex max-w-[6.5rem] flex-col items-center justify-center px-1 text-center sm:max-w-[7.25rem]">
+                <span className="text-lg font-semibold tabular-nums leading-tight tracking-tight text-slate-800 dark:text-slate-100 sm:text-xl">
+                  {donutSummary.value}
+                </span>
+                {donutSummary.caption ? (
+                  <span className="mt-1 text-[11px] font-medium leading-snug text-slate-500 dark:text-slate-400 sm:text-xs">
+                    {donutSummary.caption}
+                  </span>
+                ) : null}
               </div>
-            ))}
-            <span className="text-center text-sm text-slate-500">商家数量</span>
+            ) : null}
+          </div>
+        ) : (
+          <div className="flex w-full flex-col items-stretch gap-3">
+            <BarChartRows items={resolvedBarItems} title={title} />
+            <p className="text-center text-xs text-slate-500 dark:text-slate-400">{barsFooter}</p>
           </div>
         )}
         {legend && legend.length > 0 ? (
@@ -200,17 +388,84 @@ export const SOURCE_ITEMS = [
   { id: "organic", label: "自然流量" },
 ] as const
 
+const SOURCE_FORM_DONUT_COLORS = ["#0ea5e9", "#8b5cf6", "#14b8a6"] as const
+
+/** 与登记表「来源渠道」选项一致的圆环图例与演示分段（接入接口后替换） */
+export const MERCHANT_FORM_SOURCE_DONUT_LEGEND = SOURCE_ITEMS.map((item, i) => ({
+  label: item.label,
+  color: SOURCE_FORM_DONUT_COLORS[i] ?? "#94a3b8",
+}))
+
+export const MERCHANT_FORM_SOURCE_DONUT_DEMO_SEGMENTS: ChartDonutSegment[] = SOURCE_ITEMS.map(
+  (_item, i) => ({
+    color: SOURCE_FORM_DONUT_COLORS[i] ?? "#94a3b8",
+    percent: [0.38, 0.28, 0.34][i] ?? 1 / 3,
+  }),
+)
+
 export const INDUSTRY_ITEMS = [
   { id: "mfg", label: "制造" },
   { id: "retail", label: "零售" },
   { id: "svc", label: "服务" },
 ] as const
 
+/** 与登记表「行业类别」一致；演示户数合计 1,286（与 KPI 对齐） */
+export const MERCHANT_FORM_INDUSTRY_BAR_DEMO: ChartBarItem[] = INDUSTRY_ITEMS.map((item, i) => ({
+  label: item.label,
+  value: [428, 372, 486][i] ?? 0,
+}))
+
 export const REGION_ITEMS = [
   { id: "sw", label: "西南" },
   { id: "ec", label: "华东" },
   { id: "nc", label: "华北" },
 ] as const
+
+const REGION_FORM_DONUT_COLORS = ["#f59e0b", "#3b82f6", "#64748b"] as const
+
+/** 与登记表「所在区域」选项一致的圆环图例与演示分段（接入接口后替换） */
+export const MERCHANT_FORM_REGION_DONUT_LEGEND = REGION_ITEMS.map((item, i) => ({
+  label: item.label,
+  color: REGION_FORM_DONUT_COLORS[i] ?? "#94a3b8",
+}))
+
+export const MERCHANT_FORM_REGION_DONUT_DEMO_SEGMENTS: ChartDonutSegment[] = REGION_ITEMS.map(
+  (_item, i) => ({
+    color: REGION_FORM_DONUT_COLORS[i] ?? "#94a3b8",
+    percent: [0.35, 0.4, 0.25][i] ?? 1 / 3,
+  }),
+)
+
+/** 平台销售概览：与本页「平台筛选」列表一致（接入接口后选项仍应与此 id/文案对齐） */
+export const PLATFORM_SALES_ITEMS = [
+  { id: "jd", label: "京东" },
+  { id: "dy", label: "抖音" },
+  { id: "xhs", label: "小红书" },
+  { id: "tb", label: "淘宝" },
+] as const
+
+const PLATFORM_SALES_DONUT_COLORS = ["#0ea5e9", "#f43f5e", "#ec4899", "#f59e0b"] as const
+
+export const PLATFORM_SALES_DONUT_LEGEND = PLATFORM_SALES_ITEMS.map((item, i) => ({
+  label: item.label,
+  color: PLATFORM_SALES_DONUT_COLORS[i] ?? "#94a3b8",
+}))
+
+/** 销售额按平台演示占比 */
+export const PLATFORM_SALES_REVENUE_DONUT_DEMO_SEGMENTS: ChartDonutSegment[] = PLATFORM_SALES_ITEMS.map(
+  (_item, i) => ({
+    color: PLATFORM_SALES_DONUT_COLORS[i] ?? "#94a3b8",
+    percent: [0.32, 0.28, 0.22, 0.18][i] ?? 0.25,
+  }),
+)
+
+/** 利润按平台演示占比（可与销售额结构略有不同） */
+export const PLATFORM_SALES_PROFIT_DONUT_DEMO_SEGMENTS: ChartDonutSegment[] = PLATFORM_SALES_ITEMS.map(
+  (_item, i) => ({
+    color: PLATFORM_SALES_DONUT_COLORS[i] ?? "#94a3b8",
+    percent: [0.28, 0.3, 0.24, 0.18][i] ?? 0.25,
+  }),
+)
 
 export const ACTIVE_ITEMS = [
   { id: "all", label: "全部" },
