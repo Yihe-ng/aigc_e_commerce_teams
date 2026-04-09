@@ -59,7 +59,7 @@ export function MainSidebar({
             />
           </div>
           <div className={cn("min-w-0 flex-1", sidebarCollapsed && "md:hidden")}>
-            <p className="truncate text-sm font-semibold">智创电商</p>
+            <p className="truncate text-sm font-semibold">智创电商营销系统</p>
             <p className="truncate text-xs text-muted-foreground">营销控制台</p>
           </div>
           <Button

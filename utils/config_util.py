@@ -40,7 +40,8 @@ volcano_tts_voice_type = None
 coze_bot_id = None
 coze_api_key = None
 start_mode = None
-fay_url = None
+legacy_fay_url = None
+backend_api_url = None
 gpt_tts_url = None
 ref_audio_path = None
 gpt_prompt_text = None
@@ -86,6 +87,8 @@ def load_config():
     global coze_bot_id
     global coze_api_key
     global start_mode
+    global legacy_fay_url
+    global backend_api_url
     global fay_url
     global gpt_tts_url
     global ref_audio_path
@@ -137,7 +140,15 @@ def load_config():
     coze_bot_id = system_config.get('key', 'coze_bot_id')
     coze_api_key = system_config.get('key', 'coze_api_key')
     start_mode = system_config.get('key', 'start_mode')
-    fay_url = system_config.get('key', 'fay_url')
+    try:
+        backend_api_url = system_config.get('key', 'backend_api_url')
+    except:
+        try:
+            backend_api_url = system_config.get('key', 'fay_url')
+        except:
+            backend_api_url = "127.0.0.1:5000"
+    legacy_fay_url = backend_api_url
+    fay_url = backend_api_url
     try:
         gpt_tts_url = system_config.get('key', 'gpt_tts_url')
     except:
@@ -159,6 +170,9 @@ def load_config():
     except:
         text_lang = "zh"
     config = json.load(codecs.open('config.json', encoding='utf-8'))
+
+# 兼容旧代码里的 fay_url 访问，默认仍指向新的 backend_api_url。
+fay_url = None
 
 def save_config(config_data):
     global config

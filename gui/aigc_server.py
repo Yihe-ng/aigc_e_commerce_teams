@@ -2,13 +2,9 @@ import os
 import sys
 from dotenv import load_dotenv
 from flask import redirect, url_for
-import signal
-import atexit
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-import threading
-import sqlite3
+from datetime import datetime
 from flask_caching import Cache
 import zlib
 import io
@@ -30,9 +26,6 @@ if project_root not in sys.path:
 # 导入配置工具
 from utils import config_util
 
-# 导入 TTS 相关模块 (使用 try-except 防止因缺少文件导致崩溃)
-
-
 #  导入标准库和第三方库 ---
 from flask import (
     Flask,
@@ -45,48 +38,30 @@ from flask import (
     url_for,
     Response,
     stream_with_context,
-    session,
-    make_response,
-    after_this_request,
 )
 from flask_cors import CORS
-from openai import OpenAI
 from gevent import pywsgi
-from tts import tts_voice
-from tts import qwen3
-from tts import volcano_tts
 from scheduler.thread_manager import MyThread
 from core import wsa_server
-from core import content_db
-from core import member_db
-from core.interact import Interact
 from core.task_db import Task_Db
-import fay_booter
-import pandas as pd
 import subprocess
 from http import HTTPStatus
 from urllib.parse import urlparse, unquote, urlencode
 from pathlib import PurePosixPath, Path
 import requests
-from dashscope import ImageSynthesis
-import dashscope
 from werkzeug.exceptions import HTTPException
-from werkzeug.utils import secure_filename
 import hmac
 from hashlib import sha1
 import base64
 import uuid
 import time
 import hashlib
-import urllib.parse
 import json
 import traceback
 from email.utils import parsedate_to_datetime
 from threading import Lock, Thread
 from datetime import datetime
 import oss2
-import redis
-import random
 from gui.platforms import PLATFORM_CONFIG, COST_CONFIG
 from gui.ai_tools_task_result_utils import (
     build_image_task_result,
@@ -94,6 +69,40 @@ from gui.ai_tools_task_result_utils import (
     extract_task_product_id,
     merge_saved_video_result,
 )
+from backend.services.live_service import live_service
+from utils.trace_utils import summarize_text, trace_log
+
+_API_LATEST_AUDIO_MISS_COUNT = 0
+
+
+def _trace_latest_audio_api(payload, since, request_id):
+    global _API_LATEST_AUDIO_MISS_COUNT
+
+    debug_enabled = os.getenv("LIVE_AUDIO_POLL_DEBUG", "").lower() in {"1", "true", "yes", "on"}
+    audio = payload.get("audio") if isinstance(payload, dict) else None
+    if isinstance(audio, dict) and audio.get("filename"):
+        _API_LATEST_AUDIO_MISS_COUNT = 0
+        trace_log(
+            module="aigc_server",
+            stage="api_latest_audio",
+            status="ok",
+            request_id=request_id,
+            since=since,
+            filename=audio.get("filename", ""),
+            mtime_ms=audio.get("mtime_ms", ""),
+        )
+        return
+
+    _API_LATEST_AUDIO_MISS_COUNT += 1
+    if debug_enabled or _API_LATEST_AUDIO_MISS_COUNT == 1 or _API_LATEST_AUDIO_MISS_COUNT % 10 == 0:
+        trace_log(
+            module="aigc_server",
+            stage="api_latest_audio",
+            status="empty",
+            request_id=request_id,
+            since=since,
+            miss_count=_API_LATEST_AUDIO_MISS_COUNT,
+        )
 
 # 初始化Flask并配置一些基本设置
 app = Flask(__name__, static_url_path="/static")  # 指定静态文件的URL路径为/static
@@ -198,36 +207,6 @@ app.config["MAX_CONTENT_LENGTH"] = (
 # 创建上传目录
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ----------------- Dashboard Redirects -----------------
-
-
-@app.route("/home")
-def home():
-    return render_template("index_main.html")
-
-
-@app.route("/dashboard")
-def dashboard_redirect():
-    return redirect("http://localhost:5001/dashboard")
-
-
-@app.route("/dashboard.html")
-def dashboard_html_redirect():
-    return redirect("http://localhost:5001/dashboard.html")
-
-
-@app.route("/dashboard_internal")
-def dashboard_internal_redirect():
-    return redirect("http://localhost:5001/dashboard_internal")
-
-
-@app.route("/dashboard_internal.html")
-def dashboard_internal_html_redirect():
-    return redirect("http://localhost:5001/dashboard_internal.html")
-
-
-# ----------------- Dashboard Logic End -----------------
-
 
 @app.route("/favicon.ico")
 def favicon():
@@ -250,10 +229,6 @@ def favicon():
         return redirect(url_for("static", filename="images/kode-icon.png"))
     # 如果发生报错，也重定向到默认图标，避免图标加载不出这种情况
 
-
-@app.route("/customer_analysis")
-def customer_analysis():
-    return render_template("customer_analysis.html")
 
 
 @app.route("/api/analyze_customer", methods=["POST"])
@@ -316,8 +291,6 @@ def analyze_customer():
 
             if response.status_code == HTTPStatus.OK:
                 content = response.output.text
-                # 尝试解析 JSON
-                # 有时候模型会包裹在 ```json ... ``` 中
                 import re
 
                 json_match = re.search(r"\{[\s\S]*\}", content)
@@ -1061,9 +1034,9 @@ def run_exe():
     # 处理POST请求
     # 获取当前文件所在目录的绝对路径
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    # 构建相对路径 (从gui目录向上到aigc_e_commerce，再进入fay目录)
+    # Live2D 方案下不再依赖旧版数字人可执行程序，这里保留接口但返回迁移提示
     exe_path = os.path.normpath(
-        os.path.join(current_dir, "..", "fay", "Fay5_4_Oct.exe")
+        os.path.join(current_dir, "..", "live2d")
     )
 
     # 调用本地exe文件
@@ -1074,7 +1047,7 @@ def run_exe():
             return jsonify(
                 {
                     "msg": "error",
-                    "error_message": f"文件不存在: {exe_path}",
+                    "error_message": "当前项目已切换为 Live2D 运行链路，不再依赖旧版数字人可执行程序。",
                     "debug_info": {
                         "current_dir": current_dir,
                         "resolved_path": exe_path,
@@ -1082,16 +1055,12 @@ def run_exe():
                 }
             ), 404
 
-        # 启动程序
-        print(f"Starting executable: {exe_path}")
-        exe_dir = os.path.dirname(exe_path)
-        subprocess.Popen(exe_path, cwd=exe_dir)
-
         return jsonify(
             {
                 "msg": "success",
+                "mode": "live2d",
                 "path": exe_path,
-                "relative_path": "../fay/Fay5_4_Oct.exe",
+                "relative_path": "../live2d",
             }
         )
     except Exception as e:
@@ -1421,51 +1390,6 @@ def check_img2img_status():
         return jsonify({"code": 1, "msg": str(e), "data": None}), 500
 
 
-@app.route("/product_marketing")
-def product_marketing():
-    return render_template("product_marketing.html")
-
-
-@app.route("/setting")
-def setting():
-    config_util.load_config()
-    return render_template("setting.html", config=config_util.config)
-
-
-@app.route("/test1")
-def test1():
-    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
-    return redirect(f"{frontend_url}/ai-tools/textgenerate")
-
-
-@app.route("/test2")  # 宣传图
-def test2():
-    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
-    return redirect(f"{frontend_url}/ai-tools/image")
-
-
-@app.route("/test3")  # 宣传视频
-def test3():
-    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
-    return redirect(f"{frontend_url}/ai-tools/video")
-
-
-# @app.route('/test4')  # 直播数字人
-# def test4():
-#   return render_template('test4.html')
-
-
-@app.route("/calendar")  # 日程安排
-def calendar():
-    return render_template("calendar.html")
-
-
-@app.route("/note")
-def note():
-    # 原有主页逻辑
-    return render_template("note.html")
-
-
 # 添加静态文件路由
 @app.route("/static/products/<path:filename>")
 def custom_static(filename):
@@ -1482,9 +1406,7 @@ BASE_DIR = Path(__file__).parent
 PRODUCTS_FILE = BASE_DIR / "products.csv"
 
 
-@app.route("/product_management")
-def product_management():
-    return render_template("product_management.html")
+
 
 
 # 修正后的OSS配置（支持环境变量覆盖，端点包含协议）
@@ -1511,39 +1433,6 @@ def get_image_runtime_config():
             },
         }
     )
-
-
-auth = None
-bucket = None
-
-
-def _init_oss():
-    global auth, bucket
-    if OSS_CONFIG["ACCESS_KEY_ID"] and OSS_CONFIG["ACCESS_KEY_SECRET"]:
-        try:
-            auth = oss2.Auth(
-                OSS_CONFIG["ACCESS_KEY_ID"], OSS_CONFIG["ACCESS_KEY_SECRET"]
-            )
-            bucket = oss2.Bucket(
-                auth, OSS_CONFIG["ENDPOINT"], OSS_CONFIG["BUCKET_NAME"]
-            )
-            try:
-                bucket.get_bucket_info()
-            except oss2.exceptions.NoSuchBucket:
-                print(
-                    f"Error: OSS Bucket '{OSS_CONFIG['BUCKET_NAME']}' 不存在或区域不匹配"
-                )
-            except Exception:
-                pass
-        except Exception as e:
-            print(f"Warning: Failed to initialize Aliyun OSS: {e}")
-    else:
-        print(
-            "Warning: Aliyun OSS credentials not found. OSS features will be disabled."
-        )
-
-
-_init_oss()
 
 
 def generate_product_id():
@@ -2385,6 +2274,8 @@ GENERATION_HISTORY = []
 
 @app.route("/api/generation_history")
 def get_history():
+    if not GENERATION_HISTORY:
+        return jsonify({"average_time": 0, "recent": []})
     return jsonify(
         {
             "average_time": sum(h["time"] for h in GENERATION_HISTORY)
@@ -2506,406 +2397,114 @@ def upload_image():
 
 @app.route("/api/get-data", methods=["post"])
 def api_get_data():
-    config_util.load_config()
-    send_voice_list = []
-
-    # 1. 总是加入本地 Azure/Edge 声音
-    try:
-        voice_list = tts_voice.get_voice_list()
-        for voice in voice_list:
-            voice_data = voice.value
-            send_voice_list.append(
-                {
-                    "id": voice_data.get("name", voice_data["voiceName"]),
-                    "name": voice_data["name"],
-                }
-            )
-    except Exception as e:
-        print(f"Azure voice list error: {e}")
-
-    # 2. 合并 Ali 声音
-    ali_voices = [
-        {"id": "abin", "name": "阿斌"},
-        {"id": "zhixiaobai", "name": "知小白"},
-        {"id": "zhixiaoxia", "name": "知小夏"},
-        {"id": "zhixiaomei", "name": "知小妹"},
-        {"id": "zhigui", "name": "知柜"},
-        {"id": "zhishuo", "name": "知硕"},
-        {"id": "aixia", "name": "艾夏"},
-        {"id": "zhifeng_emo", "name": "知锋_多情感"},
-        {"id": "zhibing_emo", "name": "知冰_多情感"},
-        {"id": "zhimiao_emo", "name": "知妙_多情感"},
-        {"id": "zhimi_emo", "name": "知米_多情感"},
-        {"id": "zhiyan_emo", "name": "知燕_多情感"},
-        {"id": "zhibei_emo", "name": "知贝_多情感"},
-        {"id": "zhitian_emo", "name": "知甜_多情感"},
-        {"id": "xiaoyun", "name": "小云"},
-        {"id": "xiaogang", "name": "小刚"},
-        {"id": "ruoxi", "name": "若兮"},
-        {"id": "siqi", "name": "思琪"},
-        {"id": "sijia", "name": "思佳"},
-        {"id": "sicheng", "name": "思诚"},
-        {"id": "aiqi", "name": "艾琪"},
-        {"id": "aijia", "name": "艾佳"},
-        {"id": "aicheng", "name": "艾诚"},
-        {"id": "aida", "name": "艾达"},
-        {"id": "ninger", "name": "宁儿"},
-        {"id": "ruilin", "name": "瑞琳"},
-        {"id": "siyue", "name": "思悦"},
-        {"id": "aiya", "name": "艾雅"},
-        {"id": "aimei", "name": "艾美"},
-        {"id": "aiyu", "name": "艾雨"},
-        {"id": "aiyue", "name": "艾悦"},
-        {"id": "aijing", "name": "艾婧"},
-        {"id": "xiaomei", "name": "小美"},
-        {"id": "aina", "name": "艾娜"},
-        {"id": "yina", "name": "伊娜"},
-        {"id": "sijing", "name": "思婧"},
-        {"id": "sitong", "name": "思彤"},
-        {"id": "xiaobei", "name": "小北"},
-        {"id": "aitong", "name": "艾彤"},
-        {"id": "aiwei", "name": "艾薇"},
-        {"id": "aibao", "name": "艾宝"},
-        {"id": "shanshan", "name": "姗姗"},
-        {"id": "chuangirl", "name": "小玥"},
-        {"id": "lydia", "name": "Lydia"},
-        {"id": "aishuo", "name": "艾硕"},
-        {"id": "qingqing", "name": "青青"},
-        {"id": "cuijie", "name": "翠姐"},
-        {"id": "xiaoze", "name": "小泽"},
-        {"id": "zhimao", "name": "知猫"},
-        {"id": "zhiyuan", "name": "知媛"},
-        {"id": "zhiya", "name": "知雅"},
-        {"id": "zhiyue", "name": "知悦"},
-        {"id": "zhida", "name": "知达"},
-        {"id": "zhistella", "name": "知莎"},
-        {"id": "kelly", "name": "Kelly"},
-        {"id": "jiajia", "name": "佳佳"},
-        {"id": "taozi", "name": "桃子"},
-        {"id": "guijie", "name": "柜姐"},
-        {"id": "stella", "name": "Stella"},
-        {"id": "stanley", "name": "Stanley"},
-        {"id": "kenny", "name": "Kenny"},
-        {"id": "rosa", "name": "Rosa"},
-        {"id": "mashu", "name": "马树"},
-        {"id": "xiaoxian", "name": "小仙"},
-        {"id": "yuer", "name": "悦儿"},
-        {"id": "maoxiaomei", "name": "猫小美"},
-        {"id": "aifei", "name": "艾飞"},
-        {"id": "yaqun", "name": "亚群"},
-        {"id": "qiaowei", "name": "巧薇"},
-        {"id": "dahu", "name": "大虎"},
-        {"id": "ailun", "name": "艾伦"},
-        {"id": "jielidou", "name": "杰力豆"},
-        {"id": "laotie", "name": "老铁"},
-        {"id": "laomei", "name": "老妹"},
-        {"id": "aikan", "name": "艾侃"},
-    ]
-    send_voice_list += ali_voices
-
-    # 3. 合并 Volcano 声音
-    try:
-        send_voice_list += volcano_tts.get_volcano_voices()
-    except Exception:
-        pass
-
-    # 4. 合并 Qwen 声音
-    try:
-        send_voice_list += qwen3.get_qwen_voices()
-    except Exception:
-        pass
-
-    # 5. 去重 (按 name)
-    seen = set()
-    unique_list = []
-    for v in send_voice_list:
-        nm = v.get("name")
-        if nm and nm not in seen:
-            seen.add(nm)
-            unique_list.append(v)
-
-    return json.dumps({"config": config_util.config, "voice_list": unique_list})
+    return jsonify(live_service.get_runtime_payload())
 
 
 @app.route("/api/submit", methods=["post"])
 def api_submit():
-    data = request.values.get("data")
-    config_data = json.loads(data) if data else request.get_json(force=True)
-    cfg = config_data.get("config", config_data)
-    config_util.save_config(cfg)
-    return '{"result":"successful"}'
+    return jsonify(live_service.save_runtime_payload(request))
 
 
 @app.route("/api/start-live", methods=["post"])
 def api_start_live():
-    try:
-        config_util.load_config()
-        web = wsa_server.new_web_instance(port=10003)
-        if not web.is_running():
-            web.start_server()
-        human = wsa_server.new_instance(port=10004)
-        if not human.is_running():
-            human.start_server()
-        if not fay_booter.is_running():
-            fay_booter.start()
-        wsa_server.get_web_instance().add_cmd({"liveState": 1})
-        return '{"result":"successful"}'
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify(live_service.start_live())
 
 
 @app.route("/api/stop-live", methods=["post"])
 def api_stop_live():
-    try:
-        if fay_booter.is_running():
-            fay_booter.stop()
-        web = wsa_server.get_web_instance()
-        if web and web.is_running():
-            web.add_cmd({"liveState": 0})
-        return '{"result":"successful"}'
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify(live_service.stop_live())
 
 
 @app.route("/api/get-msg", methods=["post"])
 def api_get_msg():
-    raw_data = request.form.get("data")
-    if not raw_data:
-        return jsonify({"list": []})
+    return jsonify(live_service.get_message_history(request))
 
-    try:
-        payload = json.loads(raw_data)
-    except Exception:
-        return jsonify({"list": []})
 
-    username = payload.get("username", "User")
-    uid = member_db.new_instance().find_user(username)
-    if uid == 0:
-        return jsonify({"list": []})
-
-    rows = content_db.new_instance().get_list("all", "desc", 1000, uid)
-    result = []
-    for row in reversed(rows):
-        result.append(
-            {
-                "type": row[0],
-                "way": row[1],
-                "content": row[2],
-                "createtime": row[3],
-                "timetext": row[4],
-                "username": row[5],
-            }
-        )
-    return jsonify({"list": result})
+@app.route("/api/get-member-list", methods=["post"])
+def api_get_member_list():
+    return jsonify(live_service.get_member_list())
 
 
 @app.route("/api/chat", methods=["post"])
 def api_chat():
-    try:
-        data = request.get_json(force=True)
-        text = data.get("text", "")
-        user = data.get("user", "User")
-
-        if not text:
-            return jsonify({"error": "Empty text"}), 400
-
-        if not fay_booter.is_running():
-            fay_booter.start()
-
-        # 异步处理交互，不等待返回，模拟 console 输入
-        interact = Interact("text", 1, {"user": user, "msg": text})
-
-        # 使用 MyThread 异步运行，避免阻塞 HTTP 请求太久
-        # 但为了让前端看到是否触发，我们这里还是调用一下，不过 on_interact 本身可能是同步的
-        # 为了不阻塞，我们还是放入线程池或者直接起个线程
-        # 注意：这里我们不需要返回值，因为输出是通过 WebSocket 推送给前端的
-
-        MyThread(target=fay_booter.feiFei.on_interact, args=[interact]).start()
-
-        return jsonify({"status": "success", "message": "Interaction started"})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    incoming_request_id = request.headers.get("X-Request-Id", "")
+    trace_log(
+        module="aigc_server",
+        stage="api_chat",
+        status="received",
+        request_id=incoming_request_id,
+        text_len=len(str((request.get_json(silent=True) or {}).get("text", "") or "")),
+        text_preview=summarize_text((request.get_json(silent=True) or {}).get("text", "")),
+    )
+    payload, status = live_service.submit_chat(request.get_json(force=True), request_id=incoming_request_id)
+    trace_log(
+        module="aigc_server",
+        stage="api_chat",
+        status="ok" if status < 400 else "error",
+        request_id=payload.get("request_id", incoming_request_id),
+        error="" if status < 400 else summarize_text(payload.get("error")),
+        http_status=status,
+    )
+    return jsonify(payload), status
 
 
 @app.route("/api/asr", methods=["post"])
 def api_asr():
-    upload = request.files.get("file")
-    if upload is None or upload.filename == "":
-        return jsonify({"error": "Missing audio file"}), 400
-
-    asr_url = getattr(config_util, "qwen3_asr_url", "http://127.0.0.1:8001/asr")
-    safe_name = secure_filename(upload.filename) or "recording.webm"
-    
-    # 读取上传的音频数据
-    audio_data = upload.read()
-    
-    # 检查是否需要转换格式（WebM/OGG 等需要转换为 WAV）
-    needs_conversion = not safe_name.lower().endswith('.wav')
-    
-    if needs_conversion:
-        # 使用 pydub 将音频转换为 WAV 格式
-        try:
-            from pydub import AudioSegment
-            import io
-            
-            # 从上传的数据创建 AudioSegment
-            audio = AudioSegment.from_file(io.BytesIO(audio_data))
-            
-            # 转换为 16kHz 单声道 WAV
-            audio = audio.set_frame_rate(16000)
-            audio = audio.set_channels(1)
-            
-            # 导出为 WAV 格式
-            wav_buffer = io.BytesIO()
-            audio.export(wav_buffer, format="wav")
-            wav_buffer.seek(0)
-            
-            # 更新文件名和数据
-            safe_name = safe_name.rsplit('.', 1)[0] + '.wav' if '.' in safe_name else safe_name + '.wav'
-            audio_data = wav_buffer.read()
-            
-        except Exception as e:
-            print(f"Audio conversion error: {e}")
-            return jsonify({"error": f"Audio conversion failed: {e}"}), 400
-
-    try:
-        response = requests.post(
-            asr_url,
-            files={
-                "file": (
-                    safe_name,
-                    audio_data,
-                    "audio/wav",
-                )
-            },
-            timeout=180,
-        )
-    except requests.RequestException as exc:
-        return jsonify({"error": f"ASR service unavailable: {exc}"}), 502
-
-    try:
-        payload = response.json()
-    except ValueError:
-        payload = {"error": response.text or "Invalid ASR response"}
-
-    return jsonify(payload), response.status_code
+    incoming_request_id = request.headers.get("X-Request-Id", "")
+    trace_log(
+        module="aigc_server",
+        stage="api_asr",
+        status="received",
+        request_id=incoming_request_id,
+        filename=getattr(request.files.get("file"), "filename", ""),
+    )
+    payload, status = live_service.transcribe_audio(request.files.get("file"), request_id=incoming_request_id)
+    trace_log(
+        module="aigc_server",
+        stage="api_asr",
+        status="ok" if status < 400 else "error",
+        request_id=payload.get("request_id", incoming_request_id),
+        error="" if status < 400 else summarize_text(payload.get("error") or payload.get("detail")),
+        http_status=status,
+    )
+    return jsonify(payload), status
 
 
 @app.route("/audio/<path:filename>")
 def serve_audio(filename):
-    audio_dir = os.path.join(os.getcwd(), "samples")
-    audio_path = os.path.join(audio_dir, filename)
-    if not os.path.isfile(audio_path):
-        return jsonify({"error": "Audio file not found"}), 404
-    return send_file(audio_path)
+    return live_service.serve_audio_file(filename)
 
 
 @app.route("/api/latest-audio")
 def api_latest_audio():
-    samples_dir = Path(os.getcwd()) / "samples"
     since = request.args.get("since", type=int)
-
-    if not samples_dir.exists():
-        return jsonify({"audio": None})
-
-    candidates = [path for path in samples_dir.glob("sample-*.wav") if path.is_file()]
-    if since is not None:
-        candidates = [
-            path
-            for path in candidates
-            if int(path.stat().st_mtime * 1000) >= since
-        ]
-
-    if not candidates:
-        return jsonify({"audio": None})
-
-    latest = max(candidates, key=lambda path: path.stat().st_mtime)
-    mtime_ms = int(latest.stat().st_mtime * 1000)
-    return jsonify(
-        {
-            "audio": {
-                "filename": latest.name,
-                "mtime_ms": mtime_ms,
-                "url": f"/audio/{latest.name}",
-            }
-        }
-    )
+    incoming_request_id = request.headers.get("X-Request-Id", "") or request.args.get("request_id", "")
+    payload = live_service.get_latest_audio(since, request_id=incoming_request_id)
+    _trace_latest_audio_api(payload, since, payload.get("request_id", incoming_request_id))
+    return jsonify(payload)
 
 
 @app.route("/api/ws-status")
 def ws_status():
-    ui = wsa_server.get_web_instance()
-    human = wsa_server.get_instance()
-    return jsonify(
-        {
-            "ui_server_running": ui is not None,
-            "human_server_running": human is not None,
-            "human_client_connected": (human.isConnect if human else False),
-        }
+    return jsonify(live_service.get_ws_status())
+
+
+@app.route("/api/health/live")
+def api_live_health():
+    payload = live_service.get_live_health()
+    trace_log(
+        module="aigc_server",
+        stage="api_live_health",
+        status=payload.get("overall_status", "unknown"),
+        request_id=request.headers.get("X-Request-Id", "") or "-",
     )
+    return jsonify(payload)
 
 
 @app.route("/v1/chat/completions", methods=["post"])
 @app.route("/api/send/v1/chat/completions", methods=["post"])
 def api_send_v1_chat_completions():
-    data = request.get_json(silent=True)
-    if not isinstance(data, dict):
-        data = {}
-
-    last_content = ""
-    username = "User"
-
-    messages = data.get("messages") or []
-    if isinstance(messages, list) and messages:
-        last_message = messages[-1] if isinstance(messages[-1], dict) else {}
-        username = last_message.get("role", "User")
-        if username == "user":
-            username = "User"
-        last_content = last_message.get("content", "")
-    else:
-        prompt = data.get("prompt")
-        if isinstance(prompt, str):
-            last_content = prompt
-
-    if not fay_booter.is_running() or getattr(fay_booter, "feiFei", None) is None:
-        try:
-            fay_booter.start()
-        except Exception as e:
-            return jsonify({"error": f"core not running: {e}"}), 500
-
-    try:
-        interact = Interact("text", 1, {"user": username, "msg": last_content})
-        resp = fay_booter.feiFei.on_interact(interact)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-    if resp is None:
-        resp_text = ""
-    elif isinstance(resp, str):
-        resp_text = resp
-    else:
-        resp_text = str(resp)
-
-    return jsonify(
-        {
-            "id": "chatcmpl-local",
-            "object": "chat.completion",
-            "created": int(time.time()),
-            "model": data.get("model", "fay"),
-            "choices": [
-                {
-                    "index": 0,
-                    "message": {"role": "assistant", "content": resp_text},
-                    "finish_reason": "stop",
-                }
-            ],
-            "usage": {
-                "prompt_tokens": len(last_content or ""),
-                "completion_tokens": len(resp_text),
-                "total_tokens": len(last_content or "") + len(resp_text),
-            },
-        }
-    )
+    return jsonify(live_service.create_chat_completion(request.get_json(silent=True)))
 
 
 # 获取单个商品详情
@@ -3369,3 +2968,6 @@ def get_oss_products_by_category():
 
 if __name__ == "__main__":
     run()
+
+
+

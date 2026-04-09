@@ -1,4 +1,5 @@
-#作用是音频录制，对于aliyun asr来说，边录制边stt，但对于其他来说，是先保存成文件再推送给asr模型，通过实现子类的方式（fay_booter.py 上有实现）来管理音频流的来源
+# 作用是音频录制。对于阿里云 ASR 是边录边识别，其他模式会先落地音频文件再提交给识别服务。
+# 具体音频流来源由运行时接入层实现，目前主链路已经迁移到 avatar_runtime。
 import audioop
 import math
 import time
@@ -16,7 +17,7 @@ from utils import config_util as cfg
 import numpy as np
 import tempfile
 import wave
-from core import fay_core
+from core import avatar_core
 from core import interact
 # 启动时间 (秒)
 _ATTACK = 0.2
@@ -27,8 +28,8 @@ _RELEASE = 0.7
 
 class Recorder:
 
-    def __init__(self, fay):
-        self.__fay = fay
+    def __init__(self, avatar):
+        self.__avatar = avatar
         self.__running = True
         self.__processing = False
         self.__history_level = []
@@ -89,8 +90,8 @@ class Recorder:
 
     def reset_wakeup_status(self):
         self.wakeup_matched = False  
-        with fay_core.auto_play_lock:
-            fay_core.can_auto_play = True
+        with avatar_core.auto_play_lock:
+            avatar_core.can_auto_play = True
 
     def __waitingResult(self, iat: asrclient, audio_data):
         self.processing = True
@@ -130,13 +131,13 @@ class Recorder:
                         if wake_up:
                             util.printInfo(1, self.username, "唤醒成功！")
                             if wsa_server.get_web_instance().is_connected(self.username):
-                                wsa_server.get_web_instance().add_cmd({"panelMsg": "唤醒成功！", "Username" : self.username , 'robot': f'http://{cfg.fay_url}:5000/robot/Listening.jpg'})
+                                wsa_server.get_web_instance().add_cmd({"panelMsg": "唤醒成功！", "Username" : self.username , 'robot': f'http://{cfg.backend_api_url}/robot/Listening.jpg'})
                             if wsa_server.get_instance().is_connected(self.username):
-                                content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': "唤醒成功！"}, 'Username' : self.username, 'robot': f'http://{cfg.fay_url}:5000/robot/Listening.jpg'}
+                                content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': "唤醒成功！"}, 'Username' : self.username, 'robot': f'http://{cfg.backend_api_url}/robot/Listening.jpg'}
                                 wsa_server.get_instance().add_cmd(content)
                             self.wakeup_matched = True  # 唤醒成功
-                            with fay_core.auto_play_lock:
-                                fay_core.can_auto_play = False
+                            with avatar_core.auto_play_lock:
+                                avatar_core.can_auto_play = False
                             #self.on_speaking(text)
                             intt = interact.Interact("auto_play", 2, {'user': self.username, 'text': "在呢，你说？"})
                             self.__fay.on_interact(intt)
@@ -146,9 +147,9 @@ class Recorder:
                         else:
                             util.printInfo(1, self.username, "[!] 待唤醒！")
                             if wsa_server.get_web_instance().is_connected(self.username):
-                                wsa_server.get_web_instance().add_cmd({"panelMsg": "[!] 待唤醒！", "Username" : self.username , 'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'})
+                                wsa_server.get_web_instance().add_cmd({"panelMsg": "[!] 待唤醒！", "Username" : self.username , 'robot': f'http://{cfg.backend_api_url}/robot/Normal.jpg'})
                             if wsa_server.get_instance().is_connected(self.username):
-                                content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': "[!] 待唤醒！"}, 'Username' : self.username, 'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'}
+                                content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': "[!] 待唤醒！"}, 'Username' : self.username, 'robot': f'http://{cfg.backend_api_url}/robot/Normal.jpg'}
                                 wsa_server.get_instance().add_cmd(content)
                     else:
                         self.on_speaking(text)
@@ -170,9 +171,9 @@ class Recorder:
                     if wake_up:
                         util.printInfo(1, self.username, "唤醒成功！")
                         if wsa_server.get_web_instance().is_connected(self.username):
-                            wsa_server.get_web_instance().add_cmd({"panelMsg": "唤醒成功！", "Username" : self.username , 'robot': f'http://{cfg.fay_url}:5000/robot/Listening.jpg'})
+                            wsa_server.get_web_instance().add_cmd({"panelMsg": "唤醒成功！", "Username" : self.username , 'robot': f'http://{cfg.backend_api_url}/robot/Listening.jpg'})
                         if wsa_server.get_instance().is_connected(self.username):
-                            content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': "唤醒成功！"}, 'Username' : self.username, 'robot': f'http://{cfg.fay_url}:5000/robot/Listening.jpg'}
+                            content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': "唤醒成功！"}, 'Username' : self.username, 'robot': f'http://{cfg.backend_api_url}/robot/Listening.jpg'}
                             wsa_server.get_instance().add_cmd(content)
                         #去除唤醒词后语句
                         question = text#[len(wake_up_word):].lstrip()
@@ -181,9 +182,9 @@ class Recorder:
                     else:
                         util.printInfo(1, self.username, "[!] 待唤醒！")
                         if wsa_server.get_web_instance().is_connected(self.username):
-                            wsa_server.get_web_instance().add_cmd({"panelMsg": "[!] 待唤醒！", "Username" : self.username , 'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'})
+                            wsa_server.get_web_instance().add_cmd({"panelMsg": "[!] 待唤醒！", "Username" : self.username , 'robot': f'http://{cfg.backend_api_url}/robot/Normal.jpg'})
                         if wsa_server.get_instance().is_connected(self.username):
-                            content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': "[!] 待唤醒！"}, 'Username' : self.username, 'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'}
+                            content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': "[!] 待唤醒！"}, 'Username' : self.username, 'robot': f'http://{cfg.backend_api_url}/robot/Normal.jpg'}
                             wsa_server.get_instance().add_cmd(content)
 
             #非唤醒模式
@@ -198,9 +199,9 @@ class Recorder:
             util.printInfo(1, self.username, "[!] 语音未检测到内容！")
             self.dynamic_threshold = self.__get_history_percentage(30)
             if wsa_server.get_web_instance().is_connected(self.username):
-                wsa_server.get_web_instance().add_cmd({"panelMsg": "", 'Username' : self.username, 'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'})
+                wsa_server.get_web_instance().add_cmd({"panelMsg": "", 'Username' : self.username, 'robot': f'http://{cfg.backend_api_url}/robot/Normal.jpg'})
             if wsa_server.get_instance().is_connected(self.username):
-                content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': ""}, 'Username' : self.username, 'robot': f'http://{cfg.fay_url}:5000/robot/Normal.jpg'}
+                content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': ""}, 'Username' : self.username, 'robot': f'http://{cfg.backend_api_url}/robot/Normal.jpg'}
                 wsa_server.get_instance().add_cmd(content)
 
     def __record(self):   
@@ -271,9 +272,9 @@ class Recorder:
                     self.start_speaking_time = time.time()
                     util.printInfo(1, self.username,"聆听中...")
                     if wsa_server.get_web_instance().is_connected(self.username):
-                        wsa_server.get_web_instance().add_cmd({"panelMsg": "聆听中...", 'Username' : self.username, 'robot': f'http://{cfg.fay_url}:5000/robot/Listening.jpg'})
+                        wsa_server.get_web_instance().add_cmd({"panelMsg": "聆听中...", 'Username' : self.username, 'robot': f'http://{cfg.backend_api_url}/robot/Listening.jpg'})
                     if wsa_server.get_instance().is_connected(self.username):
-                        content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': "聆听中..."}, 'Username' : self.username, 'robot': f'http://{cfg.fay_url}:5000/robot/Listening.jpg'}
+                        content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': "聆听中..."}, 'Username' : self.username, 'robot': f'http://{cfg.backend_api_url}/robot/Listening.jpg'}
                         wsa_server.get_instance().add_cmd(content)
                     concatenated_audio.clear()
                     try:

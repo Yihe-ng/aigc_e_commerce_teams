@@ -2,6 +2,8 @@ import sqlite3
 import time
 import threading
 import functools
+import os
+import shutil
 def synchronized(func):
   @functools.wraps(func)
   def wrapper(self, *args, **kwargs):
@@ -17,7 +19,7 @@ class Authorize_Tb:
 
     #初始化
     def init_tb(self):
-        conn = sqlite3.connect('fay.db')
+        conn = sqlite3.connect(self._get_db_path())
         c = conn.cursor()
         c.execute('''
             CREATE TABLE IF NOT EXISTS T_Authorize
@@ -34,7 +36,7 @@ class Authorize_Tb:
     @synchronized
     def add(self,userid,accesstoken,expirestime):
         self.init_tb()
-        conn = sqlite3.connect("fay.db")
+        conn = sqlite3.connect(self._get_db_path())
         cur = conn.cursor()
         cur.execute("insert into T_Authorize (userid,accesstoken,expirestime,createtime) values (?,?,?,?)",(userid,accesstoken,expirestime,int(time.time())))
         
@@ -46,7 +48,7 @@ class Authorize_Tb:
     @synchronized
     def find_by_userid(self,userid):
         self.init_tb()
-        conn = sqlite3.connect("fay.db")
+        conn = sqlite3.connect(self._get_db_path())
         cur = conn.cursor()
         cur.execute("select accesstoken,expirestime from T_Authorize where userid = ? order by id desc limit 1",(userid,))
         info = cur.fetchone()
@@ -57,9 +59,19 @@ class Authorize_Tb:
     @synchronized
     def update_by_userid(self, userid, new_accesstoken, new_expirestime):
         self.init_tb()
-        conn = sqlite3.connect("fay.db")
+        conn = sqlite3.connect(self._get_db_path())
         cur = conn.cursor()
         cur.execute("UPDATE T_Authorize SET accesstoken = ?, expirestime = ? WHERE userid = ?", 
                     (new_accesstoken, new_expirestime, userid))
         conn.commit()
         conn.close()
+
+    def _get_db_path(self):
+        avatar_db = "avatar.db"
+        legacy_db = "fay.db"
+        if os.path.exists(avatar_db):
+            return avatar_db
+        if os.path.exists(legacy_db):
+            shutil.copyfile(legacy_db, avatar_db)
+            return avatar_db
+        return avatar_db

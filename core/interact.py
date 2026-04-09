@@ -5,3 +5,7 @@ class Interact:
         self.interleaver = interleaver
         self.interact_type = interact_type
         self.data = data
+
+    @property
+    def request_id(self):
+        return self.data.get("request_id", "")

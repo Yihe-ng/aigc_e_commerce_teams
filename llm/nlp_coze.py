@@ -22,7 +22,7 @@ def question(cont, uid=0):
                 answer_info["type"] = "query"
                 answer_info["content"] = communication_history[i][2]
                 answer_info["content_type"] = "text"
-            elif communication_history[i][0] == "fay":
+            elif communication_history[i][0] in ("avatar", "assistant", "fay"):
                 answer_info["role"] = "assistant"
                 answer_info["type"] = "answer"
                 answer_info["content"] = communication_history[i][2]

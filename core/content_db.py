@@ -2,6 +2,8 @@ import sqlite3
 import time
 import threading
 import functools
+import os
+import shutil
 from utils import util
 def synchronized(func):
   @functools.wraps(func)
@@ -11,6 +13,19 @@ def synchronized(func):
   return wrapper
 
 __content_tb = None
+
+
+def _get_db_path():
+    avatar_db = "avatar.db"
+    legacy_db = "fay.db"
+    if os.path.exists(avatar_db):
+        return avatar_db
+    if os.path.exists(legacy_db):
+        shutil.copyfile(legacy_db, avatar_db)
+        return avatar_db
+    return avatar_db
+
+
 def new_instance():
     global __content_tb
     if __content_tb is None:
@@ -28,7 +43,7 @@ class Content_Db:
 
     #初始化
     def init_db(self):
-        conn = sqlite3.connect('fay.db')
+        conn = sqlite3.connect(_get_db_path())
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS T_Msg
             (id INTEGER PRIMARY KEY     autoincrement,
@@ -47,7 +62,7 @@ class Content_Db:
     #添加对话
     @synchronized
     def add_content(self,type,way,content,username='User',uid=0):
-        conn = sqlite3.connect("fay.db")
+        conn = sqlite3.connect(_get_db_path())
         cur = conn.cursor()
         try:
             cur.execute("insert into T_Msg (type,way,content,createtime,username,uid) values (?,?,?,?,?,?)",(type,way,content,int(time.time()),username,uid))
@@ -64,7 +79,7 @@ class Content_Db:
     #获取对话内容
     @synchronized
     def get_list(self,way,order,limit,uid=0):
-        conn = sqlite3.connect("fay.db")
+        conn = sqlite3.connect(_get_db_path())
         cur = conn.cursor()
         where_uid = ""
         if int(uid) != 0:

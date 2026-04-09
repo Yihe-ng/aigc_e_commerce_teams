@@ -1,6 +1,5 @@
 """
-此代码由fay开源开发者社区 江湖墨明 提供
-通过此代码的修改，可以实现对接本地clash代理或远程代理，clash无需设置成系统代理。以解决在开系统代理后无法使用部分功能的问题
+此代码经过项目内适配，可对接本地 clash 代理或远程代理，避免开启系统代理后影响其他功能。
 """
 
 import requests
@@ -54,7 +53,7 @@ def question(cont, uid=0):
             if communication_history[i][0] == "member":
                 answer_info["role"] = "user"
                 answer_info["content"] = communication_history[i][2]
-            elif communication_history[i][0] == "fay":
+            elif communication_history[i][0] in ("avatar", "assistant", "fay"):
                 answer_info["role"] = "assistant"
                 answer_info["content"] = communication_history[i][2]
             message.append(answer_info)

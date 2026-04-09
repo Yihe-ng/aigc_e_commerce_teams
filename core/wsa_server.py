@@ -20,6 +20,7 @@ class MyServer:
         self.__server: Serve = None
         self.__event_loop: AbstractEventLoop = None
         self.__running = True
+        self.__starting = False
         self.__pending = None
         self.isConnect = False
         self.TIMEOUT = 3  # 设置任何超时时间为 3 秒
@@ -163,15 +164,24 @@ class MyServer:
 
     # 创建server
     def __connect(self):
+        if self.__server or self.__starting:
+            util.log(1, '[WS] server already exist')
+            return
+        self.__starting = True
+        self.__running = True
         self.__event_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.__event_loop)
         self.__isExecute = True
-        if self.__server:
-            util.log(1, '[WS] server already exist')
-            return
-        self.__server = websockets.serve(self.__handler, self.__host, self.__port)
-        asyncio.get_event_loop().run_until_complete(self.__server)
-        asyncio.get_event_loop().run_forever()
+        try:
+            self.__server = websockets.serve(self.__handler, self.__host, self.__port)
+            asyncio.get_event_loop().run_until_complete(self.__server)
+            self.__starting = False
+            asyncio.get_event_loop().run_forever()
+        except Exception as exc:
+            util.log(1, f"[WS] WebSocket server start failed on {self.__port}: {exc}")
+            self.__server = None
+        finally:
+            self.__starting = False
 
     # 往要发送的命令列表中，添加命令
     def add_cmd(self, content):
@@ -183,21 +193,33 @@ class MyServer:
 
     # 开启服务
     def start_server(self):
+        if self.__server is not None or self.__starting:
+            return
         MyThread(target=self.__connect).start()
 
     # 关闭服务
     def stop_server(self):
         self.__running = False
         self.isConnect = False
-        if self.__server is None:
-            return
-        self.__server.close()
+        self.__starting = False
+        server = self.__server
+        loop = self.__event_loop
+        if server is not None and loop is not None:
+            try:
+                loop.call_soon_threadsafe(server.close)
+            except Exception:
+                pass
+            try:
+                loop.call_soon_threadsafe(loop.stop)
+            except Exception:
+                pass
         self.__server = None
+        self.__event_loop = None
         self.__clients = []
         util.log(1, "[WS] WebSocket server stopped.")
 
     def is_running(self):
-        return self.__server is not None and self.__running
+        return (self.__server is not None or self.__starting) and self.__running
 
 
 #ui端server

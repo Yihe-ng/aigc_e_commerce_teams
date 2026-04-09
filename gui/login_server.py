@@ -37,7 +37,7 @@ def login_api():
         username = data.get('username') or data.get('email')
         password = data.get('password')
         
-        print(f"Login attempt: username={username}, password={password}")
+        logger.info("Login attempt: username=%s", username)
         
      
         if username == 'zxhy' and password == '12345678':

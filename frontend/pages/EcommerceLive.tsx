@@ -225,7 +225,7 @@ const EcommerceLive: React.FC = () => {
           <div className="host-info">
             <div className="avatar"></div>
             <div className="host-details">
-              <div className="host-name">白夕Seal (AI Agent)</div>
+              <div className="host-name">桃瀬 Seal (AI Agent)</div>
               <div className="host-topic">正在为你讲解：智能数码新品</div>
             </div>
             <div className="live-status">● LIVE 03:24</div>

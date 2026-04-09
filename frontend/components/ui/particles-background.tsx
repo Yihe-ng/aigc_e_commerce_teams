@@ -49,10 +49,9 @@ export default function ParticlesBackground() {
   const isInitialized = useRef(false)
 
   useEffect(() => {
-    // 避免重复初始化，同时检查 DOM 元素是否存在
+    
     if (isInitialized.current || !window.particlesJS || !document.getElementById('particles-js')) return
     
-    // 确保 pJSDom 是数组（可能被之前的 destroypJS 设为 null）
     if (!window.pJSDom) {
       window.pJSDom = []
     }

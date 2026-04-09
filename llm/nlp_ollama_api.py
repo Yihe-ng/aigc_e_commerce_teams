@@ -35,7 +35,7 @@ def question(cont, uid=0):
             if communication_history[i][0] == "member":
                 answer_info["role"] = "user"
                 answer_info["content"] = communication_history[i][2]
-            elif communication_history[i][0] == "fay":
+            elif communication_history[i][0] in ("avatar", "assistant", "fay"):
                 answer_info["role"] = "assistant"
                 answer_info["content"] = communication_history[i][2]
             message.append(answer_info)

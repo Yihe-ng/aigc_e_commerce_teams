@@ -1,4 +1,4 @@
-import signal
+﻿import signal
 import atexit
 import subprocess
 import numpy as np
@@ -66,6 +66,18 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(le
 logger = logging.getLogger(__name__)
 
 from utils import config_util
+
+def _legacy_page_retired(route_name, frontend_path=None):
+    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    payload = {
+        "status": "gone",
+        "route": route_name,
+        "message": "Legacy Flask page routes have been retired. Use the Next.js frontend instead.",
+    }
+    if frontend_path:
+        payload["frontend_url"] = f"{frontend_url}{frontend_path}"
+    return jsonify(payload), 410
+
 
 
 # 预计算存储
@@ -229,14 +241,11 @@ from utils import config_util
 
 @app.route('/home')
 def home_redirect():
-    # Redirect to the main AIGC server on port 5000
-    return redirect("http://localhost:5000/home")
+    return _legacy_page_retired('home', '/home')
 
 @app.route('/setting')
 def setting():
-    config_util.load_config()
-    return render_template('setting.html', config=config_util.config)
-
+    return _legacy_page_retired('setting', '/settings')
 
 @app.route('/run_exe', methods=['POST'])
 def run_exe():
@@ -669,14 +678,12 @@ def convert_numpy_types(obj):
 
 @app.route('/')
 def index():
-    return redirect(url_for('dashboard'))
-
+    return _legacy_page_retired('index', '/home')
 
 # 功能面板
 @app.route('/dashboard')
 def dashboard():
-    return render_template('dashboard.html')
-
+    return _legacy_page_retired('dashboard', '/dashboard/analytics/merchant-source')
 
 @app.route('/api/dashboard/generated_content', methods=['GET'])
 def get_dashboard_generated_content():
@@ -721,7 +728,7 @@ def merchant_signup():
     global merchant_df, merchant_df_lock
     # 处理GET请求 - 显示注册表单
     if request.method == 'GET':
-        return render_template('sign_up.html')  # 确保返回HTML页面
+        return _legacy_page_retired('sign_up', '/dashboard/analytics/merchant-source')
 
     # 获取表单数据
     data = request.get_json() if request.is_json else request.form
@@ -1264,16 +1271,16 @@ def get_dashboard_data():
 # 新增路由：程序员数据看板
 @app.route('/dashboard_internal')
 def dashboard_internal():
-    return render_template('dashboard_internal.html')
+    return _legacy_page_retired('dashboard_internal', '/dashboard/analytics/analyst')
 
 # 兼容带.html后缀的访问
 @app.route('/dashboard.html')
 def dashboard_html():
-    return render_template('dashboard.html')
+    return _legacy_page_retired('dashboard_html', '/dashboard/analytics/merchant-source')
 
 @app.route('/dashboard_internal.html')
 def dashboard_internal_html():
-    return render_template('dashboard_internal.html')
+    return _legacy_page_retired('dashboard_internal_html', '/dashboard/analytics/analyst')
 
 def run():
     if is_precompute_enabled():

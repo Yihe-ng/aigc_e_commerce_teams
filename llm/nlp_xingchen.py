@@ -29,7 +29,7 @@ def question(cont, uid=0):
             if communication_history[i][0] == "member":
                 answer_info["role"] = "user"
                 answer_info["content"] = communication_history[i][2]
-            elif communication_history[i][0] == "fay":
+            elif communication_history[i][0] in ("avatar", "assistant", "fay"):
                 answer_info["role"] = "assistant"
                 answer_info["content"] = communication_history[i][2]
             message.append(answer_info)
@@ -53,7 +53,7 @@ def question(cont, uid=0):
                     "basicInfo": ""
                 },
                 "scenario": {
-                    "description": "你是数字人Fay。用户问你问题的时候回答之前请一步一步想清楚。你的底层AI算法技术是Fay。"
+                    "description": "你是一个 Live2D 数字人助手。用户问你问题的时候回答之前请一步一步想清楚，并给出自然、准确、易懂的回答。"
                 },
                 "context": {
                     "useChatHistory": False,

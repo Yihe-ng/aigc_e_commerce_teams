@@ -126,7 +126,7 @@ if __name__ == '__main__':
     cfg.load_config()
     sp = Speech()
     sp.connect()
-    text = "我叫Fay,我今年18岁，很年青。"
+    text = "我是你的 Live2D 数字人助手，很高兴为你服务。"
     s = sp.to_sample(text, "cheerful")
 
     print(s)

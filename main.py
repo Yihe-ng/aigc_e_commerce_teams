@@ -1,8 +1,10 @@
-#入口文件main
-import sys
-import os
-import subprocess
+﻿#入口文件main
 import atexit
+import importlib
+import os
+import re
+import subprocess
+import sys
 # --- 加载 .env 文件开始 ---
 def load_env_file():
     env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
@@ -25,20 +27,10 @@ load_env_file()
 # --- 加载 .env 文件结束 ---
 
 os.environ['PATH'] += os.pathsep + os.path.join(os.getcwd(), "test", "ovr_lipsync", "ffmpeg", "bin")
-import sys
-import time
-import re
 from utils import config_util
 from asr import ali_nls
 from core import wsa_server
-from gui import flask_server
-from gui import aigc_server
-from gui import login_server
-from gui import app as dashboard_server
-from gui.window import MainWindow
 from core import content_db
-import pandas as pd
-from flask import jsonify, send_from_directory
 
 
 #载入配置
@@ -50,10 +42,6 @@ project_root = os.path.dirname(os.path.abspath(__file__))
 # 将项目根目录添加到 Python 路径
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-#是否为普通模式（桌面模式）
-if config_util.start_mode == 'common':
-    from PyQt5 import QtGui
-    from PyQt5.QtWidgets import QApplication
 
 #音频清理
 def __clear_samples():
@@ -103,8 +91,8 @@ def start_frontend():
         'pnpm dev',
         cwd=frontend_dir,
         shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
     )
     
     print(f">>> Frontend 已启动，PID: {process.pid}")
@@ -120,6 +108,20 @@ def stop_frontend(process):
         print(">>> Frontend 已关闭")
 
 
+def start_http_services():
+    services = [
+        ("login_server", "gui.login_server"),
+        ("aigc_server", "gui.aigc_server"),
+        ("flask_server", "gui.flask_server"),
+    ]
+    for service_name, module_name in services:
+        try:
+            module = importlib.import_module(module_name)
+            module.start()
+        except Exception as e:
+            print(f"Failed to start {service_name}: {e}")
+
+
 if __name__ == '__main__':
     __clear_samples()
     __clear_logs()
@@ -129,8 +131,8 @@ if __name__ == '__main__':
     contentdb.init_db()
 
     # ip替换
-    if config_util.fay_url != "127.0.0.1:5000":
-        replace_ip_in_file("gui/static/js/index.js", config_util.fay_url)
+    if config_util.backend_api_url != "127.0.0.1:5000":
+        replace_ip_in_file("gui/static/js/index.js", config_util.backend_api_url)
 
     # --- 关键修改开始 ---
     # 只有当不是 Flask 的重载进程时，才启动这些 WebSocket 服务
@@ -153,25 +155,7 @@ if __name__ == '__main__':
     except Exception as e:
         print(f">>> 启动 frontend 失败: {e}")
 
-    # 启动http服务器
-    try:
-        login_server.start()
-    except Exception as e:
-        print(f"Failed to start login_server: {e}")
-    
-    try:
-        dashboard_server.start()
-    except Exception as e:
-        print(f"Failed to start dashboard_server: {e}")
-
-    try:
-        aigc_server.start()
-    except Exception as e:
-        print(f"Failed to start aigc_server: {e}")
-    
-    try:
-        flask_server.start()  # web，如果这里面有 debug=True，它会重启子进程
-    except Exception as e:
-        print(f"Failed to start flask_server: {e}")
+    # 启动 http 服务。按需导入，避免主进程启动时一次性加载所有重模块。
+    start_http_services()
 
     # ... 后面的代码保持不变 ...

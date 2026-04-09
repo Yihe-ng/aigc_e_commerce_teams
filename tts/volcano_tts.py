@@ -8,6 +8,13 @@ from utils import config_util as cfg
 import wave
 
 
+def get_volcano_voices():
+    voice_type = getattr(cfg, "volcano_tts_voice_type", "")
+    if voice_type:
+        return [{"id": voice_type, "name": f"火山引擎-{voice_type}"}]
+    return []
+
+
 class Speech:
     def __init__(self):
         self.appid = cfg.volcano_tts_appid

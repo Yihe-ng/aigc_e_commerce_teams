@@ -14,7 +14,7 @@ def question(cont):
         if list[i][0] == "member":
             answer_info["role"] = "user"
             answer_info["content"] = list[i][2]
-        elif list[i][0] == "fay":
+        elif list[i][0] in ("avatar", "assistant", "fay"):
             answer_info["role"] = "bot"
             answer_info["content"] = list[i][2]
         chat_list.append(answer_info)

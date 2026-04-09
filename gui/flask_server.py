@@ -1,12 +1,9 @@
-import importlib
-import sys
+﻿import sys
 import os
 
 # --- 路径设置开始 (必须在所有导入之前) ---
-# 获取项目根目录（从 gui 目录向上一级）
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
-# 将项目根目录添加到 Python 路径
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 # --- 路径设置结束 ---
@@ -26,27 +23,15 @@ from flask import (
     redirect,
 )
 from flask_cors import CORS
-import requests
-
-from tts import tts_voice
-from tts import qwen3
-from tts import volcano_tts
+from flask_httpauth import HTTPBasicAuth
 from gevent import pywsgi
 from scheduler.thread_manager import MyThread
-from utils import config_util, util
-from core import wsa_server
-from core import fay_core
-from core import content_db
-from core.interact import Interact
-from core import member_db
-import fay_booter
-from flask_httpauth import HTTPBasicAuth
-
 
 app = Flask(__name__)
 app.config["DEBUG"] = True
 auth = HTTPBasicAuth()
 CORS(app, supports_credentials=True)
+MAIN_API_BASE_URL = os.environ.get("MAIN_API_BASE_URL", "http://127.0.0.1:5000")
 
 
 def load_users():
@@ -78,10 +63,41 @@ def __get_device_list():
             devInfo = audio.get_device_info_by_index(i)
             if devInfo["hostApi"] == 0:
                 device_list.append(devInfo["name"])
+        return device_list
 
-        return list(set(device_list))
-    else:
-        return []
+    try:
+        upstream = requests.request(
+            method=request.method,
+            url=target_url,
+            params=request.args,
+            data=request.get_data(),
+            headers=headers,
+            cookies=request.cookies,
+            stream=stream,
+            timeout=300 if stream else 120,
+        )
+    except requests.RequestException as exc:
+        return jsonify({"error": f"main api unavailable: {exc}"}), 502
+
+    excluded_headers = {"content-encoding", "transfer-encoding", "connection"}
+    response_headers = [
+        (name, value)
+        for name, value in upstream.headers.items()
+        if name.lower() not in excluded_headers
+    ]
+
+    if stream:
+        return Response(
+            upstream.iter_content(chunk_size=8192),
+            status=upstream.status_code,
+            headers=response_headers,
+        )
+
+    return Response(
+        upstream.content,
+        status=upstream.status_code,
+        headers=response_headers,
+    )
 
 
 @app.route("/api/submit", methods=["post"])
@@ -251,11 +267,7 @@ def api_start_live():
 
 @app.route("/api/stop-live", methods=["post"])
 def api_stop_live():
-    # time.sleep(1)
-    fay_booter.stop()
-    time.sleep(1)
-    wsa_server.get_web_instance().add_cmd({"liveState": 0})
-    return '{"result":"successful"}'
+    return _proxy_to_main_api("/api/stop-live")
 
 
 @app.route("/api/send", methods=["post"])
@@ -403,9 +415,7 @@ def home_page():
 
 @app.route("/product_management")
 def product_management():
-    # 确保 templates 文件夹下有 product_management.html
-    return render_template("product_management.html")
-
+    return render_template('product_management.html')
 
 @app.route("/product_marketing")
 def product_marketing():
@@ -445,6 +455,150 @@ def setting():
     return render_template("setting.html")
 
 
+# ==================== 新增：直播间语音接口 ====================
+
+@app.route('/api/live/asr', methods=['POST'])
+def api_live_asr():
+    """
+    语音识别接口 - 前端录音文件上传到这里
+    """
+    try:
+        if 'audio' not in request.files:
+            return jsonify({'error': '没有音频文件'}), 400
+        
+        audio_file = request.files['audio']
+        if audio_file.filename == '':
+            return jsonify({'error': '文件名为空'}), 400
+        
+        # 保存临时文件
+        temp_path = f'./samples/live_asr_{int(time.time() * 1000)}.wav'
+        audio_file.save(temp_path)
+        
+        # 调用 ASR 服务（从配置读取）
+        asr_url = getattr(config_util.cfg, 'qwen3_asr_url', 'http://127.0.0.1:8001/asr')
+        with open(temp_path, 'rb') as f:
+            response = requests.post(asr_url, files={'file': f}, timeout=120)
+        
+        # 删除临时文件
+        try:
+            os.remove(temp_path)
+        except:
+            pass
+        
+        if response.status_code == 200:
+            result = response.json()
+            text = result.get('text', '')
+            util.printInfo(1, "直播间 ASR", f"识别结果：{text}")
+            return jsonify({'text': text})
+        else:
+            util.printInfo(1, "直播间 ASR", f"识别失败：{response.text}")
+            return jsonify({'error': 'ASR 服务错误', 'detail': response.text}), 500
+            
+    except Exception as e:
+        util.printInfo(1, "直播间 ASR", f"异常：{e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/live/tts', methods=['POST'])
+def api_live_tts():
+    """
+    语音合成接口 - 前端发送文字到这里，返回 Base64 音频
+    """
+    try:
+        data = request.json
+        text = data.get('text', '')
+        speaker = data.get('speaker', 'vivian')  # 默认 vivian 女声
+        instruct = data.get('instruct', '用平稳、自然、淡定的语气说话')
+        
+        if not text:
+            return jsonify({'error': '文本不能为空'}), 400
+        
+        # 调用 TTS 服务（从配置读取）
+        tts_url = getattr(config_util.cfg, 'qwen3_tts_url', 'http://127.0.0.1:8000/tts')
+        tts_data = {
+            "text": text,
+            "speaker": speaker,
+            "instruct": instruct,
+            "language": "Chinese"
+        }
+        
+        response = requests.post(tts_url, json=tts_data, timeout=120)
+        
+        if response.status_code == 200:
+            res_json = response.json()
+            if res_json.get('status') == 'success':
+                audio_base64 = res_json.get('audio_base64', '')
+                time_cost = res_json.get('time_cost_ms', 0)
+                util.printInfo(1, "直播间 TTS", f"合成成功，耗时：{time_cost:.1f}ms")
+                return jsonify({
+                    'audio_base64': audio_base64,
+                    'time_cost_ms': time_cost
+                })
+            else:
+                return jsonify({'error': 'TTS 服务错误', 'detail': res_json.get('detail')}), 500
+        else:
+            return jsonify({'error': 'TTS 服务错误', 'detail': response.text}), 500
+            
+    except Exception as e:
+        util.printInfo(1, "直播间 TTS", f"异常：{e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/live/chat', methods=['POST'])
+def api_live_chat():
+    """
+    文字聊天接口 - 前端发送文字，调用 LLM 生成回复并返回 TTS 音频
+    """
+    try:
+        data = request.json
+        message = data.get('message', '')
+        username = data.get('username', 'User')
+        
+        if not message:
+            return jsonify({'error': '消息不能为空'}), 400
+        
+        # 调用 fay_core 的聊天处理
+        from core.interact import Interact
+        interact = Interact("text", 1, {'user': username, 'msg': message})
+        util.printInfo(3, "直播间聊天", f'{username}: {message}')
+        
+        # 获取回复（会触发 TTS）
+        from core import fay_booter
+        reply = fay_booter.feiFei.on_interact(interact)
+        
+        # 获取 TTS 音频（单独调用一次获取 Base64）
+        audio_base64 = None
+        try:
+            tts_url = getattr(config_util.cfg, 'qwen3_tts_url', 'http://127.0.0.1:8000/tts')
+            tts_data = {
+                "text": reply,
+                "speaker": "vivian",
+                "instruct": "用平稳、自然、淡定的语气说话",
+                "language": "Chinese"
+            }
+            tts_response = requests.post(tts_url, json=tts_data, timeout=120)
+            if tts_response.status_code == 200:
+                tts_json = tts_response.json()
+                if tts_json.get('status') == 'success':
+                    audio_base64 = tts_json.get('audio_base64', '')
+        except Exception as e:
+            util.printInfo(1, "直播间 TTS", f"合成失败：{e}")
+        
+        util.printInfo(1, "直播间聊天", f'{username}: {message} => {reply}')
+        return jsonify({
+            'reply': reply,
+            'username': username,
+            'audio_base64': audio_base64
+        })
+        
+    except Exception as e:
+        util.printInfo(1, "直播间聊天", f"异常：{e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ==================== 直播间接口结束 ====================
+
+
 # 输出的音频http
 @app.route("/audio/<filename>")
 def serve_audio(filename):
@@ -459,12 +613,6 @@ def serve_gif(filename):
     return send_file(gif_file)
 
 
-@app.errorhandler(500)
-def internal_error(error):
-    return f"Internal Server Error: {str(error)}", 500
-
-
-# ==========================================
 def run():
     server = pywsgi.WSGIServer(("0.0.0.0", 6000), app)
     server.serve_forever()
@@ -472,3 +620,7 @@ def run():
 
 def start():
     MyThread(target=run).start()
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=6000, debug=True)

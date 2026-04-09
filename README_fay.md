@@ -1,4 +1,6 @@
 
+> 说明：本文件保留为历史来源说明。当前项目运行主链已迁移到 Live2D + `avatar_runtime`，新同学请优先阅读根目录 `README.md`、`TTS_快速启动指南.md`、`README_QWEN3_ASR.md`。
+
 <div align="center">
     <br>
     <img src="readme/icon.png" alt="Fay">
