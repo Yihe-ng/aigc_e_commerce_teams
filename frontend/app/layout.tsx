@@ -7,7 +7,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: '数字人live页面',
+  title: '智创电商营销系统',
   description: '基于 AIGC 的新电商数字化营销技术研究与创新应用',
   icons: {
     icon: 'http://localhost:5000/static/images/favicon.ico',
