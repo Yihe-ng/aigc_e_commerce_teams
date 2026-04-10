@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react"
 import type { CalendarView } from "./types"
-import { PAGE_COLORS, WEEK } from "./types"
+import { WEEK } from "./types"
 
 interface CalendarToolbarProps {
   currentDate: Date
@@ -50,28 +50,24 @@ export function CalendarToolbar({
 
   return (
     <div
-      className="px-5 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2"
-      style={{ background: PAGE_COLORS.HEADER_BG }}
+      className="px-5 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2 bg-white"
     >
       <div className="flex items-center gap-1">
         <button
           onClick={() => onNavigate(-1)}
-          className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 transition-colors"
-          style={{ background: PAGE_COLORS.BG }}
+          className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 transition-colors bg-[#F8F8F8]"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
         <button
           onClick={() => onNavigate(1)}
-          className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 transition-colors"
-          style={{ background: PAGE_COLORS.BG }}
+          className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 transition-colors bg-[#F8F8F8]"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
         <button
           onClick={onResetToday}
-          className="px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-600 ml-1 transition-colors hover:opacity-80"
-          style={{ background: PAGE_COLORS.BG }}
+          className="px-3 py-1.5 text-xs font-semibold rounded-xl text-gray-600 ml-1 transition-colors hover:opacity-80 bg-[#F8F8F8]"
         >
           今天
         </button>
@@ -79,7 +75,7 @@ export function CalendarToolbar({
 
       <div
         onClick={() => dateInputRef.current?.showPicker()}
-        className="relative flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg hover:opacity-80 transition-all"
+        className="relative flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-xl hover:opacity-80 transition-all"
       >
         <CalendarDays className="w-4 h-4 text-gray-400 shrink-0" />
         <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">
@@ -98,8 +94,7 @@ export function CalendarToolbar({
       </div>
 
       <div
-        className="flex rounded-lg overflow-hidden p-0.5"
-        style={{ background: PAGE_COLORS.BG }}
+        className="flex rounded-xl overflow-hidden p-0.5 bg-[#F8F8F8]"
       >
         {(["月", "周", "日"] as const).map((v) => (
           <button

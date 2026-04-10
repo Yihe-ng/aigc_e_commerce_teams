@@ -113,7 +113,7 @@ export function EventModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
+      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden">
         {/* 头部 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h3 className="text-lg font-semibold text-gray-900">

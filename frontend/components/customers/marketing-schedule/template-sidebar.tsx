@@ -2,7 +2,6 @@
 
 import { Plus, Trash2, LayoutTemplate, Calendar, Clock } from "lucide-react"
 import type { EventTemplate, CalendarEvent } from "./types"
-import { PAGE_COLORS } from "./types"
 
 interface TemplateSidebarProps {
   templates: EventTemplate[]
@@ -36,8 +35,7 @@ export function TemplateSidebar({
 
   return (
     <aside
-      className="w-72 flex-shrink-0 flex flex-col border-r border-gray-100"
-      style={{ background: PAGE_COLORS.BG }}
+      className="w-72 flex-shrink-0 flex flex-col rounded-3xl bg-white shadow-sm overflow-hidden"
     >
       {/* 概览统计 */}
       <div className="px-5 py-4 border-b border-gray-200/50">
@@ -46,7 +44,7 @@ export function TemplateSidebar({
           概览
         </h2>
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-xl p-3 shadow-sm">
+          <div className="bg-[#F8F8F8] rounded-2xl p-3">
             <div className="flex items-center gap-2 text-gray-500 mb-1">
               <Calendar className="w-3.5 h-3.5" />
               <span className="text-xs">今日</span>
@@ -54,7 +52,7 @@ export function TemplateSidebar({
             <p className="text-xl font-bold text-gray-900">{todayEvents.length}</p>
             <p className="text-[10px] text-gray-400">个日程</p>
           </div>
-          <div className="bg-white rounded-xl p-3 shadow-sm">
+          <div className="bg-[#F8F8F8] rounded-2xl p-3">
             <div className="flex items-center gap-2 text-gray-500 mb-1">
               <Clock className="w-3.5 h-3.5" />
               <span className="text-xs">待办</span>
@@ -94,7 +92,7 @@ export function TemplateSidebar({
                 draggable
                 onDragStart={(e) => handleDragStart(e, tpl)}
                 onClick={() => onEditTemplate(tpl)}
-                className="group flex items-center gap-3 p-3 bg-white rounded-xl shadow-sm cursor-move hover:shadow-md transition-all border border-transparent hover:border-gray-100"
+                className="group flex items-center gap-3 p-3 bg-[#F8F8F8] rounded-2xl cursor-move hover:bg-[#EFEFEF] transition-all"
               >
                 <div
                   className={`w-3 h-3 rounded-full flex-shrink-0 ${tpl.color}`}
@@ -117,7 +115,7 @@ export function TemplateSidebar({
         )}
 
         {/* 使用提示 */}
-        <div className="mt-6 p-4 bg-white/50 rounded-xl border border-gray-200/50">
+        <div className="mt-6 p-4 bg-[#F8F8F8] rounded-2xl">
           <p className="text-[11px] text-gray-500 leading-relaxed">
             <span className="font-medium text-gray-700">💡 提示：</span>
             拖拽模板到日历上即可快速创建日程

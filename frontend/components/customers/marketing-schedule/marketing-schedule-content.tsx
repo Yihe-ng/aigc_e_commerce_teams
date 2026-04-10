@@ -97,10 +97,7 @@ export default function MarketingScheduleContent() {
   }
 
   return (
-    <div
-      className="min-h-full space-y-4"
-      style={{ background: PAGE_COLORS.BG, margin: "-1.5rem", padding: "1.5rem" }}
-    >
+    <div className="min-h-full space-y-4">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">营销日程规划</h1>
         <p className="text-sm text-gray-500 mt-1">
@@ -118,8 +115,7 @@ export default function MarketingScheduleContent() {
         />
 
         <div
-          className="flex-1 min-w-0 rounded-2xl flex flex-col overflow-hidden shadow-sm"
-          style={{ background: PAGE_COLORS.CARD }}
+          className="flex-1 min-w-0 rounded-3xl flex flex-col overflow-hidden shadow-sm bg-white"
         >
           <CalendarToolbar
             currentDate={currentDate}

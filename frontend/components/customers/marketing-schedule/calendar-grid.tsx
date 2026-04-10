@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import type { CalendarEvent, CalendarView, EventTemplate } from "./types"
-import { sameDay, WEEK, WEEK_FULL, PAGE_COLORS } from "./types"
+import { sameDay, WEEK, WEEK_FULL } from "./types"
 
 interface CalendarGridProps {
   currentDate: Date
@@ -167,8 +167,7 @@ export function CalendarGrid({
             {WEEK.map((d) => (
               <div
                 key={d}
-                className="py-2.5 text-center text-[11px] font-semibold text-gray-400 border-b border-gray-100 tracking-wide"
-                style={{ background: PAGE_COLORS.HEADER_BG }}
+                className="py-2.5 text-center text-[11px] font-semibold text-gray-400 border-b border-gray-100 tracking-wide bg-[#FAFAFA]"
               >
                 {d}
               </div>
@@ -176,8 +175,7 @@ export function CalendarGrid({
             {Array.from({ length: firstDayIndex }, (_, i) => (
               <div
                 key={`b-${i}`}
-                className="h-28 border-r border-b border-gray-100"
-                style={{ background: "#f7f6f4" }}
+                className="h-28 border-r border-b border-gray-100 bg-[#F5F5F5]"
               />
             ))}
             {Array.from({ length: lastDay }, (_, i) => {
@@ -261,8 +259,7 @@ export function CalendarGrid({
           onDrop={(e) => handleDrop(e, currentDate)}
         >
           <div
-            className="flex items-center gap-5 rounded-xl p-5 mb-6"
-            style={{ background: PAGE_COLORS.BG }}
+            className="flex items-center gap-5 rounded-2xl p-5 mb-6 bg-[#F8F8F8]"
           >
             <div className="text-4xl font-bold text-gray-900 leading-none w-14 text-center">
               {currentDate.getDate()}
