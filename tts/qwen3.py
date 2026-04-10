@@ -4,7 +4,7 @@ import base64
 import os
 from utils import util, config_util as cfg
 from tts import tts_voice
-from utils.trace_utils import summarize_text, trace_log
+from utils.trace_utils import sanitize_request_token, summarize_text, trace_log
 
 
 def get_qwen_voices():
@@ -90,7 +90,8 @@ class Speech:
                     audio_content = base64.b64decode(res_json["audio_base64"])
                     
                     # 生成保存路径
-                    file_url = './samples/sample-' + str(int(time.time() * 1000)) + '.wav'
+                    request_token = sanitize_request_token(request_id, fallback="sample")
+                    file_url = f'./samples/sample-{request_token}-{int(time.time() * 1000)}.wav'
                     
                     # 确保目录存在
                     if not os.path.exists('./samples/'):

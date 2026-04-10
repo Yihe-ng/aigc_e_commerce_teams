@@ -6,6 +6,7 @@ import socket
 import traceback
 import configparser
 from urllib.parse import urlparse
+from utils.trace_utils import sanitize_request_token
 
 
 class Speech:
@@ -57,7 +58,7 @@ class Speech:
         # 对于 HTTP 连接，无需额外连接操作，可保留占位
         return True
 
-    def to_sample(self, text, voice_type):
+    def to_sample(self, text, voice_type, request_id=None):
         """
         将文本转换为语音，返回生成的音频文件路径
         :param text: 要合成的文本
@@ -76,7 +77,8 @@ class Speech:
         # 准备输出目录
         output_dir = "./samples"
         os.makedirs(output_dir, exist_ok=True)
-        filename = f"gpt_tts_{int(time.time() * 1000)}.wav"
+        request_token = sanitize_request_token(request_id, fallback="sample")
+        filename = f"sample-{request_token}-{int(time.time() * 1000)}.wav"
         output_path = os.path.join(output_dir, filename)
 
         # 构造请求 JSON

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import React, { startTransition, useEffect, useRef, useState } from 'react'
 import PendulumClock from '@/components/widgets/PendulumClock'
@@ -43,6 +43,15 @@ type ChatMessage = {
   color: string
 }
 
+type HistoryMessageItem = {
+  type?: string
+  content?: string
+  username?: string
+  createtime?: string
+  timetext?: string
+  uid?: number
+}
+
 type PanelReply = {
   type?: 'member' | 'avatar' | 'assistant' | string
   content?: string
@@ -68,6 +77,11 @@ type LatestAudioPayload = {
   } | null
 }
 
+type PendingAudio = {
+  src: string
+  key: string
+}
+
 const DEFAULT_USER = 'User'
 const MAX_CHAT_MESSAGES = 80
 const LEGACY_AVATAR_MESSAGE_TYPES = new Set(['avatar', 'assistant', 'fay'])
@@ -82,15 +96,27 @@ function trimMessages(messages: ChatMessage[]) {
   return messages.slice(-MAX_CHAT_MESSAGES)
 }
 
-function createMessage(user: string, message: string, type: 'system' | 'member' | 'avatar'): ChatMessage {
+function createMessage(
+  user: string,
+  message: string,
+  type: 'system' | 'member' | 'avatar',
+  id?: string,
+): ChatMessage {
   const style = SPEAKER_STYLES[type]
   return {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     user,
     message,
     level: style.level,
     color: style.color,
   }
+}
+
+function buildHistoryMessageId(item: HistoryMessageItem, kind: 'member' | 'avatar') {
+  const username = item.username || (kind === 'avatar' ? 'Avatar' : DEFAULT_USER)
+  const timePart = item.createtime || item.timetext || 'no-time'
+  const content = (item.content || '').trim()
+  return `${kind}|${username}|${timePart}|${content}`
 }
 
 function createClientRequestId() {
@@ -184,6 +210,7 @@ export default function LivePage() {
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
+  const [pendingAudio, setPendingAudio] = useState<PendingAudio | null>(null)
 
   const { state: neonState, audioLevel, setState: setNeonState, setAudioLevel } = useNeonState()
   const deviceRuntimeLabel = isHumanConnected ? '数字人设备已连接' : '数字人设备未连接'
@@ -324,6 +351,81 @@ export default function LivePage() {
     setIsPlayingAudio(false)
   })
 
+  const playAudioTrack = useEvent(
+    async (src: string, audioKey: string, trace: { request_id?: string; filename?: string } = {}) => {
+      stopNativeAudio()
+      const player = new window.Audio(src)
+      audioPlayerRef.current = player
+      lastPlayedAudioKeyRef.current = audioKey
+      setPendingAudio(null)
+
+      player.onplay = () => {
+        logClientTrace('audio_play', {
+          request_id: trace.request_id || '',
+          status: 'playing',
+          filename: trace.filename || '',
+        })
+        setIsPlayingAudio(true)
+        setPendingAudio(null)
+        startLipSync(player)
+        pulseSpeakingState(3200)
+      }
+
+      player.onended = () => {
+        logClientTrace('audio_play', {
+          request_id: trace.request_id || '',
+          status: 'ended',
+          filename: trace.filename || '',
+        })
+        setIsPlayingAudio(false)
+        audioPlayerRef.current = null
+        stopLipSync()
+        if (stageStatus !== 'thinking' && stageStatus !== 'listening') {
+          enterIdleState()
+        }
+      }
+
+      player.onerror = () => {
+        logClientTrace('audio_play', {
+          request_id: trace.request_id || '',
+          status: 'error',
+          filename: trace.filename || '',
+          error: 'audio_element_error',
+        })
+        setIsPlayingAudio(false)
+        audioPlayerRef.current = null
+        stopLipSync()
+        setPendingAudio({ src, key: audioKey })
+        setPanelMessage('音频文件已生成，但浏览器播放失败')
+        appendChatMessage(createMessage('系统通知', '音频文件已生成，但浏览器未能播放，请点击“播放最新语音”重试。', 'system'))
+      }
+
+      try {
+        await player.play()
+      } catch (error) {
+        logClientTrace('audio_play', {
+          request_id: trace.request_id || '',
+          status: 'blocked',
+          filename: trace.filename || '',
+          error: error instanceof Error ? error.message : 'autoplay_blocked',
+        })
+        setIsPlayingAudio(false)
+        audioPlayerRef.current = null
+        stopLipSync()
+        setPendingAudio({ src, key: audioKey })
+        setPanelMessage('音频已生成，但浏览器阻止了自动播放')
+        appendChatMessage(
+          createMessage(
+            '系统通知',
+            '音频已生成，但浏览器阻止了自动播放。请点击“播放最新语音”继续播放。',
+            'system',
+          ),
+        )
+        console.error('Audio autoplay failed', error)
+      }
+    },
+  )
+
   const releaseMicrophone = useEvent(() => {
     mediaRecorderRef.current = null
     const stream = mediaStreamRef.current
@@ -411,14 +513,19 @@ export default function LivePage() {
       if (!response.ok) {
         return
       }
-      const payload = (await response.json()) as { list?: Array<{ type?: string; content?: string; username?: string }> }
+      const payload = (await response.json()) as { list?: HistoryMessageItem[] }
       if (!payload.list?.length) {
         return
       }
       const history = payload.list
         .map((item) => {
           const kind = isAvatarMessageType(item.type) ? 'avatar' : 'member'
-          return createMessage(item.username || (kind === 'avatar' ? 'Avatar' : DEFAULT_USER), item.content || '', kind)
+          return createMessage(
+            item.username || (kind === 'avatar' ? 'Avatar' : DEFAULT_USER),
+            item.content || '',
+            kind,
+            buildHistoryMessageId(item, kind),
+          )
         })
         .filter((item) => item.message.trim().length > 0)
       if (!history.length) {
@@ -427,7 +534,21 @@ export default function LivePage() {
       recentMessageKeysRef.current = history
         .slice(-30)
         .map((item) => `${item.level}|${item.user}|${item.message.trim()}`)
-      setChatMessages(trimMessages(history))
+      setChatMessages((prev) => {
+        const nextMessages = trimMessages(history)
+        if (
+          prev.length === nextMessages.length &&
+          prev.every((item, index) =>
+            item.id === nextMessages[index]?.id &&
+            item.message === nextMessages[index]?.message &&
+            item.user === nextMessages[index]?.user &&
+            item.level === nextMessages[index]?.level,
+          )
+        ) {
+          return prev
+        }
+        return nextMessages
+      })
       requestAnimationFrame(() => {
         scrollChatToBottom('auto')
       })
@@ -491,7 +612,7 @@ export default function LivePage() {
       since,
     })
 
-    for (let attempt = 0; attempt < 10; attempt += 1) {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
       if (activeAudioPollTokenRef.current !== pollToken) {
         return
       }
@@ -521,69 +642,11 @@ export default function LivePage() {
               mtime_ms: audio?.mtime_ms || '',
             })
 
-            stopNativeAudio()
-            const player = new window.Audio(`${getApiBaseUrl()}${audio.url}?t=${audio.mtime_ms ?? Date.now()}`)
-            audioPlayerRef.current = player
-            lastPlayedAudioKeyRef.current = audioKey
-            player.onplay = () => {
-              logClientTrace('audio_play', {
-                request_id: effectiveRequestId,
-                status: 'playing',
-                filename: audio.filename || '',
-              })
-              setIsPlayingAudio(true)
-              startLipSync(player)
-              pulseSpeakingState(3200)
-            }
-            player.onended = () => {
-              logClientTrace('audio_play', {
-                request_id: effectiveRequestId,
-                status: 'ended',
-                filename: audio.filename || '',
-              })
-              setIsPlayingAudio(false)
-              audioPlayerRef.current = null
-              stopLipSync()
-              if (stageStatus !== 'thinking' && stageStatus !== 'listening') {
-                enterIdleState()
-              }
-            }
-            player.onerror = () => {
-              logClientTrace('audio_play', {
-                request_id: effectiveRequestId,
-                status: 'error',
-                filename: audio.filename || '',
-                error: 'audio_element_error',
-              })
-              setIsPlayingAudio(false)
-              audioPlayerRef.current = null
-              stopLipSync()
-              setPanelMessage('音频文件已生成，但浏览器播放失败')
-              appendChatMessage(createMessage('系统通知', '音频文件已生成，但浏览器未能播放，请检查浏览器音量或自动播放权限。', 'system'))
-            }
-
-            try {
-              await player.play()
-            } catch (error) {
-              logClientTrace('audio_play', {
-                request_id: effectiveRequestId,
-                status: 'blocked',
-                filename: audio.filename || '',
-                error: error instanceof Error ? error.message : 'autoplay_blocked',
-              })
-              setIsPlayingAudio(false)
-              audioPlayerRef.current = null
-              stopLipSync()
-              setPanelMessage('音频已生成，但浏览器阻止了自动播放')
-              appendChatMessage(
-                createMessage(
-                  '系统通知',
-                  `音频已生成，但浏览器阻止了自动播放。请先点击页面或检查站点自动播放权限。`,
-                  'system',
-                ),
-              )
-              console.error('Audio autoplay failed', error)
-            }
+            await playAudioTrack(
+              `${getApiBaseUrl()}${audio.url}?t=${audio.mtime_ms ?? Date.now()}`,
+              audioKey,
+              { request_id: effectiveRequestId, filename: audio.filename || '' },
+            )
             return
           }
         }
@@ -600,7 +663,7 @@ export default function LivePage() {
         return
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await new Promise((resolve) => setTimeout(resolve, 800))
     }
 
     if (activeAudioPollTokenRef.current === pollToken) {
@@ -1338,9 +1401,19 @@ export default function LivePage() {
                   <div className="status-copy">
                     麦克风录音走 5000 主服务的 ASR 代理，TTS wav 由浏览器原生 Audio 直接播放。远端设备音频仅在外接数字人设备时才会连接。
                   </div>
-                  <button className="buy-btn" onClick={stopNativeAudio}>
-                    停止播放
-                  </button>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <button className="buy-btn" onClick={stopNativeAudio}>
+                      停止播放
+                    </button>
+                    {pendingAudio ? (
+                      <button
+                        className="buy-btn"
+                        onClick={() => void playAudioTrack(pendingAudio.src, pendingAudio.key)}
+                      >
+                        播放最新语音
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </div>

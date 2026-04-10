@@ -2,6 +2,7 @@ import json
 import time
 import uuid
 from typing import Any
+import re
 
 
 def ensure_request_id(value: str | None = None) -> str:
@@ -14,6 +15,14 @@ def summarize_text(value: Any, limit: int = 80) -> str:
     if len(text) <= limit:
         return text
     return f"{text[:limit]}..."
+
+
+def sanitize_request_token(value: str | None, fallback: str = "req") -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return fallback
+    normalized = re.sub(r"[^0-9A-Za-z_-]+", "-", raw).strip("-_")
+    return normalized or fallback
 
 
 def trace_log(

@@ -16,7 +16,7 @@ from core.interact import Interact
 from scheduler.thread_manager import MyThread
 from tts import qwen3, tts_voice, volcano_tts
 from utils.runtime_checks import build_health_url, find_ffmpeg_executable, probe_http_health, probe_tcp_port
-from utils.trace_utils import ensure_request_id, summarize_text, trace_log
+from utils.trace_utils import ensure_request_id, sanitize_request_token, summarize_text, trace_log
 
 
 class LiveService:
@@ -27,6 +27,70 @@ class LiveService:
         self._voice_list = None
         self._latest_audio_log_lock = threading.RLock()
         self._latest_audio_miss_count = 0
+        self._interaction_lock = threading.RLock()
+        self._user_interaction_states: dict[str, dict[str, object]] = {}
+
+    def _register_user_interaction(self, username: str) -> tuple[str, threading.Lock, bool]:
+        key = username or "User"
+        with self._interaction_lock:
+            state = self._user_interaction_states.get(key)
+            if state is None:
+                state = {"lock": threading.Lock(), "pending": 0}
+                self._user_interaction_states[key] = state
+            lock = state["lock"]
+            queued = bool(lock.locked() or int(state["pending"]) > 0)
+            state["pending"] = int(state["pending"]) + 1
+            return key, lock, queued
+
+    def _complete_user_interaction(self, key: str):
+        with self._interaction_lock:
+            state = self._user_interaction_states.get(key)
+            if state is None:
+                return
+            remaining = max(0, int(state["pending"]) - 1)
+            state["pending"] = remaining
+            if remaining == 0:
+                self._user_interaction_states.pop(key, None)
+
+    def _run_serial_interaction(self, avatar, interact: Interact, *, username: str, request_id: str, text: str, user_key: str, user_lock: threading.Lock, queued: bool):
+        queue_started_at = time.perf_counter()
+        if queued:
+            trace_log(
+                module="live_service",
+                stage="chat_queue",
+                status="wait",
+                request_id=request_id,
+                user=username,
+                text_preview=summarize_text(text),
+            )
+        try:
+            with user_lock:
+                wait_ms = (time.perf_counter() - queue_started_at) * 1000
+                trace_log(
+                    module="live_service",
+                    stage="chat_dispatch",
+                    status="ok",
+                    request_id=request_id,
+                    user=username,
+                    queued=queued,
+                    wait_ms=wait_ms,
+                    text_preview=summarize_text(text),
+                )
+                try:
+                    avatar.on_interact(interact)
+                except Exception as exc:
+                    trace_log(
+                        module="live_service",
+                        stage="chat_dispatch",
+                        status="error",
+                        request_id=request_id,
+                        user=username,
+                        wait_ms=wait_ms,
+                        error=summarize_text(exc),
+                    )
+                    raise
+        finally:
+            self._complete_user_interaction(user_key)
 
     def _trace_latest_audio(self, *, request_id: str, since: int | None, total_files: int, filtered_files: int,
                             matched_filename: str = "", matched_mtime_ms: int | None = None):
@@ -114,6 +178,7 @@ class LiveService:
         return {"result": "successful"}
 
     def stop_live(self):
+        self._broadcast_live_state(0)
         if avatar_runtime.is_running():
             avatar_runtime.stop()
         web = wsa_server.get_web_instance()
@@ -122,7 +187,6 @@ class LiveService:
         human = wsa_server.get_instance()
         if human and human.is_running():
             human.stop_server()
-        self._broadcast_live_state(0)
         return {"result": "successful"}
 
     def get_message_history(self, request_data):
@@ -176,6 +240,7 @@ class LiveService:
 
         avatar = self._ensure_runtime()
         interact = Interact("text", 1, {"user": dto.user, "msg": dto.text, "request_id": effective_request_id})
+        user_key, user_lock, queued = self._register_user_interaction(dto.user)
         trace_log(
             module="live_service",
             stage="submit_chat",
@@ -185,9 +250,26 @@ class LiveService:
             user=dto.user,
             text_len=len(dto.text),
             text_preview=summarize_text(dto.text),
+            queued=queued,
         )
-        MyThread(target=avatar.on_interact, args=[interact]).start()
-        return {"status": "success", "message": "Interaction started", "request_id": effective_request_id}, 200
+        MyThread(
+            target=self._run_serial_interaction,
+            args=[avatar, interact],
+            kwargs={
+                "username": dto.user,
+                "request_id": effective_request_id,
+                "text": dto.text,
+                "user_key": user_key,
+                "user_lock": user_lock,
+                "queued": queued,
+            },
+        ).start()
+        return {
+            "status": "success",
+            "message": "Interaction queued" if queued else "Interaction started",
+            "queued": queued,
+            "request_id": effective_request_id,
+        }, 200
 
     def transcribe_audio(self, upload, request_id: str | None = None):
         started_at = time.perf_counter()
@@ -238,6 +320,7 @@ class LiveService:
 
     def get_latest_audio(self, since: int | None, request_id: str | None = None):
         effective_request_id = ensure_request_id(request_id)
+        request_token = sanitize_request_token(request_id, fallback="")
         samples_dir = Path(os.getcwd()) / "samples"
         if not samples_dir.exists():
             self._trace_latest_audio(
@@ -250,6 +333,10 @@ class LiveService:
 
         all_candidates = [path for path in samples_dir.glob("sample-*.wav") if path.is_file()]
         candidates = list(all_candidates)
+        if request_token:
+            scoped_candidates = [path for path in candidates if f"sample-{request_token}-" in path.name]
+            if scoped_candidates:
+                candidates = scoped_candidates
         if since is not None:
             candidates = [path for path in candidates if int(path.stat().st_mtime * 1000) >= since]
         if not candidates:
