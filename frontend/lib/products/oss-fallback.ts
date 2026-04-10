@@ -1,6 +1,7 @@
-const API_BASE = "http://localhost:5000"
+import { fetchProductLibrary } from "@/lib/oss/api"
+import type { Product } from "@/lib/types/product"
 
-interface RawProductItem {
+interface RawProductItem extends Partial<Product> {
   id?: string | number
   product_id?: string
   name?: string
@@ -35,13 +36,7 @@ function normalizeProduct(item: RawProductItem): OssFallbackProduct | null {
 }
 
 async function fetchLibraryProducts(signal?: AbortSignal): Promise<OssFallbackProduct[]> {
-  const response = await fetch(`${API_BASE}/get_products?t=${Date.now()}`, { signal })
-
-  if (!response.ok) {
-    throw new Error("加载商品列表失败，请稍后重试。")
-  }
-
-  const payload = (await response.json()) as RawProductItem[]
+  const payload = (await fetchProductLibrary(signal)) as RawProductItem[]
 
   return payload
     .map(normalizeProduct)

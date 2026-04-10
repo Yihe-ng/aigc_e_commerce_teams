@@ -9,7 +9,17 @@ import {
   useState,
 } from "react"
 import { Card, Toast, toast } from "@heroui/react"
-import { buildOssAssetUrl, isAbsoluteUrl, resolveOssCustomDomain } from "@/lib/oss/shared"
+import {
+  fetchOssCategories,
+  fetchOssProductsByCategory,
+  saveGeneratedContent,
+} from "@/lib/oss/api"
+import {
+  buildOssAssetUrl,
+  fetchRuntimeOssDomain,
+  isAbsoluteUrl,
+  resolveOssCustomDomain,
+} from "@/lib/oss/shared"
 import { fetchFallbackCategories, fetchFallbackProductsByCategory } from "@/lib/products/oss-fallback"
 
 import { GenerationHistory } from "./generation-history"
@@ -18,12 +28,10 @@ import { GenerationProgress } from "./generation-progress"
 import { PostActions } from "./post-actions"
 import { ProductSelector } from "./product-selector"
 import type {
-  CategoriesResponse,
   GenerateImageResponse,
   GenerationResult,
   GenerationTask,
   ProductsResponse,
-  RuntimeImageConfigResponse,
   SaveGeneratedContentResponse,
   TaskHistoryResponse,
   TaskStatusResponse,
@@ -287,14 +295,14 @@ export default function ImageGenerator() {
       setIsLoadingRuntimeConfig(true)
 
       try {
-        const response = await fetch("/api/runtime-config/image", { signal })
-        const payload = await readJson<RuntimeImageConfigResponse>(
-          response,
-          "获取图片配置失败"
-        )
+        startTransition(() => {
+          setRuntimeOssDomain(null)
+        })
+
+        const domain = await fetchRuntimeOssDomain(signal)
 
         startTransition(() => {
-          setRuntimeOssDomain(payload.data?.oss_custom_domain?.trim() || null)
+          setRuntimeOssDomain(domain)
           setRuntimeConfigError(null)
         })
       } catch (error) {
@@ -343,18 +351,10 @@ export default function ImageGenerator() {
       setIsLoadingCategories(true)
 
       try {
-        const response = await fetch("/api/oss/categories", { signal })
-        const payload = await readJson<CategoriesResponse>(
-          response,
-          "获取分类失败"
-        )
-
-        if (payload.status !== "success" && payload.code !== 200) {
-          throw new Error(payload.error ?? payload.message ?? "获取分类失败")
-        }
+        const categories = await fetchOssCategories(signal)
 
         startTransition(() => {
-          setCategories(payload.data ?? [])
+          setCategories(categories)
         })
       } catch (error) {
         if (isAbortError(error)) {
@@ -385,22 +385,10 @@ export default function ImageGenerator() {
       setIsLoadingProducts(true)
 
       try {
-        const params = new URLSearchParams({ category })
-        const response = await fetch(
-          `/api/oss/products_by_category?${params.toString()}`,
-          { signal }
-        )
-        const payload = await readJson<ProductsResponse>(
-          response,
-          "获取商品失败"
-        )
-
-        if (payload.status !== "success") {
-          throw new Error(payload.error ?? payload.message ?? "获取商品失败")
-        }
+        const products = await fetchOssProductsByCategory(category, signal)
 
         startTransition(() => {
-          setProducts(payload.data ?? [])
+          setProducts(products)
         })
       } catch (error) {
         if (isAbortError(error)) {
@@ -694,8 +682,8 @@ export default function ImageGenerator() {
     setIsUploading(true)
 
     try {
-      const response = await fetch("/api/save_generated_content", {
-        body: JSON.stringify({
+      const payload = (await saveGeneratedContent(
+        {
           file_url: generatedImage,
           metadata: {
             generated_at: new Date().toISOString(),
@@ -703,16 +691,8 @@ export default function ImageGenerator() {
           },
           product_id: previewSourceProductId,
           type: "image",
-        }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-      })
-      const payload = await readJson<SaveGeneratedContentResponse>(
-        response,
-        "上传生成内容失败"
-      )
+        }
+      )) as SaveGeneratedContentResponse
 
       if (payload.status !== "success") {
         throw new Error(payload.error ?? "上传生成内容失败")

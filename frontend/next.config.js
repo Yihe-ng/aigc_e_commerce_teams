@@ -12,10 +12,6 @@ const nextConfig = {
         source: "/api/login",
         destination: "http://localhost:3002/api/login", // Login server
       },
-      {
-        source: "/api/:path*",
-        destination: "http://localhost:5000/api/:path*", // Flask backend
-      },
       // 文案智造器 API 代理
       {
         source: "/generate_xiaohongshu",
@@ -76,6 +72,14 @@ const nextConfig = {
       {
         source: "/api/products/marketing-materials/delete",
         destination: "http://localhost:5000/api/delete_marketing_materials",
+      },
+      {
+        source: "/static/:path*",
+        destination: "http://localhost:5000/static/:path*",
+      },
+      {
+        source: "/api/:path*",
+        destination: "http://localhost:5000/api/:path*", // Flask backend
       },
     ];
   },
