@@ -2724,7 +2724,21 @@ def api_asr():
 
 @app.route("/audio/<path:filename>")
 def serve_audio(filename):
-    return live_service.serve_audio_file(filename)
+    result = live_service.serve_audio_file(filename)
+    # Handle tuple response (error case: jsonify, status_code)
+    if isinstance(result, tuple):
+        response = result[0]
+        status_code = result[1]
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Methods", "GET, OPTIONS")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        return response, status_code
+    # Handle single response object (success case: send_file)
+    response = result
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Methods", "GET, OPTIONS")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+    return response
 
 
 @app.route("/api/latest-audio")

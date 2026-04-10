@@ -219,9 +219,10 @@ export default function LivePage() {
 
   const getApiBaseUrl = useEvent(() => {
     if (typeof window === 'undefined') {
-      return 'http://127.0.0.1:5000'
+      return 'http://localhost:5000'
     }
-    return `${window.location.protocol}//${window.location.hostname}:5000`
+    // Use localhost to match the frontend origin and avoid CORS issues
+    return 'http://localhost:5000'
   })
 
   const getWsUrl = useEvent(() => {
@@ -354,7 +355,9 @@ export default function LivePage() {
   const playAudioTrack = useEvent(
     async (src: string, audioKey: string, trace: { request_id?: string; filename?: string } = {}) => {
       stopNativeAudio()
-      const player = new window.Audio(src)
+      const player = new window.Audio()
+      player.crossOrigin = 'anonymous'
+      player.src = src
       audioPlayerRef.current = player
       lastPlayedAudioKeyRef.current = audioKey
       setPendingAudio(null)
