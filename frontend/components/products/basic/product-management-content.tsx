@@ -6,10 +6,15 @@ import { useSearchParams } from "next/navigation"
 import ProductForm from "@/components/products/product-form"
 import ProductHeader from "@/components/products/product-header"
 import ProductTable from "@/components/products/product-table"
+import {
+  deleteLibraryProduct,
+  fetchProductDetail,
+  fetchProductLibrary,
+  saveLibraryProduct,
+  uploadProductImage,
+} from "@/lib/oss/api"
 import { buildOssAssetUrl, fetchRuntimeOssDomain, resolveOssCustomDomain } from "@/lib/oss/shared"
 import type { Category, Product, ProductFormValue } from "@/lib/types/product"
-
-const API_BASE = "http://localhost:5000"
 
 const EMPTY_FORM: ProductFormValue = {
   name: "",
@@ -127,11 +132,7 @@ export default function ProductManagementContent() {
 
   async function fetchProducts(signal?: AbortSignal) {
     try {
-      const response = await fetch(`${API_BASE}/get_products?t=${Date.now()}`, { signal })
-      if (!response.ok) {
-        throw new Error("加载商品列表失败，请稍后重试。")
-      }
-      const data = (await response.json()) as Product[]
+      const data = await fetchProductLibrary(signal)
       setProducts(data)
     } catch (error) {
       if (isAbortError(error)) {
@@ -193,13 +194,7 @@ export default function ProductManagementContent() {
   async function handleEdit(id: string | number) {
     try {
       window.scrollTo({ top: 0, behavior: "smooth" })
-      const response = await fetch(`${API_BASE}/get_product_detail/${id}`)
-      if (!response.ok) {
-        throw new Error("加载商品详情失败，请重试。")
-      }
-
-      const data = await response.json()
-      const product = data.product as Product
+      const product = await fetchProductDetail(id)
 
       setFormData({
         name: product.name || "",
@@ -227,7 +222,7 @@ export default function ProductManagementContent() {
     }
 
     try {
-      await fetch(`${API_BASE}/delete_product/${id}`, { method: "DELETE" })
+      await deleteLibraryProduct(id)
       await fetchProducts()
       setNotice({ tone: "success", message: "商品删除完成，列表已刷新。" })
     } catch (error) {
@@ -257,20 +252,11 @@ export default function ProductManagementContent() {
 
       if (previewImages.length > 0) {
         for (const item of previewImages) {
-          const uploadData = new FormData()
-          uploadData.append("file", item.file)
-
-          const uploadResponse = await fetch(`${API_BASE}/upload_image`, {
-            method: "POST",
-            body: uploadData,
-          })
-
-          if (!uploadResponse.ok) {
+          const uploadResult = await uploadProductImage(item.file)
+          if (!uploadResult.image_url) {
             throw new Error("图片上传失败，请检查后端服务。")
           }
-
-          const uploadResult = await uploadResponse.json()
-          newUploadedUrls.push(uploadResult.image_url as string)
+          newUploadedUrls.push(uploadResult.image_url)
         }
       }
 
@@ -283,18 +269,7 @@ export default function ProductManagementContent() {
         images: [...uploadedUrls, ...newUploadedUrls],
       }
 
-      const url = editingId ? `${API_BASE}/save_product/${editingId}` : `${API_BASE}/save_product`
-      const method = editingId ? "PUT" : "POST"
-
-      const saveResponse = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-
-      if (!saveResponse.ok) {
-        throw new Error("保存商品信息失败，请稍后重试。")
-      }
+      await saveLibraryProduct(payload, editingId)
 
       if (!editingId) {
         window.localStorage.removeItem("product_draft")

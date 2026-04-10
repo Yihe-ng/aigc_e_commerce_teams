@@ -70,9 +70,29 @@ from gui.ai_tools_task_result_utils import (
     merge_saved_video_result,
 )
 from backend.services.live_service import live_service
+from backend.services.storage import (
+    build_public_url as storage_build_public_url,
+    category_index_key,
+    copy_object as storage_copy_object,
+    delete_object as storage_delete_object,
+    ensure_prefix as storage_ensure_prefix,
+    generated_asset_key,
+    generated_content_prefixes,
+    get_bucket as get_storage_bucket,
+    get_object_text as storage_get_object_text,
+    get_oss_storage_config,
+    marketing_text_key,
+    object_exists as storage_object_exists,
+    object_exists_quiet as storage_object_exists_quiet,
+    put_object as storage_put_object,
+    read_json_object,
+    temp_upload_key,
+    write_json_object,
+)
 from utils.trace_utils import summarize_text, trace_log
 
 _API_LATEST_AUDIO_MISS_COUNT = 0
+_CATEGORY_INDEX_CACHE = {}
 
 
 def _trace_latest_audio_api(payload, since, request_id):
@@ -399,7 +419,6 @@ def submit_form_data():
                 {"status": "error", "message": "缺少商品名称或文案内容"}
             ), 400
 
-        # 初始化OSS客户端
         auth = oss2.Auth(OSS_CONFIG["ACCESS_KEY_ID"], OSS_CONFIG["ACCESS_KEY_SECRET"])
         bucket = oss2.Bucket(auth, OSS_CONFIG["ENDPOINT"], OSS_CONFIG["BUCKET_NAME"])
 
@@ -542,12 +561,12 @@ def get_saved_marketing_contents():
         contents = []
 
         for product_id, info in _iter_product_infos(local_bucket):
-            text_path = f"products/{product_id}/generated_content/marketing.txt"
-            if not local_bucket.object_exists(text_path):
+            text_path = marketing_text_key(product_id)
+            if not storage_object_exists(local_bucket, text_path):
                 continue
 
             try:
-                content = local_bucket.get_object(text_path).read().decode("utf-8")
+                content = storage_get_object_text(local_bucket, text_path)
             except Exception:
                 continue
 
@@ -573,13 +592,13 @@ def get_saved_marketing_contents():
 @app.route("/api/saved-marketing-contents/<product_id>", methods=["DELETE"])
 def delete_saved_marketing_content(product_id):
     try:
-        local_bucket = _create_oss_bucket()
-        text_path = f"products/{product_id}/generated_content/marketing.txt"
+        local_bucket = get_storage_bucket()
+        text_path = marketing_text_key(product_id)
 
-        if not local_bucket.object_exists(text_path):
+        if not storage_object_exists(local_bucket, text_path):
             return jsonify({"status": "error", "message": "营销文案不存在"}), 404
 
-        local_bucket.delete_object(text_path)
+        storage_delete_object(local_bucket, text_path)
         return jsonify({"status": "success"})
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -650,8 +669,7 @@ def delete_marketing_materials():
         print(f"找到商品ID: {target_product_id}，开始删除营销素材...")
 
         # 2. 删除营销素材
-        # 营销素材通常存储在 products/{id}/marketing/ 目录下
-        marketing_prefix = f"products/{target_product_id}/marketing/"
+        marketing_prefix = f"products/{target_product_id}/generated_content/"
 
         deleted_count = 0
         for obj in oss2.ObjectIterator(bucket, prefix=marketing_prefix):
@@ -1425,14 +1443,240 @@ OSS_CONFIG = {
 
 @app.route("/api/runtime-config/image", methods=["GET"])
 def get_image_runtime_config():
+    storage_config = get_oss_storage_config()
     return jsonify(
         {
             "status": "success",
             "data": {
-                "oss_custom_domain": OSS_CONFIG.get("CUSTOM_DOMAIN") or "",
+                "oss_custom_domain": storage_config.custom_domain or "",
             },
         }
     )
+
+
+IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp")
+
+
+def _build_oss_public_url(object_key):
+    key = (object_key or "").strip().lstrip("/")
+    if not key:
+        return ""
+    return f"https://{OSS_CONFIG['CUSTOM_DOMAIN']}/{key}"
+
+
+def _extract_oss_object_key(raw_url_or_key):
+    raw = (raw_url_or_key or "").strip()
+    if not raw:
+        return ""
+    if raw.startswith("http://") or raw.startswith("https://"):
+        return urlparse(raw).path.lstrip("/")
+    return raw.lstrip("/")
+
+
+def _iter_object_keys(local_bucket, prefix, suffixes=None):
+    normalized_suffixes = tuple(s.lower() for s in (suffixes or ()))
+    for obj in oss2.ObjectIterator(local_bucket, prefix=prefix):
+        key = obj.key
+        if key.endswith("/"):
+            continue
+        if normalized_suffixes and not key.lower().endswith(normalized_suffixes):
+            continue
+        yield key
+
+
+def _dedupe_keep_order(items):
+    seen = set()
+    ordered = []
+    for item in items:
+        if not item or item in seen:
+            continue
+        seen.add(item)
+        ordered.append(item)
+    return ordered
+
+
+def _get_original_image_keys(local_bucket, product_id):
+    prefix = f"products/{product_id}/original_images/"
+    return list(_iter_object_keys(local_bucket, prefix, IMAGE_EXTENSIONS))
+
+
+def _get_generated_image_keys(local_bucket, product_id):
+    prefix = f"products/{product_id}/generated_content/images/"
+    return list(_iter_object_keys(local_bucket, prefix, IMAGE_EXTENSIONS))
+
+
+def _normalize_edit_image_urls(local_bucket, product_id, product_info):
+    original_keys = _get_original_image_keys(local_bucket, product_id)
+    if original_keys:
+        return [_build_oss_public_url(key) for key in original_keys]
+
+    legacy_urls = []
+    for raw_image in product_info.get("images", []):
+        if not isinstance(raw_image, str):
+            continue
+
+        key = _extract_oss_object_key(raw_image)
+        if not key:
+            continue
+
+        lowered_key = key.lower()
+        if "/generated_content/" in lowered_key or "/marketing/" in lowered_key:
+            continue
+
+        if key.startswith("products/") and local_bucket.object_exists(key):
+            legacy_urls.append(_build_oss_public_url(key))
+            continue
+
+        basename = PurePosixPath(key).name
+        if basename and basename.lower().endswith(IMAGE_EXTENSIONS):
+            candidate_key = f"products/{product_id}/original_images/{basename}"
+            if local_bucket.object_exists(candidate_key):
+                legacy_urls.append(_build_oss_public_url(candidate_key))
+                continue
+
+        if raw_image.startswith("http://") or raw_image.startswith("https://"):
+            legacy_urls.append(raw_image)
+
+    return _dedupe_keep_order(legacy_urls)
+
+
+def _resolve_main_image_key(local_bucket, product_id, product_info=None):
+    original_keys = _get_original_image_keys(local_bucket, product_id)
+    if original_keys:
+        return original_keys[0]
+
+    product_info = product_info or {}
+    for raw_image in product_info.get("images", []):
+        if not isinstance(raw_image, str):
+            continue
+
+        key = _extract_oss_object_key(raw_image)
+        if not key:
+            continue
+
+        lowered_key = key.lower()
+        if "/generated_content/" in lowered_key or "/marketing/" in lowered_key:
+            continue
+
+        if key.startswith("products/") and local_bucket.object_exists(key):
+            return key
+
+        basename = PurePosixPath(key).name
+        if basename and basename.lower().endswith(IMAGE_EXTENSIONS):
+            candidate_key = f"products/{product_id}/original_images/{basename}"
+            if local_bucket.object_exists(candidate_key):
+                return candidate_key
+
+    return None
+
+
+def _load_category_index(local_bucket, category):
+    data = read_json_object(local_bucket, category_index_key(category), default=[])
+    return data if isinstance(data, list) else []
+
+
+def _save_category_index(local_bucket, category, index_data):
+    write_json_object(
+        local_bucket, category_index_key(category), index_data, ensure_ascii=False
+    )
+
+
+def _load_index_product_info(local_bucket, product_id, info_cache=None):
+    cache = info_cache if info_cache is not None else {}
+    cache_key = str(product_id).strip()
+    if not cache_key:
+        return None
+
+    if cache_key in cache:
+        return cache[cache_key]
+
+    info_path = f"products/{cache_key}/info.json"
+    try:
+        product_info = json.loads(local_bucket.get_object(info_path).read())
+    except oss2.exceptions.NoSuchKey:
+        cache[cache_key] = None
+        return None
+    except Exception:
+        cache[cache_key] = None
+        return None
+
+    if not isinstance(product_info, dict):
+        cache[cache_key] = None
+        return None
+
+    cache[cache_key] = product_info
+    return product_info
+
+
+def _normalize_index_entry(local_bucket, category, item, info_cache=None):
+    if not isinstance(item, dict):
+        return None
+
+    product_id = str(item.get("product_id") or item.get("id") or "").strip()
+    if not product_id:
+        return None
+
+    product_info = _load_index_product_info(local_bucket, product_id, info_cache)
+    if not product_info:
+        return None
+
+    resolved_category = (
+        product_info.get("category") or item.get("category") or category or ""
+    )
+    if resolved_category != category:
+        return None
+
+    main_image_key = _resolve_main_image_key(local_bucket, product_id, product_info)
+    product_name = str(product_info.get("name") or item.get("name") or "").strip()
+    if not product_name:
+        return None
+
+    return {
+        "product_id": product_id,
+        "name": product_name,
+        "main_image": main_image_key,
+        "updated_at": product_info.get("updated_at")
+        or item.get("updated_at")
+        or datetime.now().isoformat(),
+    }
+
+
+def _migrate_category_index(local_bucket, category, info_cache=None):
+    cached_entry = _CATEGORY_INDEX_CACHE.get(category)
+    if cached_entry is not None:
+        return list(cached_entry.get("normalized_items", []))
+
+    raw_items = _load_category_index(local_bucket, category)
+
+    normalized_items = []
+    seen_product_ids = set()
+
+    for item in raw_items:
+        normalized = _normalize_index_entry(local_bucket, category, item, info_cache)
+        if not normalized:
+            continue
+        product_id = normalized["product_id"]
+        if product_id in seen_product_ids:
+            continue
+        seen_product_ids.add(product_id)
+        normalized_items.append(normalized)
+
+    persisted_items = raw_items
+    if normalized_items != raw_items:
+        _save_category_index(local_bucket, category, normalized_items)
+        persisted_items = normalized_items
+
+    _CATEGORY_INDEX_CACHE[category] = {"normalized_items": list(normalized_items)}
+    return normalized_items
+
+
+def _build_category_index_entry(local_bucket, product_id, product_data):
+    return {
+        "product_id": product_id,
+        "name": product_data["name"],
+        "main_image": _resolve_main_image_key(local_bucket, product_id, product_data),
+        "updated_at": product_data.get("updated_at") or datetime.now().isoformat(),
+    }
 
 
 def generate_product_id():
@@ -1444,8 +1688,7 @@ def generate_product_id():
 def save_product(product_id=None):
     try:
         data = request.get_json()
-        auth = oss2.Auth(OSS_CONFIG["ACCESS_KEY_ID"], OSS_CONFIG["ACCESS_KEY_SECRET"])
-        bucket = oss2.Bucket(auth, OSS_CONFIG["ENDPOINT"], OSS_CONFIG["BUCKET_NAME"])
+        bucket = get_storage_bucket()
 
         # 验证必填字段
         required_fields = ["name", "category", "price"]
@@ -1461,21 +1704,27 @@ def save_product(product_id=None):
                 f"prod_{datetime.now().strftime('%Y%m%d')}_{uuid.uuid4().hex[:6]}"
             )
 
+        info_path = f"products/{product_id}/info.json"
+        previous_category = None
+        previous_info = read_json_object(bucket, info_path, default={}) or {}
+        if isinstance(previous_info, dict):
+            previous_category = previous_info.get("category")
+
         # 处理图片
         final_images = []
         for img_url in data.get("images", []):
             if "temp_uploads" in img_url:
-                filename = img_url.split("/")[-1]
+                source_key = _extract_oss_object_key(img_url)
+                filename = PurePosixPath(source_key).name
                 new_path = f"products/{product_id}/original_images/{filename}"
-                bucket.copy_object(
-                    OSS_CONFIG["BUCKET_NAME"],
-                    img_url.replace(f"https://{OSS_CONFIG['CUSTOM_DOMAIN']}/", ""),
+                storage_copy_object(
+                    bucket,
+                    get_oss_storage_config().bucket_name,
+                    source_key,
                     new_path,
                 )
-                bucket.delete_object(
-                    img_url.replace(f"https://{OSS_CONFIG['CUSTOM_DOMAIN']}/", "")
-                )
-                final_images.append(f"https://{OSS_CONFIG['CUSTOM_DOMAIN']}/{new_path}")
+                storage_delete_object(bucket, source_key)
+                final_images.append(storage_build_public_url(new_path))
             else:
                 final_images.append(img_url)
 
@@ -1490,13 +1739,15 @@ def save_product(product_id=None):
             "updated_at": datetime.now().isoformat(),
         }
 
-        bucket.put_object(
-            f"products/{product_id}/info.json",
-            json.dumps(product_info, ensure_ascii=False),
-        )
+        write_json_object(bucket, info_path, product_info, ensure_ascii=False)
 
         # 更新索引
-        update_product_index(product_id, product_info)
+        update_product_index(
+            bucket,
+            product_id,
+            product_info,
+            previous_category=previous_category,
+        )
 
         return jsonify(
             {"status": "success", "product_id": product_id, "product": product_info}
@@ -1506,27 +1757,28 @@ def save_product(product_id=None):
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
-def update_product_index(product_id, product_data):
-    # 更新分类索引
-    category_index_path = f"products/_index/by_category/{product_data['category']}.json"
-    try:
-        content = bucket.get_object(category_index_path).read()
-        index_data = json.loads(content)
-    except:
-        index_data = []
+def update_product_index(
+    local_bucket, product_id, product_data=None, previous_category=None, remove=False
+):
+    categories = set()
+    if previous_category:
+        categories.add(previous_category)
+    if product_data and product_data.get("category"):
+        categories.add(product_data["category"])
 
-    index_data.append(
-        {
-            "product_id": product_id,
-            "name": product_data["name"],
-            "main_image": f"products/{product_id}/original_images/{product_data['images'][0].split('/')[-1]}"
-            if product_data.get("images")
-            else None,
-            "updated_at": datetime.now().isoformat(),
-        }
-    )
+    for category in categories:
+        _CATEGORY_INDEX_CACHE.pop(category, None)
+        index_data = _migrate_category_index(local_bucket, category)
+        index_data = [
+            item for item in index_data if item.get("product_id") != product_id
+        ]
 
-    bucket.put_object(category_index_path, json.dumps(index_data, ensure_ascii=False))
+        if not remove and product_data and category == product_data.get("category"):
+            index_data.append(
+                _build_category_index_entry(local_bucket, product_id, product_data)
+            )
+
+        _save_category_index(local_bucket, category, index_data)
 
 
 @app.route("/generate_marketing", methods=["POST"])
@@ -1587,16 +1839,12 @@ def get_products():
                     product = json.loads(info)
                     product["id"] = product_id
 
-                    # 获取主图URL
-                    image_prefix = f"{prefix}{product_id}/original_images/"
-                    for img in oss2.ObjectIterator(
-                        bucket, prefix=image_prefix, max_keys=1
-                    ):
-                        if not img.key.endswith("/"):
-                            product["main_image"] = (
-                                f"https://{OSS_CONFIG['CUSTOM_DOMAIN']}/{img.key}"
-                            )
-                            break
+                    main_image_key = _resolve_main_image_key(bucket, product_id, product)
+                    product["main_image"] = (
+                        _build_oss_public_url(main_image_key)
+                        if main_image_key
+                        else None
+                    )
 
                     products.append(product)
                 except Exception as e:
@@ -1660,21 +1908,33 @@ def get_product_folders():
 @app.route("/delete_product/<product_id>", methods=["DELETE"])
 def delete_product_by_id(product_id):  # 修改函数名确保唯一性
     try:
-        auth = oss2.Auth(OSS_CONFIG["ACCESS_KEY_ID"], OSS_CONFIG["ACCESS_KEY_SECRET"])
-        bucket = oss2.Bucket(auth, OSS_CONFIG["ENDPOINT"], OSS_CONFIG["BUCKET_NAME"])
+        bucket = get_storage_bucket()
 
         # 检查商品是否存在
         info_path = f"products/{product_id}/info.json"
-        if not bucket.object_exists(info_path):
+        if not storage_object_exists(bucket, info_path):
             return jsonify({"status": "error", "error": "商品不存在"}), 404
+
+        previous_info = read_json_object(bucket, info_path, default={}) or {}
+        previous_category = (
+            previous_info.get("category")
+            if isinstance(previous_info, dict)
+            else None
+        )
 
         # 删除商品目录
         prefix = f"products/{product_id}/"
         for obj in oss2.ObjectIterator(bucket, prefix=prefix):
-            bucket.delete_object(obj.key)
+            storage_delete_object(bucket, obj.key)
 
         # 更新索引
-        update_product_index(product_id, None, delete=True)
+        update_product_index(
+            bucket,
+            product_id,
+            None,
+            previous_category=previous_category,
+            remove=True,
+        )
 
         return jsonify({"status": "success"})
 
@@ -2368,24 +2628,16 @@ def upload_image():
         return jsonify({"status": "error", "error": "文件名不能为空"}), 400
 
     try:
-        # 生成临时存储路径
-        ext = file.filename.rsplit(".", 1)[1].lower() if "." in file.filename else ""
-        temp_path = (
-            f"temp_uploads/{datetime.now().strftime('%Y%m%d')}/{uuid.uuid4().hex}.{ext}"
-        )
-
-        # 上传到OSS临时目录
-        auth = oss2.Auth(OSS_CONFIG["ACCESS_KEY_ID"], OSS_CONFIG["ACCESS_KEY_SECRET"])
-        bucket = oss2.Bucket(auth, OSS_CONFIG["ENDPOINT"], OSS_CONFIG["BUCKET_NAME"])
-
-        result = bucket.put_object(temp_path, file)
+        temp_path = temp_upload_key(file.filename)
+        bucket = get_storage_bucket()
+        result = storage_put_object(bucket, temp_path, file)
         if result.status != 200:
             return jsonify({"status": "error", "error": "OSS上传失败"}), 500
 
         return jsonify(
             {
                 "status": "success",
-                "image_url": f"https://{OSS_CONFIG['CUSTOM_DOMAIN']}/{temp_path}",
+                "image_url": storage_build_public_url(temp_path),
                 "temp_path": temp_path,
                 "filename": file.filename,
             }
@@ -2540,21 +2792,18 @@ def get_product(product_id):
 @app.route("/get_product_detail/<product_id>")
 def get_product_detail(product_id):
     try:
-        auth = oss2.Auth(OSS_CONFIG["ACCESS_KEY_ID"], OSS_CONFIG["ACCESS_KEY_SECRET"])
-        bucket = oss2.Bucket(auth, OSS_CONFIG["ENDPOINT"], OSS_CONFIG["BUCKET_NAME"])
+        bucket = get_storage_bucket()
 
         info_path = f"products/{product_id}/info.json"
-        if not bucket.object_exists(info_path):
+        if not storage_object_exists(bucket, info_path):
             return jsonify({"status": "error", "error": "商品不存在"}), 404
 
-        info = bucket.get_object(info_path).read()
-        product = json.loads(info)
+        product = read_json_object(bucket, info_path, default={}) or {}
 
-        # 获取所有图片
-        product["images"] = [
-            f"https://{OSS_CONFIG['CUSTOM_DOMAIN']}/{obj.key}"
-            for obj in oss2.ObjectIterator(bucket, prefix=f"products/{product_id}/")
-            if obj.key.endswith((".jpg", ".png", ".gif", ".webp"))
+        product["images"] = _normalize_edit_image_urls(bucket, product_id, product)
+        product["generated_images"] = [
+            _build_oss_public_url(key)
+            for key in _get_generated_image_keys(bucket, product_id)
         ]
 
         return jsonify({"status": "success", "product": product})
@@ -2588,14 +2837,14 @@ def get_marketing_materials(product_name):
         }
 
         # 读取营销文案
-        copy_path = f"products/{product_id}/marketing/copywriting.txt"
+        copy_path = f"products/{product_id}/generated_content/marketing.txt"
         if bucket.object_exists(copy_path):
             marketing_data["copywriting"] = (
                 bucket.get_object(copy_path).read().decode("utf-8")
             )
 
         # 获取营销图片
-        images_path = f"products/{product_id}/marketing/images/"
+        images_path = f"products/{product_id}/generated_content/images/"
         for img in oss2.ObjectIterator(bucket, prefix=images_path):
             if not img.key.endswith("/"):
                 marketing_data["images"].append(
@@ -2603,7 +2852,7 @@ def get_marketing_materials(product_name):
                 )
 
         # 获取营销视频
-        videos_path = f"products/{product_id}/marketing/videos/"
+        videos_path = f"products/{product_id}/generated_content/videos/"
         for video in oss2.ObjectIterator(bucket, prefix=videos_path):
             if not video.key.endswith("/"):
                 marketing_data["videos"].append(
@@ -2653,7 +2902,7 @@ def get_all_marketing_products():
 
                     # 读取营销文案
                     text_path = f"{prefix}{product_id}/generated_content/marketing.txt"
-                    if bucket.object_exists(text_path):
+                    if storage_object_exists_quiet(bucket, text_path):
                         marketing_data["marketing_text"] = (
                             bucket.get_object(text_path).read().decode("utf-8")
                         )
@@ -2723,7 +2972,7 @@ def get_oss_products():
         if category:
             index_path = f"products/_index/by_category/{category}.json"
             if bucket.object_exists(index_path):
-                index_data = json.loads(bucket.get_object(index_path).read())
+                index_data = _migrate_category_index(bucket, category)
                 for item in index_data:
                     info_path = f"products/{item['product_id']}/info.json"
                     if bucket.object_exists(info_path):
@@ -2737,12 +2986,12 @@ def get_oss_products():
                                     "id": item["product_id"],
                                     "name": info.get("name", "未命名商品"),
                                     "images": info.get("images", []),
-                                    "main_image": item.get("main_image")
-                                    or (
-                                        info["images"][0]
-                                        if info.get("images")
-                                        else None
-                                    ),
+                                    "main_image": _build_oss_public_url(
+                                        item.get("main_image")
+                                    )
+                                    if item.get("main_image")
+                                    else None,
+                                    "main_image_key": item.get("main_image"),
                                 }
                             )
 
@@ -2759,6 +3008,7 @@ def get_oss_products():
 
                     if bucket.object_exists(info_path):
                         info = json.loads(bucket.get_object(info_path).read())
+                        main_image_key = _resolve_main_image_key(bucket, product_id, info)
                         # 检查是否有图片的条件
                         if not has_images or (
                             info.get("images") and len(info["images"]) > 0
@@ -2768,9 +3018,12 @@ def get_oss_products():
                                     "id": product_id,
                                     "name": info.get("name", "未命名商品"),
                                     "images": info.get("images", []),
-                                    "main_image": info["images"][0]
-                                    if info.get("images")
+                                    "main_image": _build_oss_public_url(
+                                        main_image_key
+                                    )
+                                    if main_image_key
                                     else None,
+                                    "main_image_key": main_image_key,
                                 }
                             )
 
@@ -2811,22 +3064,13 @@ def save_generated_content():
         if file_ext not in valid_exts:
             file_ext = "png" if content_type == "image" else "mp4"  # 使用默认扩展名
 
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        random_str = uuid.uuid4().hex[:6]
-
         # 使用自定义路径或默认路径
         if custom_path:
-            save_path = f"{custom_path}gen_{timestamp}_{random_str}.{file_ext}"
-            # 确保目录存在
             dir_path = custom_path if custom_path.endswith("/") else f"{custom_path}/"
-            if not bucket.object_exists(dir_path):
-                bucket.put_object(dir_path, "")
+            save_path = f"{dir_path}gen_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:6]}.{file_ext}"
+            storage_ensure_prefix(bucket, dir_path)
         else:
-            if content_type == "image":
-                save_path = f"products/{product_id}/generated_content/images/gen_{timestamp}_{random_str}.{file_ext}"
-            else:
-                save_path = f"products/{product_id}/generated_content/videos/gen_{timestamp}_{random_str}.{file_ext}"
-            # 确保目录存在
+            save_path = generated_asset_key(product_id, content_type, file_ext)
             ensure_oss_directories(bucket, product_id)
 
         # 下载文件并上传到OSS
@@ -2840,7 +3084,7 @@ def save_generated_content():
             print(f"[OSS上传] 文件下载完成，大小: {len(file_content)} bytes")
 
             # 上传到OSS
-            result = bucket.put_object(save_path, file_content)
+            result = storage_put_object(bucket, save_path, file_content)
             print(f"[OSS上传] OSS返回状态: {result.status}")
 
             if result.status != 200:
@@ -2849,7 +3093,7 @@ def save_generated_content():
                 return jsonify({"status": "error", "error": error_msg}), 500
 
             # 返回OSS访问URL
-            oss_url = f"https://{OSS_CONFIG['CUSTOM_DOMAIN']}/{save_path}"
+            oss_url = storage_build_public_url(save_path)
             print(f"[OSS上传] 上传成功: {oss_url}")
 
             if content_type == "video" and task_id:
@@ -2880,17 +3124,8 @@ def save_generated_content():
 
 def ensure_oss_directories(bucket, product_id):
     """确保OSS目录结构存在"""
-    required_dirs = [
-        f"products/{product_id}/",
-        f"products/{product_id}/generated_content/",
-        f"products/{product_id}/generated_content/images/",
-        f"products/{product_id}/generated_content/videos/",
-    ]
-
-    for dir_path in required_dirs:
-        # OSS通过创建空对象来模拟目录
-        if not bucket.object_exists(dir_path):
-            bucket.put_object(dir_path, "")
+    for dir_path in generated_content_prefixes(product_id):
+        storage_ensure_prefix(bucket, dir_path)
 
 
 @app.route("/api/oss/categories")
@@ -2901,16 +3136,23 @@ def get_oss_categories():
             return jsonify({"status": "error", "error": "未配置OSS密钥"}), 500
 
         local_bucket = _create_oss_bucket()
+        info_cache = {}
 
         prefix = "products/_index/by_category/"
         files = local_bucket.list_objects(prefix=prefix).object_list
 
-        # 提取分类名称（去掉.json后缀）
-        categories = [
-            os.path.splitext(os.path.basename(f.key))[0]
-            for f in files
-            if f.key.endswith(".json")
-        ]
+        # 只返回迁移后仍有有效商品的分类，顺手清理历史脏索引
+        categories = []
+        for f in files:
+            if not f.key.endswith(".json"):
+                continue
+
+            category = os.path.splitext(os.path.basename(f.key))[0]
+            if not category:
+                continue
+
+            if _migrate_category_index(local_bucket, category, info_cache):
+                categories.append(category)
 
         return jsonify({"status": "success", "data": categories})
 
@@ -2928,12 +3170,13 @@ def get_oss_products_by_category():
     try:
         # 双重解码URL编码
         # local_bucket: 局部作用域的OSS桶对象，用于当前请求的OSS操作
-        local_bucket = _create_oss_bucket()
+        local_bucket = get_storage_bucket()
+        info_cache = {}
         decoded_category = unquote(unquote(category))
-        oss_path = f"products/_index/by_category/{decoded_category}.json"
+        oss_path = category_index_key(decoded_category)
 
         # 验证文件存在性
-        if not local_bucket.object_exists(oss_path):
+        if not storage_object_exists(local_bucket, oss_path):
             return jsonify(
                 {
                     "status": "success",
@@ -2942,15 +3185,20 @@ def get_oss_products_by_category():
                 }
             )
 
-        # 读取OSS文件内容
-        obj = local_bucket.get_object(oss_path)
-        products = json.loads(obj.read().decode("utf-8"))
+        # 读取并迁移分类索引
+        products = _migrate_category_index(local_bucket, decoded_category, info_cache)
 
-        # 验证数据格式
-        if not isinstance(products, list):
-            raise ValueError("商品数据格式错误，应为数组")
+        response_products = []
+        for item in products:
+            main_image_key = item.get("main_image")
+            response_item = dict(item)
+            response_item["main_image_key"] = main_image_key
+            response_item["main_image"] = (
+                _build_oss_public_url(main_image_key) if main_image_key else None
+            )
+            response_products.append(response_item)
 
-        return jsonify({"status": "success", "data": products})
+        return jsonify({"status": "success", "data": response_products})
 
     except Exception as e:
         return jsonify(

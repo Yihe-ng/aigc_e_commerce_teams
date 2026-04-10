@@ -20,6 +20,17 @@ import {
   toast,
 } from "@heroui/react"
 import { FolderTree, Package2, Sparkles } from "lucide-react"
+import {
+  fetchOssCategories,
+  fetchOssProductsByCategory,
+  saveGeneratedContent,
+} from "@/lib/oss/api"
+import {
+  buildOssAssetUrl,
+  fetchRuntimeOssDomain,
+  isAbsoluteUrl,
+  resolveOssCustomDomain,
+} from "@/lib/oss/shared"
 import { fetchFallbackCategories, fetchFallbackProductsByCategory } from "@/lib/products/oss-fallback"
 
 import { GenerationProgress } from "@/components/ai-tools/common/generation-progress"
@@ -27,11 +38,8 @@ import { GenerationProgress } from "@/components/ai-tools/common/generation-prog
 import { VideoGenerationArea } from "./video-generation-area"
 import { VideoGenerationHistory } from "./video-generation-history"
 import type {
-  CategoriesResponse,
   GenerateVideoResponse,
   Product,
-  ProductsResponse,
-  RuntimeImageConfigResponse,
   SaveGeneratedContentResponse,
   TaskHistoryResponse,
   TaskStatusResponse,
@@ -43,30 +51,6 @@ const HISTORY_REFRESH_MS = 5000
 const POLL_INTERVAL_MS = 2000
 const ELAPSED_TIME_INTERVAL_MS = 1000
 const PROGRESS_SIMULATION_INTERVAL_MS = 400
-const ENV_OSS_DOMAIN = process.env.NEXT_PUBLIC_ALIYUN_OSS_CUSTOM_DOMAIN ?? ""
-
-function isAbsoluteUrl(rawUrl: string | undefined): boolean {
-  return Boolean(rawUrl && /^https?:\/\//i.test(rawUrl))
-}
-
-function buildImageUrl(
-  rawUrl: string | undefined,
-  ossCustomDomain?: string | null
-): string | null {
-  if (!rawUrl) {
-    return null
-  }
-
-  if (isAbsoluteUrl(rawUrl)) {
-    return rawUrl
-  }
-
-  if (ossCustomDomain) {
-    return `https://${ossCustomDomain}/${rawUrl.replace(/^\/+/, "")}`
-  }
-
-  return null
-}
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
@@ -184,11 +168,11 @@ export default function VideoGenerator() {
   )
 
   const resolvedOssCustomDomain = useMemo(() => {
-    return runtimeOssDomain || ENV_OSS_DOMAIN || null
+    return resolveOssCustomDomain(runtimeOssDomain)
   }, [runtimeOssDomain])
 
   const selectedProductImageUrl = useMemo(
-    () => buildImageUrl(selectedProduct?.main_image, resolvedOssCustomDomain),
+    () => buildOssAssetUrl(selectedProduct?.main_image, resolvedOssCustomDomain),
     [resolvedOssCustomDomain, selectedProduct]
   )
 
@@ -306,14 +290,14 @@ export default function VideoGenerator() {
       setIsLoadingRuntimeConfig(true)
 
       try {
-        const response = await fetch("/api/runtime-config/image", { signal })
-        const payload = await readJson<RuntimeImageConfigResponse>(
-          response,
-          "获取图片配置失败"
-        )
+        startTransition(() => {
+          setRuntimeOssDomain(null)
+        })
+
+        const domain = await fetchRuntimeOssDomain(signal)
 
         startTransition(() => {
-          setRuntimeOssDomain(payload.data?.oss_custom_domain?.trim() || null)
+          setRuntimeOssDomain(domain)
           setRuntimeConfigError(null)
         })
       } catch (error) {
@@ -362,18 +346,10 @@ export default function VideoGenerator() {
       setIsLoadingCategories(true)
 
       try {
-        const response = await fetch("/api/oss/categories", { signal })
-        const payload = await readJson<CategoriesResponse>(
-          response,
-          "获取分类失败"
-        )
-
-        if (payload.status !== "success" && payload.code !== 200) {
-          throw new Error(payload.error ?? payload.message ?? "获取分类失败")
-        }
+        const categories = await fetchOssCategories(signal)
 
         startTransition(() => {
-          setCategories(payload.data ?? [])
+          setCategories(categories)
         })
       } catch (error) {
         if (isAbortError(error)) {
@@ -404,22 +380,10 @@ export default function VideoGenerator() {
       setIsLoadingProducts(true)
 
       try {
-        const params = new URLSearchParams({ category })
-        const response = await fetch(
-          `/api/oss/products_by_category?${params.toString()}`,
-          { signal }
-        )
-        const payload = await readJson<ProductsResponse>(
-          response,
-          "获取商品失败"
-        )
-
-        if (payload.status !== "success") {
-          throw new Error(payload.error ?? payload.message ?? "获取商品失败")
-        }
+        const products = await fetchOssProductsByCategory(category, signal)
 
         startTransition(() => {
-          setProducts(payload.data ?? [])
+          setProducts(products)
         })
       } catch (error) {
         if (isAbortError(error)) {
@@ -736,22 +700,14 @@ export default function VideoGenerator() {
       setSavingTaskId(task.id)
 
       try {
-        const response = await fetch("/api/save_generated_content", {
-          body: JSON.stringify({
+        const payload = (await saveGeneratedContent(
+          {
             file_url: rawVideoUrl,
             product_id: productId,
             task_id: task.id,
             type: "video",
-          }),
-          headers: {
-            "Content-Type": "application/json",
-          },
-          method: "POST",
-        })
-        const payload = await readJson<SaveGeneratedContentResponse>(
-          response,
-          "保存视频到素材库失败"
-        )
+          }
+        )) as SaveGeneratedContentResponse
 
         if (payload.status !== "success") {
           throw new Error(payload.error ?? "保存视频到素材库失败")

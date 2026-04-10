@@ -3,6 +3,8 @@
 import { startTransition, useCallback, useEffect, useRef, useState } from "react"
 import { ScrollShadow } from "@heroui/react"
 import { Sparkles } from "lucide-react"
+import { fetchProductLibrary } from "@/lib/oss/api"
+import type { Product } from "@/lib/types/product"
 
 import {
   extractQuestionsFromContent,
@@ -48,8 +50,11 @@ export default function TextGenerateChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [savedContentsRefreshKey, setSavedContentsRefreshKey] = useState(0)
+  const [products, setProducts] = useState<Product[]>([])
   const [saveDraft, setSaveDraft] = useState<SaveDraftValue>({
+    product_id: null,
     product_name: "",
     copy_type: "marketing",
     ad_best: "",
@@ -209,6 +214,28 @@ export default function TextGenerateChat() {
     }
   }, [])
 
+  useEffect(() => {
+    const controller = new AbortController()
+
+    setIsLoadingProducts(true)
+    fetchProductLibrary(controller.signal)
+      .then((items) => {
+        setProducts(items)
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return
+        }
+        console.error("加载商品列表失败:", error)
+        setProducts([])
+      })
+      .finally(() => {
+        setIsLoadingProducts(false)
+      })
+
+    return () => controller.abort()
+  }, [])
+
   const handleCopy = useCallback((content: unknown) => {
     if (typeof content !== "string") {
       return
@@ -278,13 +305,23 @@ export default function TextGenerateChat() {
 
   const handleSaveDraft = useCallback(async () => {
     const payload = {
+      product_id: saveDraft.product_id,
       product_name: saveDraft.product_name.trim(),
       ad_best: saveDraft.ad_best.trim(),
       copy_type: saveDraft.copy_type,
     }
+    // 使用 product_id 进行匹配，避免同名商品导致的错误匹配
+    const hasSelectedProduct = products.some(
+      (product) => product.id === payload.product_id
+    )
 
-    if (!payload.product_name || !payload.ad_best) {
+    if (!payload.product_id || !payload.product_name || !payload.ad_best) {
       alert("请先完善商品名称和最终文案")
+      return
+    }
+
+    if (!hasSelectedProduct) {
+      alert("请选择商品库中已有的商品")
       return
     }
 
@@ -311,7 +348,7 @@ export default function TextGenerateChat() {
     } finally {
       setIsSavingDraft(false)
     }
-  }, [saveDraft])
+  }, [products, saveDraft])
 
   const renderModeContent = () => {
     switch (activeMode) {
@@ -380,6 +417,8 @@ export default function TextGenerateChat() {
             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
               <SaveDraftPanel
                 value={saveDraft}
+                products={products}
+                isLoadingProducts={isLoadingProducts}
                 isSaving={isSavingDraft}
                 onChange={handleSaveDraftChange}
                 onSave={handleSaveDraft}
