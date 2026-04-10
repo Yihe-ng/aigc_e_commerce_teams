@@ -30,6 +30,7 @@ from llm import nlp_langchain
 from llm import nlp_ollama_api
 from llm import nlp_coze
 from core import member_db
+from backend.services.product_intro_service import resolve_product_intro
 from utils.trace_utils import summarize_text, trace_log
 import threading
 import functools
@@ -201,23 +202,30 @@ class FeiFei:
                                                                               "username": username, "uid": uid},
                                                                "Username": username})
 
-                    # 确定是否命中q&a
-                    answer = self.__get_answer(interact.interleaver, interact.data["msg"])
-
-                    # 大语言模型回复
+                    # 商品介绍类请求优先走结构化匹配，避免被历史 QA 误命中并持续污染 qa.csv
                     text = ''
                     textlist = []
+                    intro_resolution = resolve_product_intro(interact.data["msg"])
+                    answer = None
+                    if not intro_resolution.get("handled"):
+                        answer = self.__get_answer(interact.interleaver, interact.data["msg"])
+
+                    llm_input = interact.data["msg"]
+                    should_call_llm = answer is None
                     if answer is None:
-                        if wsa_server.get_web_instance().is_connected(username):
+                        llm_input = intro_resolution.get("llm_input") or interact.data["msg"]
+                        if should_call_llm and wsa_server.get_web_instance().is_connected(username):
                             wsa_server.get_web_instance().add_cmd({"panelMsg": "思考中...", "Username": username,
                                                                    'robot': f'http://{cfg.backend_api_url}/robot/Thinking.jpg'})
-                        if wsa_server.get_instance().is_connected(username):
+                        if should_call_llm and wsa_server.get_instance().is_connected(username):
                             content = {'Topic': 'Unreal', 'Data': {'Key': 'log', 'Value': "思考中..."},
                                        'Username': username, 'robot': f'http://{cfg.backend_api_url}/robot/Thinking.jpg'}
                             wsa_server.get_instance().add_cmd(content)
-                        text, textlist = handle_chat_message(interact.data["msg"], username, request_id=request_id)
+                        if should_call_llm:
+                            text, textlist = handle_chat_message(llm_input, username, request_id=request_id)
 
-                        qa_service.QAService().record_qapair(interact.data["msg"], text)  # 沟通记录缓存到qa文件
+                        if should_call_llm and not intro_resolution.get("handled"):
+                            qa_service.QAService().record_qapair(interact.data["msg"], text)  # 沟通记录缓存到qa文件
                     else:
                         text = answer
 

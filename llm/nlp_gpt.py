@@ -58,11 +58,12 @@ def question(cont, uid=0):
                 answer_info["content"] = communication_history[i][2]
             message.append(answer_info)
             i -= 1
-    else:
-         answer_info = dict()
-         answer_info["role"] = "user"
-         answer_info["content"] = cont
-         message.append(answer_info)
+
+    if not message or message[-1].get("role") != "user" or message[-1].get("content") != cont:
+        answer_info = dict()
+        answer_info["role"] = "user"
+        answer_info["content"] = cont
+        message.append(answer_info)
 
     data = {
         "model":model_engine,

@@ -1,9 +1,12 @@
-'use client'
+﻿'use client'
 
-import React, { startTransition, useEffect, useRef, useState } from 'react'
+import React, { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 import PendulumClock from '@/components/widgets/PendulumClock'
 import MinimalClock from '@/components/widgets/MinimalClock'
 import NeonStrips, { useNeonState } from '@/components/widgets/NeonStrips'
+import { fetchProductLibrary } from '@/lib/oss/api'
+import { buildOssAssetUrl, fetchRuntimeOssDomain, resolveOssCustomDomain } from '@/lib/oss/shared'
+import type { Product } from '@/lib/types/product'
 import './live.css'
 
 let PIXI: typeof import('pixi.js') | null = null
@@ -82,6 +85,11 @@ type PendingAudio = {
   key: string
 }
 
+type ProductGroup = {
+  category: string
+  products: Product[]
+}
+
 const DEFAULT_USER = 'User'
 const MAX_CHAT_MESSAGES = 80
 const LEGACY_AVATAR_MESSAGE_TYPES = new Set(['avatar', 'assistant', 'fay'])
@@ -112,11 +120,12 @@ function createMessage(
   }
 }
 
-function buildHistoryMessageId(item: HistoryMessageItem, kind: 'member' | 'avatar') {
+function buildHistoryMessageId(item: HistoryMessageItem, kind: 'member' | 'avatar', index: number) {
   const username = item.username || (kind === 'avatar' ? 'Avatar' : DEFAULT_USER)
   const timePart = item.createtime || item.timetext || 'no-time'
   const content = (item.content || '').trim()
-  return `${kind}|${username}|${timePart}|${content}`
+  const uidPart = typeof item.uid === 'number' ? item.uid : 'no-uid'
+  return `${kind}|${username}|${uidPart}|${timePart}|${index}|${content}`
 }
 
 function createClientRequestId() {
@@ -134,6 +143,26 @@ function logClientTrace(stage: string, payload: Record<string, unknown>) {
     stage,
     ...payload,
   })
+}
+
+function formatProductPrice(value: string | number | undefined) {
+  if (typeof value === 'number') {
+    return `CNY ${value}`
+  }
+
+  const normalized = String(value || '').trim()
+  if (!normalized) {
+    return 'CNY --'
+  }
+
+  return /^(cny|rmb|¥|\$)/i.test(normalized) ? normalized : `CNY ${normalized}`
+}
+
+function buildProductPreviewUrl(product: Product, ossDomain?: string | null) {
+  return (
+    buildOssAssetUrl(product.main_image, ossDomain) ||
+    buildOssAssetUrl(product.images?.[0], ossDomain)
+  )
 }
 
 function getAsrErrorMessage(errorCode?: string) {
@@ -198,10 +227,10 @@ export default function LivePage() {
 
   const [activeTab, setActiveTab] = useState<LiveTab>('chat')
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    createMessage('系统通知', '直播页已接入现有 Live2D 服务链路。', 'system'),
+    createMessage('系统通知', 'Live 页面已接入当前 Live2D 服务链路。', 'system'),
   ])
   const [inputMessage, setInputMessage] = useState('')
-  const [panelMessage, setPanelMessage] = useState('待机中')
+  const [panelMessage, setPanelMessage] = useState('待命中')
   const [stageStatus, setStageStatus] = useState<LiveStage>('offline')
   const [liveState, setLiveState] = useState<number>(0)
   const [isHumanConnected, setIsHumanConnected] = useState(false)
@@ -211,11 +240,34 @@ export default function LivePage() {
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
   const [pendingAudio, setPendingAudio] = useState<PendingAudio | null>(null)
+  const [liveProducts, setLiveProducts] = useState<Product[]>([])
+  const [liveProductsLoading, setLiveProductsLoading] = useState(false)
+  const [liveProductsError, setLiveProductsError] = useState('')
+  const [ossCustomDomain, setOssCustomDomain] = useState<string | null>(null)
 
   const { state: neonState, audioLevel, setState: setNeonState, setAudioLevel } = useNeonState()
   const deviceRuntimeLabel = isHumanConnected ? '数字人设备已连接' : '数字人设备未连接'
   const remoteAudioLabel = remoteAudioConnected ? '远端设备音频已连接' : '远端设备音频未连接'
   const browserAudioLabel = isPlayingAudio ? '浏览器音频播放中' : '浏览器音频空闲'
+
+  const groupedProducts = useMemo<ProductGroup[]>(() => {
+    const groups = new Map<string, Product[]>()
+
+    for (const product of liveProducts) {
+      const category = String(product.category || '').trim() || 'Uncategorized'
+      const categoryProducts = groups.get(category)
+      if (categoryProducts) {
+        categoryProducts.push(product)
+      } else {
+        groups.set(category, [product])
+      }
+    }
+
+    return Array.from(groups.entries()).map(([category, products]) => ({
+      category,
+      products,
+    }))
+  }, [liveProducts])
 
   const getApiBaseUrl = useEvent(() => {
     if (typeof window === 'undefined') {
@@ -521,13 +573,13 @@ export default function LivePage() {
         return
       }
       const history = payload.list
-        .map((item) => {
+        .map((item, index) => {
           const kind = isAvatarMessageType(item.type) ? 'avatar' : 'member'
           return createMessage(
             item.username || (kind === 'avatar' ? 'Avatar' : DEFAULT_USER),
             item.content || '',
             kind,
-            buildHistoryMessageId(item, kind),
+            buildHistoryMessageId(item, kind, index),
           )
         })
         .filter((item) => item.message.trim().length > 0)
@@ -583,13 +635,39 @@ export default function LivePage() {
         manualStopRef.current = false
         setStageStatus('idle')
         setNeonState('idle')
-        setPanelMessage('检测到现有直播服务正在运行')
+        setPanelMessage('检测到当前直播服务正在运行')
       } else if (manualStopRef.current) {
         setStageStatus('offline')
         setNeonState('idle')
       }
     } catch {
       // Ignore runtime status failures and rely on WebSocket reconnection.
+    }
+  })
+
+  const fetchLiveProducts = useEvent(async (signal?: AbortSignal) => {
+    setLiveProductsLoading(true)
+    setLiveProductsError('')
+
+    try {
+      const [products, runtimeDomain] = await Promise.all([
+        fetchProductLibrary(signal),
+        fetchRuntimeOssDomain(signal).catch(() => null),
+      ])
+
+      setLiveProducts(products)
+      setOssCustomDomain(resolveOssCustomDomain(runtimeDomain))
+    } catch (error) {
+      if (signal?.aborted) {
+        return
+      }
+
+      setLiveProducts([])
+      setLiveProductsError(error instanceof Error ? error.message : '加载商品数据失败，请稍后重试。')
+    } finally {
+      if (!signal?.aborted) {
+        setLiveProductsLoading(false)
+      }
     }
   })
 
@@ -709,7 +787,7 @@ export default function LivePage() {
         status: 'ok',
         message_preview: summarizeForLog(nextMessage),
       })
-      setPanelMessage(nextMessage || '待机中')
+      setPanelMessage(nextMessage || '待命中')
       if (!nextMessage) {
         enterIdleState()
       } else if (nextMessage.includes('思考')) {
@@ -842,7 +920,7 @@ export default function LivePage() {
       connectWebSocket()
       return true
     } catch {
-      appendChatMessage(createMessage('系统通知', '直播服务尚未启动，自动启动失败，请检查后端。', 'system'))
+      appendChatMessage(createMessage('系统通知', '直播服务尚未启动，自动启动失败，请检查后端服务。', 'system'))
       setPanelMessage('自动启动失败，请检查后端服务')
       setStageStatus('offline')
       return false
@@ -1213,6 +1291,15 @@ export default function LivePage() {
   }, [connectWebSocket, fetchRuntimeStatus, releaseMicrophone, stopAudioPulse, stopLipSync, stopNativeAudio, stopReplySync])
 
   useEffect(() => {
+    const controller = new AbortController()
+    void fetchLiveProducts(controller.signal)
+
+    return () => {
+      controller.abort()
+    }
+  }, [fetchLiveProducts])
+
+  useEffect(() => {
     requestAnimationFrame(() => {
       scrollChatToBottom(chatMessages.length <= 2 ? 'auto' : 'smooth')
     })
@@ -1229,7 +1316,7 @@ export default function LivePage() {
             ? '连接中'
             : stageStatus === 'offline'
               ? '未启动'
-              : '待机中'
+              : '待命中'
 
   return (
     <div className="ecommerce-live">
@@ -1315,7 +1402,7 @@ export default function LivePage() {
         <div className="chat-column">
           <div className="tabs">
             <div className={`tab ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>
-              互动聊天
+              聊天互动
             </div>
             <div className={`tab ${activeTab === 'product' ? 'active' : ''}`} onClick={() => setActiveTab('product')}>
               运行状态
@@ -1354,7 +1441,7 @@ export default function LivePage() {
                 </button>
                 <input
                   type="text"
-                  placeholder={liveState === 1 ? '输入文本，走现有 Live2D NLP 链路...' : '请先启动直播服务'}
+                  placeholder={liveState === 1 ? '输入聊天内容，或直接说“介绍一下已有的商品”' : '请先启动直播服务'}
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyDown={(e) => {
@@ -1373,52 +1460,46 @@ export default function LivePage() {
             </>
           ) : (
             <div className="product-list">
-              <div className="product-card">
-                <div className="product-image"></div>
-                <div className="product-info">
-                  <div className="product-name">ASR / NLP / 情感分析</div>
-                  <div className="status-copy">
-                    当前页面通过现有 Live2D 后端链路触发文本互动，并消费 WebSocket 回推结果。
-                  </div>
-                  <button className="buy-btn" onClick={() => void fetchMessageHistory()}>
-                    同步历史
-                  </button>
-                </div>
-              </div>
-              <div className="product-card">
-                <div className="product-image"></div>
-                <div className="product-info">
-                  <div className="product-name">WebSocket 状态</div>
-                  <div className="status-copy">
-                    面板: {stageStatus === 'offline' ? '未连接' : '已连接'} / 数字人设备: {isHumanConnected ? '已连接' : '未连接'}
-                  </div>
-                  <button className="buy-btn" onClick={connectWebSocket}>
-                    重连面板
-                  </button>
-                </div>
-              </div>
-              <div className="product-card">
-                <div className="product-image"></div>
-                <div className="product-info">
-                  <div className="product-name">浏览器音频链路</div>
-                  <div className="status-copy">
-                    麦克风录音走 5000 主服务的 ASR 代理，TTS wav 由浏览器原生 Audio 直接播放。远端设备音频仅在外接数字人设备时才会连接。
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <button className="buy-btn" onClick={stopNativeAudio}>
-                      停止播放
-                    </button>
-                    {pendingAudio ? (
-                      <button
-                        className="buy-btn"
-                        onClick={() => void playAudioTrack(pendingAudio.src, pendingAudio.key)}
-                      >
-                        播放最新语音
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
+              {liveProductsLoading ? (
+                <div className="product-panel-state">正在加载商品库...</div>
+              ) : liveProductsError ? (
+                <div className="product-panel-state error">{liveProductsError}</div>
+              ) : groupedProducts.length === 0 ? (
+                <div className="product-panel-state">商品库暂无可展示商品。</div>
+              ) : (
+                groupedProducts.map((group) => (
+                  <section className="category-section" key={group.category}>
+                    <div className="category-title">{group.category}</div>
+                    <div className="category-products">
+                      {group.products.map((product) => {
+                        const previewUrl = buildProductPreviewUrl(product, ossCustomDomain)
+
+                        return (
+                          <article className="product-card" key={String(product.id)}>
+                            <div className="product-image product-image--preview">
+                              {previewUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  alt={product.name}
+                                  className="product-image-preview"
+                                  loading="lazy"
+                                  src={previewUrl}
+                                />
+                              ) : (
+                                <span className="product-image-fallback">IMG</span>
+                              )}
+                            </div>
+                            <div className="product-info">
+                              <div className="product-name">{product.name}</div>
+                              <div className="product-price">{formatProductPrice(product.price)}</div>
+                            </div>
+                          </article>
+                        )
+                      })}
+                    </div>
+                  </section>
+                ))
+              )}
             </div>
           )}
         </div>
@@ -1426,3 +1507,4 @@ export default function LivePage() {
     </div>
   )
 }
+
