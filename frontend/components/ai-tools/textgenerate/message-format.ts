@@ -60,12 +60,62 @@ export function extractQuestionsFromContent(rawContent: unknown): {
   }
 }
 
+export function extractHashtagsFromContent(content: string): {
+  cleanContent: string
+  hashtags: string[]
+} {
+  // 匹配多种 hashtags 格式：
+  // 1. hashtags: #标签1 #标签2
+  // 2. 【标签】#标签1 #标签2
+  // 3. 标签：#标签1 #标签2
+  const hashtagPatterns = [
+    /hashtags:\s*(#[^\n]+)/i,
+    /【标签】\s*(#[^\n]+)/,
+    /标签[：:]\s*(#[^\n]+)/,
+  ]
+
+  for (const pattern of hashtagPatterns) {
+    const hashtagMatch = content.match(pattern)
+    if (hashtagMatch) {
+      const hashtagText = hashtagMatch[1].trim()
+      // 提取所有 #开头的标签（支持中文、英文、数字、下划线）
+      const hashtags = hashtagText.match(/#[\u4e00-\u9fa5\u3000-\u303fa-zA-Z0-9_]+/g) || []
+      // 移除 hashtags 行，保留其他内容
+      const cleanContent = content.replace(pattern, "").trim()
+      return { cleanContent, hashtags }
+    }
+  }
+
+  return { cleanContent: content.trim(), hashtags: [] }
+}
+
+export function removeSectionTitles(content: string): string {
+  // 移除常见的标题格式
+  const titlePatterns = [
+    /^文案主体内容[：:]\s*/im,
+    /^【文案主体】\s*/im,
+    /^文案主体\s*/im,
+    /^【标签】\s*/im,
+    /^【追问】\s*$/im,
+    /^标签[：:]\s*$/im,
+    /^追问[：:]\s*$/im,
+  ]
+
+  let cleanedContent = content
+  for (const pattern of titlePatterns) {
+    cleanedContent = cleanedContent.replace(pattern, "")
+  }
+
+  return cleanedContent.trim()
+}
+
 export function getUserMessageBubbleClassName(): string {
   return [
     "w-fit",
     "min-w-[96px]",
     "max-w-[75%]",
     "bg-[#91C1FA]",
+    "dark:bg-[#2982CB]",
     "text-white",
     "rounded-2xl",
     "rounded-tr-sm",

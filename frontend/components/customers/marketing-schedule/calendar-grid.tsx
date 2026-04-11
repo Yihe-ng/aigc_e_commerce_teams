@@ -1,41 +1,79 @@
 "use client"
 
+import { useMemo } from "react"
 import type { CalendarEvent, CalendarView, EventTemplate } from "./types"
+import { sameDay, WEEK, WEEK_FULL } from "./types"
 
 interface CalendarGridProps {
   currentDate: Date
   events: CalendarEvent[]
   view: CalendarView
+  dragOverDate: string | null
+  onDragOverDateChange: (date: string | null) => void
   onCreateEvent: (date: Date) => void
   onDropTemplate: (date: Date, template: EventTemplate) => void
   onEditEvent: (event: CalendarEvent) => void
 }
 
-const WEEK_LABELS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"] as const
-const WEEKDAY_LABELS = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"] as const
-
-function sameDate(left: Date, right: Date) {
-  return left.toDateString() === right.toDateString()
-}
-
-function renderEventPill(
-  event: CalendarEvent,
-  isLarge: boolean,
-  onEditEvent: (event: CalendarEvent) => void
-) {
+// 事件卡片组件
+function EventChip({
+  ev,
+  large,
+  onClick,
+}: {
+  ev: CalendarEvent
+  large?: boolean
+  onClick: () => void
+}) {
   return (
     <div
-      key={event.id}
-      onClick={(mouseEvent) => {
-        mouseEvent.stopPropagation()
-        onEditEvent(event)
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
       }}
-      className={`${event.color} flex cursor-pointer items-center justify-between rounded-xl border-none text-white shadow-sm hover:brightness-110 ${
-        isLarge ? "p-4 text-sm font-bold" : "truncate p-1.5 text-[10px] font-bold"
-      }`}
+      className={`
+        group flex items-center gap-1.5 cursor-pointer
+        hover:bg-gray-50 rounded-md transition-all duration-150
+        ${large ? "px-2 py-2 mb-1.5" : "px-1.5 py-1 mb-1"}
+      `}
     >
-      <span>{event.start} {event.title}</span>
+      {/* 颜色指示器 */}
+      <div className={`${ev.color} rounded-full shrink-0 shadow-sm ${large ? "w-2.5 h-2.5" : "w-2 h-2"}`} />
+      {/* 时间 */}
+      <span className={`font-medium text-gray-500 shrink-0 ${large ? "text-xs" : "text-[10px]"}`}>
+        {ev.start}
+      </span>
+      {/* 标题 */}
+      <span className={`text-gray-700 truncate ${large ? "text-xs" : "text-[10px]"}`}>
+        {ev.title}
+      </span>
     </div>
+  )
+}
+
+// 日期徽章组件
+function DayBadge({ date, large }: { date: Date; large?: boolean }) {
+  const today = new Date()
+  const isToday = sameDay(date, today)
+
+  if (large) {
+    return (
+      <div
+        className={`w-9 h-9 flex items-center justify-center rounded-full text-base font-semibold
+        ${isToday ? "bg-gray-900 text-white" : "text-gray-700"}`}
+      >
+        {date.getDate()}
+      </div>
+    )
+  }
+
+  return (
+    <span
+      className={`inline-block text-xs font-semibold leading-5 px-1.5 rounded
+        ${isToday ? "bg-gray-900 text-white" : "text-gray-400"}`}
+    >
+      {date.getDate()}
+    </span>
   )
 }
 
@@ -43,159 +81,218 @@ export function CalendarGrid({
   currentDate,
   events,
   view,
+  dragOverDate,
+  onDragOverDateChange,
   onCreateEvent,
   onDropTemplate,
   onEditEvent,
 }: CalendarGridProps) {
+  const today = new Date()
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
-  const monthLastDay = new Date(year, month + 1, 0).getDate()
-  const monthFirstDayIndex = new Date(year, month, 1).getDay()
 
-  const weekDays = (() => {
+  // 月视图计算
+  const { firstDayIndex, lastDay } = useMemo(() => ({
+    lastDay: new Date(year, month + 1, 0).getDate(),
+    firstDayIndex: new Date(year, month, 1).getDay(),
+  }), [year, month])
+
+  // 周视图计算
+  const weekDays = useMemo(() => {
     const start = new Date(currentDate)
     start.setDate(currentDate.getDate() - currentDate.getDay())
-    return Array.from({ length: 7 }).map((_, index) => {
-      const next = new Date(start)
-      next.setDate(start.getDate() + index)
-      return next
+    return Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date(start)
+      d.setDate(start.getDate() + i)
+      return d
     })
-  })()
+  }, [currentDate])
 
-  const handleDropTemplate = (event: React.DragEvent<HTMLDivElement>, date: Date) => {
-    event.preventDefault()
-    event.stopPropagation()
-    const raw = event.dataTransfer.getData("template")
-    if (!raw) return
-
-    try {
-      const template = JSON.parse(raw) as EventTemplate
-      onDropTemplate(date, template)
-    } catch {
-      // 这里静默容错，避免后续替换拖拽协议时影响当前页面交互。
-    }
+  // 拖拽处理
+  const handleDragOver = (e: React.DragEvent, dateStr: string) => {
+    e.preventDefault()
+    onDragOverDateChange(dateStr)
   }
 
-  const eventsByDate = (date: Date) => events.filter((item) => sameDate(item.date, date))
-  const today = new Date()
+  const handleDrop = (e: React.DragEvent, date: Date) => {
+    e.preventDefault()
+    onDragOverDateChange(null)
+    try {
+      const tpl: EventTemplate = JSON.parse(e.dataTransfer.getData("template"))
+      onDropTemplate(date, tpl)
+    } catch {}
+  }
+
+  // 单元格组件
+  const Cell = ({
+    date,
+    className = "",
+    children,
+  }: {
+    date: Date
+    className?: string
+    children?: React.ReactNode
+  }) => {
+    const isDragOver = dragOverDate === date.toDateString()
+    return (
+      <div
+        onClick={() => onCreateEvent(date)}
+        onDragOver={(e) => handleDragOver(e, date.toDateString())}
+        onDragLeave={() => onDragOverDateChange(null)}
+        onDrop={(e) => handleDrop(e, date)}
+        className={`cursor-pointer transition-all duration-200 relative
+          ${isDragOver ? "bg-blue-50/60 ring-2 ring-inset ring-blue-300" : "hover:bg-[#f7f6f4]"}
+          ${className}`}
+      >
+        {isDragOver && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="bg-blue-500 text-white text-xs font-medium px-3 py-1.5 rounded-full shadow-lg animate-pulse">
+              松开以创建日程
+            </div>
+          </div>
+        )}
+        <div className={`transition-opacity ${isDragOver ? "opacity-30" : "opacity-100"}`}>
+          {children}
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-0 flex-1 overflow-hidden">
-      {/* 这里保留局部滚动区，避免和 MainLayout 的主滚动职责冲突。 */}
-      <div className="h-full overflow-auto">
-        {view === "月" ? (
-          <div className="grid min-w-[700px] grid-cols-7">
-            {WEEK_LABELS.map((label) => (
+    <>
+      {/* 月视图 */}
+      {view === "月" && (
+        <div className="flex-1 overflow-auto">
+          <div className="grid grid-cols-7 min-w-[640px]">
+            {WEEK.map((d) => (
               <div
-                key={label}
-                className="border-b border-slate-50 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-300 dark:border-slate-800 dark:text-slate-500"
+                key={d}
+                className="py-2.5 text-center text-[11px] font-semibold text-gray-400 border-b border-gray-100 tracking-wide bg-[#FAFAFA]"
               >
-                {label}
+                {d}
               </div>
             ))}
-            {Array.from({ length: monthFirstDayIndex }).map((_, index) => (
+            {Array.from({ length: firstDayIndex }, (_, i) => (
               <div
-                key={`empty-${index}`}
-                className="h-36 border-b border-r border-slate-50 bg-slate-50/10 dark:border-slate-800 dark:bg-slate-900/30"
+                key={`b-${i}`}
+                className="h-28 border-r border-b border-gray-100 bg-[#F5F5F5]"
               />
             ))}
-            {Array.from({ length: monthLastDay }).map((_, index) => {
-              const day = index + 1
-              const date = new Date(year, month, day)
-              const dayEvents = eventsByDate(date)
+            {Array.from({ length: lastDay }, (_, i) => {
+              const date = new Date(year, month, i + 1)
+              const dayEvents = events.filter((e) => sameDay(e.date, date))
               return (
-                <div
-                  key={day}
-                  onClick={() => onCreateEvent(date)}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={(event) => handleDropTemplate(event, date)}
-                  className="h-36 cursor-pointer border-b border-r border-slate-50 p-3 hover:bg-blue-50/20 dark:border-slate-800 dark:hover:bg-slate-800/40"
+                <Cell
+                  key={i}
+                  date={date}
+                  className="h-28 border-r border-b border-gray-100 bg-white p-2"
                 >
-                  <span
-                    className={`text-xs font-black ${
-                      sameDate(date, today)
-                        ? "rounded-lg bg-blue-600 px-2.5 py-1 text-white shadow-lg shadow-blue-100 dark:shadow-blue-900/50"
-                        : "text-slate-400 dark:text-slate-500"
-                    }`}
-                  >
-                    {day}
-                  </span>
-                  <div className="mt-2 space-y-1.5">
-                    {dayEvents.map((calendarEvent) =>
-                      renderEventPill(calendarEvent, false, onEditEvent)
+                  <DayBadge date={date} />
+                  <div className="mt-1">
+                    {dayEvents.map((ev) => (
+                      <EventChip
+                        key={ev.id}
+                        ev={ev}
+                        onClick={() => onEditEvent(ev)}
+                      />
+                    ))}
+                    {dayEvents.length === 0 && (
+                      <div className="h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                        <span className="text-[10px] text-gray-300">点击添加</span>
+                      </div>
                     )}
                   </div>
-                </div>
+                </Cell>
               )
             })}
           </div>
-        ) : null}
+        </div>
+      )}
 
-        {view === "周" ? (
-          <div className="grid min-h-[600px] min-w-[700px] grid-cols-7">
-            {weekDays.map((date, index) => (
-              <div
-                key={`${date.toDateString()}-${index}`}
-                onClick={() => onCreateEvent(date)}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={(event) => handleDropTemplate(event, date)}
-                className="h-full cursor-pointer border-r border-slate-50 p-5 hover:bg-blue-50/10 dark:border-slate-800 dark:hover:bg-slate-800/30"
-              >
-                <div className="mb-8 text-center">
-                  <div className="text-[10px] font-black uppercase text-slate-300 dark:text-slate-500">
-                    {WEEK_LABELS[date.getDay()]}
+      {/* 周视图 */}
+      {view === "周" && (
+        <div className="flex-1 overflow-auto">
+          <div className="grid grid-cols-7 min-w-[640px] min-h-[520px]">
+            {weekDays.map((date, i) => {
+              const dayEvents = events.filter((e) => sameDay(e.date, date))
+              return (
+                <Cell
+                  key={i}
+                  date={date}
+                  className="border-r border-gray-100 bg-white p-3 h-full"
+                >
+                  <div className="flex flex-col items-center gap-1 mb-4">
+                    <span className="text-[10px] font-semibold text-gray-400 tracking-wide">
+                      {WEEK[date.getDay()]}
+                    </span>
+                    <DayBadge date={date} large />
                   </div>
-                  <div
-                    className={`inline-block h-12 w-12 rounded-2xl text-2xl font-black leading-[48px] ${
-                      sameDate(date, today)
-                        ? "bg-blue-600 text-white shadow-xl shadow-blue-200 dark:shadow-blue-900/50"
-                        : "text-slate-800 dark:text-slate-100"
-                    }`}
-                  >
-                    {date.getDate()}
+                  <div className="space-y-1">
+                    {dayEvents.map((ev) => (
+                      <EventChip
+                        key={ev.id}
+                        ev={ev}
+                        large
+                        onClick={() => onEditEvent(ev)}
+                      />
+                    ))}
+                    {dayEvents.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-8 text-gray-300">
+                        <span className="text-xs">暂无日程</span>
+                        <span className="text-[10px] mt-0.5">点击添加</span>
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div className="space-y-3">
-                  {eventsByDate(date).map((calendarEvent) =>
-                    renderEventPill(calendarEvent, true, onEditEvent)
-                  )}
-                </div>
-              </div>
-            ))}
+                </Cell>
+              )
+            })}
           </div>
-        ) : null}
+        </div>
+      )}
 
-        {view === "日" ? (
+      {/* 日视图 */}
+      {view === "日" && (
+        <div
+          className="flex-1 p-6 cursor-pointer bg-white"
+          onClick={() => onCreateEvent(currentDate)}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => handleDrop(e, currentDate)}
+        >
           <div
-            onClick={() => onCreateEvent(currentDate)}
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => handleDropTemplate(event, currentDate)}
-            className="mx-auto h-full max-w-4xl cursor-pointer p-6 md:p-10"
+            className="flex items-center gap-5 rounded-2xl p-5 mb-6 bg-[#F8F8F8]"
           >
-            <div className="mb-10 flex items-center justify-between rounded-[32px] border border-slate-100 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-none">
-              <div className="flex items-center space-x-6">
-                <div className="text-6xl font-black leading-none tracking-tighter text-blue-600 dark:text-sky-400">
-                  {currentDate.getDate()}
-                </div>
-                <div className="hidden h-12 w-[2px] bg-slate-100 md:block dark:bg-slate-700" />
-                <div>
-                  <div className="text-xl font-black text-slate-800 dark:text-slate-100">
-                    {WEEKDAY_LABELS[currentDate.getDay()]}
-                  </div>
-                  <div className="text-sm font-bold text-slate-400 dark:text-slate-500">
-                    {year}年 {month + 1}月
-                  </div>
-                </div>
-              </div>
+            <div className="text-4xl font-bold text-gray-900 leading-none w-14 text-center">
+              {currentDate.getDate()}
             </div>
-            <div className="space-y-4">
-              {eventsByDate(currentDate).map((calendarEvent) =>
-                renderEventPill(calendarEvent, true, onEditEvent)
-              )}
+            <div className="h-10 w-px bg-gray-300" />
+            <div>
+              <p className="text-sm font-semibold text-gray-800">
+                {WEEK_FULL[currentDate.getDay()]}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {year}年 {month + 1}月
+              </p>
             </div>
           </div>
-        ) : null}
-      </div>
-    </div>
+          <div className="space-y-1.5 max-w-xl">
+            {events
+              .filter((e) => sameDay(e.date, currentDate))
+              .map((ev) => (
+                <EventChip
+                  key={ev.id}
+                  ev={ev}
+                  large
+                  onClick={() => onEditEvent(ev)}
+                />
+              ))}
+            {events.filter((e) => sameDay(e.date, currentDate)).length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-8">
+                今天暂无日程，点击此处或从左侧拖入模板
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   )
 }

@@ -1,21 +1,23 @@
 "use client"
 
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react"
-
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react"
 import type { CalendarView } from "./types"
+import { WEEK } from "./types"
 
 interface CalendarToolbarProps {
   currentDate: Date
   view: CalendarView
+  dateInputRef: React.RefObject<HTMLInputElement | null>
   onNavigate: (direction: number) => void
   onResetToday: () => void
   onChangeView: (view: CalendarView) => void
-  onChangeDate: (next: Date) => void
+  onChangeDate: (date: Date) => void
 }
 
 export function CalendarToolbar({
   currentDate,
   view,
+  dateInputRef,
   onNavigate,
   onResetToday,
   onChangeView,
@@ -23,85 +25,88 @@ export function CalendarToolbar({
 }: CalendarToolbarProps) {
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
+
+  // 计算周视图日期范围
+  const getWeekRange = () => {
+    const start = new Date(currentDate)
+    start.setDate(currentDate.getDate() - currentDate.getDay())
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6)
+    return { start, end }
+  }
+
+  const weekRange = getWeekRange()
+
+  const headerLabel =
+    view === "月"
+      ? `${year}年 ${month + 1}月`
+      : view === "周"
+      ? `${weekRange.start.getMonth() + 1}月${weekRange.start.getDate()}日 — ${weekRange.end.getMonth() + 1}月${weekRange.end.getDate()}日`
+      : `${year}年 ${month + 1}月 ${currentDate.getDate()}日`
+
   const dateValue = `${year}-${String(month + 1).padStart(2, "0")}-${String(
     currentDate.getDate()
   ).padStart(2, "0")}`
 
-  const weekDays = (() => {
-    const start = new Date(currentDate)
-    start.setDate(currentDate.getDate() - currentDate.getDay())
-    return Array.from({ length: 7 }).map((_, index) => {
-      const next = new Date(start)
-      next.setDate(start.getDate() + index)
-      return next
-    })
-  })()
-
-  const title =
-    view === "月"
-      ? `${year}年 ${month + 1}月`
-      : view === "周"
-        ? `${weekDays[0].getMonth() + 1}月${weekDays[0].getDate()}日 - ${
-            weekDays[6].getMonth() + 1
-          }月${weekDays[6].getDate()}日`
-        : `${year}年 ${month + 1}月 ${currentDate.getDate()}日`
-
   return (
-    <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 dark:border-slate-800 md:flex-row md:items-center md:justify-between md:px-7">
-      <div className="flex items-center gap-3">
+    <div
+      className="px-5 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2 bg-white"
+    >
+      <div className="flex items-center gap-1">
         <button
-          type="button"
           onClick={() => onNavigate(-1)}
-          className="rounded-2xl border border-slate-100 p-2.5 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+          className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 transition-colors bg-[#F8F8F8]"
         >
-          <ChevronLeft className="h-4 w-4 dark:text-slate-200" />
+          <ChevronLeft className="w-4 h-4" />
         </button>
         <button
-          type="button"
           onClick={() => onNavigate(1)}
-          className="rounded-2xl border border-slate-100 p-2.5 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+          className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 transition-colors bg-[#F8F8F8]"
         >
-          <ChevronRight className="h-4 w-4 dark:text-slate-200" />
+          <ChevronRight className="w-4 h-4" />
         </button>
         <button
-          type="button"
           onClick={onResetToday}
-          className="rounded-2xl border border-slate-100 px-4 py-2 text-sm font-black transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          className="px-3 py-1.5 text-xs font-semibold rounded-xl text-gray-600 ml-1 transition-colors hover:opacity-80 bg-[#F8F8F8]"
         >
           今天
         </button>
       </div>
 
-      <label className="relative flex cursor-pointer items-center rounded-2xl px-4 py-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60">
-        <CalendarDays className="mr-2 h-5 w-5 text-blue-600 dark:text-sky-400" />
-        <span className="text-xl font-black tracking-tight text-slate-800 md:text-2xl dark:text-slate-100">{title}</span>
-        {/* 这里保留原生 date input，后续如果要接 HeroUI DatePicker，可直接替换这层。 */}
+      <div
+        onClick={() => dateInputRef.current?.showPicker()}
+        className="relative flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-xl hover:opacity-80 transition-all"
+      >
+        <CalendarDays className="w-4 h-4 text-gray-400 shrink-0" />
+        <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">
+          {headerLabel}
+        </span>
         <input
+          ref={dateInputRef}
           type="date"
           value={dateValue}
-          onChange={(event) => {
-            const selected = new Date(event.target.value)
-            if (!Number.isNaN(selected.getTime())) {
-              onChangeDate(selected)
-            }
+          onChange={(e) => {
+            const d = new Date(e.target.value)
+            if (!isNaN(d.getTime())) onChangeDate(d)
           }}
-          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          className="absolute inset-0 opacity-0 -z-10 w-full h-full"
         />
-      </label>
+      </div>
 
-      <div className="flex w-fit rounded-2xl bg-slate-100 p-1.5 dark:bg-slate-800">
-        {(["月", "周", "日"] as CalendarView[]).map((option) => (
+      <div
+        className="flex rounded-xl overflow-hidden p-0.5 bg-[#F8F8F8]"
+      >
+        {(["月", "周", "日"] as const).map((v) => (
           <button
-            key={option}
-            type="button"
-            onClick={() => onChangeView(option)}
-            className={`rounded-xl px-6 py-2 text-sm transition-all ${
-              view === option
-                ? "bg-white font-black text-blue-600 shadow-md dark:bg-slate-700 dark:text-sky-400 dark:shadow-lg"
-                : "text-slate-400 dark:text-slate-500"
+            key={v}
+            onClick={() => onChangeView(v)}
+            className={`px-3.5 py-1 text-xs font-semibold transition-all ${
+              view === v
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-400 hover:text-gray-700"
             }`}
           >
-            {option}
+            {v}
           </button>
         ))}
       </div>

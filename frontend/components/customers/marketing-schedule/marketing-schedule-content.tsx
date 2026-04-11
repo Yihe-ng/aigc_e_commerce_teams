@@ -1,84 +1,61 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState, useRef } from "react"
 
 import { CalendarGrid } from "./calendar-grid"
 import { CalendarToolbar } from "./calendar-toolbar"
 import { EventModal } from "./event-modal"
 import { TemplateSidebar } from "./template-sidebar"
 import type { CalendarEvent, CalendarView, EventTemplate } from "./types"
-
-const COLOR_OPTIONS = [
-  { name: "经典蓝", value: "bg-blue-600" },
-  { name: "品牌紫", value: "bg-purple-600" },
-  { name: "紧急红", value: "bg-red-500" },
-  { name: "活力橙", value: "bg-orange-500" },
-  { name: "库存绿", value: "bg-emerald-500" },
-  { name: "秒杀黄", value: "bg-amber-400" },
-  { name: "营销粉", value: "bg-rose-500" },
-] as const
-
-function createDraftEvent(date: Date): CalendarEvent {
-  return {
-    id: Math.random().toString(36),
-    date: new Date(date),
-    title: "",
-    color: "bg-blue-600",
-    start: "09:00",
-    end: "10:00",
-    desc: "",
-  }
-}
+import { createDraftEvent, PAGE_COLORS } from "./types"
 
 export default function MarketingScheduleContent() {
+  const today = new Date()
   const [view, setView] = useState<CalendarView>("月")
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isNewTemplateModalOpen, setIsNewTemplateModalOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
+  const [editingTemplate, setEditingTemplate] = useState<EventTemplate | null>(null)
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null)
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
-  // 这里保留提交里的 mock 模板数据，后续如果要接真实模板接口，可直接替换为请求结果。
   const [templates, setTemplates] = useState<EventTemplate[]>([
-    { id: "t1", title: "团队开会", color: "bg-purple-600" },
-    { id: "t2", title: "发布广告图片", color: "bg-sky-500" },
-    { id: "t5", title: "666", color: "bg-blue-600" },
+    { id: "t1", title: "团队开会", color: "bg-slate-300" },
+    { id: "t2", title: "发布广告图片", color: "bg-cyan-400" },
+    { id: "t3", title: "数据复盘", color: "bg-blue-500" },
   ])
 
-  // 这里保留提交里的 mock 日程数据，方便后续替换成接口或全局状态源。
   const [events, setEvents] = useState<CalendarEvent[]>([
-    {
-      id: "1",
-      date: new Date(2026, 2, 2),
-      title: "团队开会",
-      color: "bg-purple-600",
-      start: "10:01",
-      end: "11:30",
-      desc: "",
-    },
-    {
-      id: "2",
-      date: new Date(2026, 2, 30),
-      title: "团队开会",
-      color: "bg-purple-600",
-      start: "09:00",
-      end: "10:30",
-      desc: "",
-    },
+    { id: "e1", date: new Date(2026, 3, 2), title: "团队开会", color: "bg-slate-300", start: "10:00", end: "11:30" },
+    { id: "e2", date: new Date(2026, 3, 30), title: "团队开会", color: "bg-slate-300", start: "09:00", end: "10:30" },
   ])
 
-  const [newTemplateTitle, setNewTemplateTitle] = useState("")
-  const [newTemplateColor, setNewTemplateColor] = useState("bg-blue-600")
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
-  const handleNavigate = (direction: number) => {
-    const nextDate = new Date(currentDate)
-    if (view === "月") {
-      nextDate.setMonth(currentDate.getMonth() + direction)
-    } else if (view === "周") {
-      nextDate.setDate(currentDate.getDate() + direction * 7)
-    } else {
-      nextDate.setDate(currentDate.getDate() + direction)
-    }
-    setCurrentDate(nextDate)
+  const handleNav = (dir: number) => {
+    const d = new Date(currentDate)
+    if (view === "月") d.setMonth(currentDate.getMonth() + dir)
+    else if (view === "周") d.setDate(currentDate.getDate() + dir * 7)
+    else d.setDate(currentDate.getDate() + dir)
+    setCurrentDate(d)
+  }
+
+  const handleDrop = (date: Date, template: EventTemplate) => {
+    setEvents((prev) => [
+      ...prev,
+      {
+        id: Math.random().toString(36).slice(2),
+        date,
+        title: template.title,
+        color: template.color,
+        start: "09:00",
+        end: "10:00",
+      },
+    ])
+  }
+
+  const deleteEvent = (id: string) => {
+    setEvents((prev) => prev.filter((e) => e.id !== id))
   }
 
   const openCreateEvent = (date: Date) => {
@@ -86,103 +63,120 @@ export default function MarketingScheduleContent() {
     setIsEditModalOpen(true)
   }
 
-  const handleDropTemplate = (date: Date, template: EventTemplate) => {
-    setEvents((current) => [
-      ...current,
-      {
-        id: Math.random().toString(36),
-        date,
-        title: template.title,
-        color: template.color,
-        start: "09:00",
-        end: "10:00",
-        desc: "",
-      },
-    ])
+  const openEditEvent = (event: CalendarEvent) => {
+    setEditingEvent({ ...event })
+    setIsEditModalOpen(true)
   }
 
-  const handleConfirmModal = () => {
-    if (isEditModalOpen && editingEvent) {
-      setEvents((current) =>
-        current.some((item) => item.id === editingEvent.id)
-          ? current.map((item) => (item.id === editingEvent.id ? editingEvent : item))
-          : [...current, editingEvent]
-      )
-    }
-
-    if (isNewTemplateModalOpen && newTemplateTitle.trim()) {
-      setTemplates((current) => [
-        ...current,
-        {
-          id: Date.now().toString(),
-          title: newTemplateTitle.trim(),
-          color: newTemplateColor,
-        },
-      ])
-      setNewTemplateTitle("")
-      setNewTemplateColor("bg-blue-600")
-    }
-
-    setIsEditModalOpen(false)
-    setIsNewTemplateModalOpen(false)
+  const openCreateTemplate = () => {
+    setEditingTemplate(null)
+    setIsTemplateModalOpen(true)
   }
 
-  const handleCloseModal = () => {
-    setIsEditModalOpen(false)
-    setIsNewTemplateModalOpen(false)
+  const openEditTemplate = (template: EventTemplate) => {
+    setEditingTemplate(template)
+    setIsTemplateModalOpen(true)
   }
 
-  const shellClassName = useMemo(
-    () =>
-      "flex min-h-0 flex-col gap-6 rounded-[40px] bg-slate-50 p-4 md:p-6 dark:bg-slate-950 xl:flex-row",
-    []
-  )
+  const saveTemplate = (template: EventTemplate) => {
+    setTemplates((prev) => {
+      const exists = prev.find((t) => t.id === template.id)
+      if (exists) {
+        return prev.map((t) => (t.id === template.id ? template : t))
+      }
+      return [...prev, template]
+    })
+    setIsTemplateModalOpen(false)
+    setEditingTemplate(null)
+  }
+
+  const deleteTemplate = (id: string) => {
+    setTemplates((prev) => prev.filter((t) => t.id !== id))
+    setIsTemplateModalOpen(false)
+    setEditingTemplate(null)
+  }
 
   return (
-    <div className={shellClassName}>
-      <TemplateSidebar
-        templates={templates}
-        onOpenCreateTemplate={() => setIsNewTemplateModalOpen(true)}
-        onDeleteTemplate={(templateId) =>
-          setTemplates((current) => current.filter((item) => item.id !== templateId))
-        }
+    <div className="min-h-full space-y-4">
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">营销日程规划</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          管理您的内容发布节奏，拖拽模板快速安排营销计划。
+        </p>
+      </div>
+
+      <div className="flex flex-col xl:flex-row gap-4 items-start">
+        <TemplateSidebar
+          templates={templates}
+          events={events}
+          onOpenCreateTemplate={openCreateTemplate}
+          onEditTemplate={openEditTemplate}
+          onDeleteTemplate={deleteTemplate}
+        />
+
+        <div
+          className="flex-1 min-w-0 rounded-3xl flex flex-col overflow-hidden shadow-sm bg-white"
+        >
+          <CalendarToolbar
+            currentDate={currentDate}
+            view={view}
+            dateInputRef={dateInputRef}
+            onNavigate={handleNav}
+            onResetToday={() => setCurrentDate(new Date())}
+            onChangeView={setView}
+            onChangeDate={setCurrentDate}
+          />
+          <CalendarGrid
+            currentDate={currentDate}
+            events={events}
+            view={view}
+            dragOverDate={dragOverDate}
+            onDragOverDateChange={setDragOverDate}
+            onCreateEvent={openCreateEvent}
+            onDropTemplate={handleDrop}
+            onEditEvent={openEditEvent}
+          />
+        </div>
+      </div>
+
+      {/* 日程编辑模态框 */}
+      <EventModal
+        isOpen={isEditModalOpen}
+        mode={editingEvent?.id && events.find(e => e.id === editingEvent.id) ? "edit" : "create"}
+        event={editingEvent}
+        onClose={() => {
+          setEditingEvent(null)
+          setIsEditModalOpen(false)
+        }}
+        onSaveEvent={(event) => {
+          setEvents((prev) => {
+            const exists = prev.find((e) => e.id === event.id)
+            if (exists) {
+              return prev.map((e) => (e.id === event.id ? event : e))
+            }
+            return [...prev, event]
+          })
+          setEditingEvent(null)
+          setIsEditModalOpen(false)
+        }}
+        onDeleteEvent={deleteEvent}
+        onSaveTemplate={() => {}}
+        onDeleteTemplate={() => {}}
       />
 
-      {/* 这里是页面视觉主容器，后续若要继续强化视觉层，可优先调整这一层而不是改布局壳。 */}
-      <section className="flex min-h-[720px] min-w-0 flex-1 flex-col overflow-hidden rounded-[40px] border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/85 dark:shadow-none">
-        <CalendarToolbar
-          currentDate={currentDate}
-          view={view}
-          onNavigate={handleNavigate}
-          onResetToday={() => setCurrentDate(new Date())}
-          onChangeView={setView}
-          onChangeDate={setCurrentDate}
-        />
-        <CalendarGrid
-          currentDate={currentDate}
-          events={events}
-          view={view}
-          onCreateEvent={openCreateEvent}
-          onDropTemplate={handleDropTemplate}
-          onEditEvent={(event) => {
-            setEditingEvent(event)
-            setIsEditModalOpen(true)
-          }}
-        />
-      </section>
-
+      {/* 模板编辑模态框 */}
       <EventModal
-        colorOptions={[...COLOR_OPTIONS]}
-        editingEvent={editingEvent}
-        isEditModalOpen={isEditModalOpen}
-        isNewTemplateModalOpen={isNewTemplateModalOpen}
-        newTemplateColor={newTemplateColor}
-        newTemplateTitle={newTemplateTitle}
-        onChangeEditingEvent={setEditingEvent}
-        onChangeNewTemplateColor={setNewTemplateColor}
-        onChangeNewTemplateTitle={setNewTemplateTitle}
-        onClose={handleCloseModal}
-        onConfirm={handleConfirmModal}
+        isOpen={isTemplateModalOpen}
+        mode="template"
+        template={editingTemplate}
+        onClose={() => {
+          setEditingTemplate(null)
+          setIsTemplateModalOpen(false)
+        }}
+        onSaveEvent={() => {}}
+        onDeleteEvent={() => {}}
+        onSaveTemplate={saveTemplate}
+        onDeleteTemplate={deleteTemplate}
       />
     </div>
   )

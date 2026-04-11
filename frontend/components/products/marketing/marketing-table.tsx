@@ -100,11 +100,11 @@ export default function MarketingTable(props: MarketingTableProps) {
                       </td>
                       <td className="px-6 py-6">
                         {product.marketing_text ? (
-                          <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm leading-relaxed text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
+                          <div className="rounded-xl border border-slate-300 bg-white p-4 text-sm leading-relaxed text-slate-800 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200">
                             {product.marketing_text}
                           </div>
                         ) : (
-                          <span className="italic text-slate-400">暂无文案</span>
+                          <span className="italic text-slate-500 dark:text-slate-500">暂无文案</span>
                         )}
                       </td>
                       <td className="px-6 py-6">
@@ -118,9 +118,9 @@ export default function MarketingTable(props: MarketingTableProps) {
                               />
                             </div>
                           ) : (
-                            <div className="flex h-24 w-24 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-100 text-slate-400">
-                              <ImageIcon className="mb-1 h-5 w-5 opacity-50" />
-                              <span className="text-[10px]">无海报</span>
+                            <div className="flex h-24 w-24 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                              <ImageIcon className="mb-1 h-5 w-5 opacity-60" />
+                              <span className="text-[10px] font-medium">无海报</span>
                             </div>
                           )}
                         </div>
@@ -134,9 +134,9 @@ export default function MarketingTable(props: MarketingTableProps) {
                               </video>
                             </div>
                           ) : (
-                            <div className="flex h-24 w-32 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-100 text-slate-400">
-                              <Film className="mb-1 h-5 w-5 opacity-50" />
-                              <span className="text-[10px]">无视频</span>
+                            <div className="flex h-24 w-32 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                              <Film className="mb-1 h-5 w-5 opacity-60" />
+                              <span className="text-[10px] font-medium">无视频</span>
                             </div>
                           )}
                         </div>

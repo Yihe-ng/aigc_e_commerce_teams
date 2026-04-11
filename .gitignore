@@ -220,3 +220,4 @@ incremental_updates.db
 avatar.db
 
 .worktrees/
+skills-lock.json

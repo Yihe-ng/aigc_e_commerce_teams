@@ -3,7 +3,7 @@
 import { Avatar, Button, Card, Chip, Tooltip } from "@heroui/react"
 import { CheckCircle2, Copy, Lightbulb, RefreshCw, Sparkles } from "lucide-react"
 import { useTypewriter } from "@/lib/hooks/use-typewriter"
-import { extractQuestionsFromContent } from "./message-format"
+import { extractQuestionsFromContent, extractHashtagsFromContent, removeSectionTitles } from "./message-format"
 
 interface AIMessageProps {
   content: string
@@ -31,9 +31,15 @@ export function AIMessage({
   const { displayText, isTyping } = useTypewriter(isStreaming ? content : "", 30)
 
   const rawDisplayContent = isStreaming ? displayText : content
-  const { cleanContent, questions: parsedQuestions } =
-    extractQuestionsFromContent(rawDisplayContent)
+  // 先提取 hashtags，再提取 questions，最后移除标题
+  const { cleanContent: contentWithoutHashtags, hashtags: parsedHashtags } =
+    extractHashtagsFromContent(rawDisplayContent)
+  const { cleanContent: contentWithoutQuestions, questions: parsedQuestions } =
+    extractQuestionsFromContent(contentWithoutHashtags)
+  // 移除标题文字
+  const cleanContent = removeSectionTitles(contentWithoutQuestions)
   const allQuestions = questions.length > 0 ? questions : parsedQuestions
+  const allTags = tags.length > 0 ? tags : parsedHashtags
 
   return (
     <div className="flex max-w-[75%] gap-3">
@@ -43,30 +49,30 @@ export function AIMessage({
         </Avatar.Fallback>
       </Avatar>
 
-      <Card className="flex-1 rounded-2xl rounded-tl-sm border border-gray-100 bg-white shadow-sm transition-all duration-300 ease-out">
+      <Card className="flex-1 rounded-2xl rounded-tl-sm border-0 bg-white shadow-sm transition-all duration-300 ease-out dark:bg-slate-800/90 dark:ring-1 dark:ring-white/10">
         <Card.Content className="p-4">
-          <div className="text-gray-800 text-[15px] leading-relaxed whitespace-pre-wrap">
+          <div className="text-gray-800 text-[15px] leading-relaxed whitespace-pre-wrap dark:text-slate-100">
             {cleanContent}
             {(isTyping || isStreaming) && <span className="typing-cursor" />}
           </div>
 
-          {tags.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
-              {tags.map((tag) => (
+          {allTags.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4 dark:border-slate-700">
+              {allTags.map((tag) => (
                 <Chip
                   key={tag}
                   size="sm"
-                  className="border-0 bg-gray-100 text-gray-600"
+                  className="border-0 bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300"
                 >
-                  #{tag}
+                  {tag}
                 </Chip>
               ))}
             </div>
           )}
 
           {allQuestions.length > 0 && (
-            <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
-              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-700">
+            <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-slate-600 dark:bg-slate-700/50">
+              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200">
                 <Lightbulb className="h-4 w-4 text-[#91C1FA]" />
                 <span>{"\u8ffd\u95ee"}</span>
               </div>
@@ -120,6 +126,7 @@ export function AIMessage({
                       hover:bg-gray-100
                       hover:text-gray-600
                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white
+                      dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-sky-500 dark:focus-visible:ring-offset-slate-800
                     "
                   >
                     <RefreshCw className="w-4 h-4" />
@@ -148,6 +155,7 @@ export function AIMessage({
                       hover:bg-gray-100
                       hover:text-gray-600
                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white
+                      dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-sky-500 dark:focus-visible:ring-offset-slate-800
                     "
                   >
                     <Copy className="w-4 h-4" />

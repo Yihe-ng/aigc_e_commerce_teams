@@ -49,7 +49,7 @@ export default function ProductTable({ products, onEdit, onDelete, getImageUrl }
                 return (
                   <tr key={product.id} className="group transition-colors hover:bg-gray-100 dark:hover:bg-slate-800/60">
                     <td className="px-8 py-4">
-                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-xs text-slate-400 shadow-sm">
+                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-xs text-slate-400 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500">
                         {resolvedPreviewImage ? (
                           <img src={resolvedPreviewImage} alt="商品主图" className="h-full w-full object-cover" />
                         ) : (
@@ -57,18 +57,18 @@ export default function ProductTable({ products, onEdit, onDelete, getImageUrl }
                         )}
                       </div>
                     </td>
-                    <td className="truncate px-6 py-4 font-bold text-slate-800" title={product.name}>
+                    <td className="truncate px-6 py-4 font-bold text-slate-800 dark:text-slate-100" title={product.name}>
                       {product.name}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                      <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300">
                         {product.category}
                       </span>
                     </td>
                     <td className="px-6 py-4 font-bold text-blue-600">
                       ￥{Number.parseFloat(String(product.price || 0)).toFixed(2)}
                     </td>
-                    <td className="max-w-[200px] truncate px-6 py-4 text-slate-500" title={featureText}>
+                    <td className="max-w-[200px] truncate px-6 py-4 text-slate-500 dark:text-slate-400" title={featureText}>
                       {featureText}
                     </td>
                     <td className="px-8 py-4">
@@ -97,9 +97,9 @@ export default function ProductTable({ products, onEdit, onDelete, getImageUrl }
         </div>
 
         {products.length === 0 ? (
-          <div className="flex flex-col items-center py-16 text-slate-400">
-            <List className="mb-3 h-12 w-12 text-slate-200" />
-            <p>暂无商品数据，请在上方添加</p>
+          <div className="flex flex-col items-center py-16 text-slate-400 dark:text-slate-500">
+            <List className="mb-3 h-12 w-12 text-slate-200 dark:text-slate-600" />
+            <p className="dark:text-slate-400">暂无商品数据，请在上方添加</p>
           </div>
         ) : null}
       </Card.Content>

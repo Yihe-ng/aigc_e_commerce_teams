@@ -1,137 +1,253 @@
 "use client"
 
-import { Check, X } from "lucide-react"
-
-import type { CalendarEvent } from "./types"
+import { useEffect, useState } from "react"
+import { X, Trash2 } from "lucide-react"
+import type { CalendarEvent, EventTemplate, ColorOption } from "./types"
+import { COLOR_OPTIONS } from "./types"
 
 interface EventModalProps {
-  colorOptions: Array<{ name: string; value: string }>
-  editingEvent: CalendarEvent | null
-  isEditModalOpen: boolean
-  isNewTemplateModalOpen: boolean
-  newTemplateColor: string
-  newTemplateTitle: string
-  onChangeEditingEvent: (event: CalendarEvent) => void
-  onChangeNewTemplateColor: (color: string) => void
-  onChangeNewTemplateTitle: (title: string) => void
+  isOpen: boolean
+  mode: "create" | "edit" | "template"
+  event?: CalendarEvent | null
+  template?: EventTemplate | null
+  initialDate?: Date | null
   onClose: () => void
-  onConfirm: () => void
+  onSaveEvent: (event: CalendarEvent) => void
+  onDeleteEvent: (id: string) => void
+  onSaveTemplate: (template: EventTemplate) => void
+  onDeleteTemplate: (id: string) => void
 }
 
 export function EventModal({
-  colorOptions,
-  editingEvent,
-  isEditModalOpen,
-  isNewTemplateModalOpen,
-  newTemplateColor,
-  newTemplateTitle,
-  onChangeEditingEvent,
-  onChangeNewTemplateColor,
-  onChangeNewTemplateTitle,
+  isOpen,
+  mode,
+  event,
+  template,
+  initialDate,
   onClose,
-  onConfirm,
+  onSaveEvent,
+  onDeleteEvent,
+  onSaveTemplate,
+  onDeleteTemplate,
 }: EventModalProps) {
-  if (!isEditModalOpen && !isNewTemplateModalOpen) {
-    return null
+  // 表单状态
+  const [title, setTitle] = useState("")
+  const [start, setStart] = useState("")
+  const [end, setEnd] = useState("")
+  const [desc, setDesc] = useState("")
+  const [color, setColor] = useState<ColorOption>(COLOR_OPTIONS[0])
+  const [date, setDate] = useState<Date>(new Date())
+
+  // 初始化表单数据
+  useEffect(() => {
+    if (!isOpen) return
+
+    if (mode === "edit" && event) {
+      setTitle(event.title)
+      setStart(event.start)
+      setEnd(event.end)
+      setDesc(event.desc || "")
+      setColor(COLOR_OPTIONS.find((c) => c.value === event.color) || COLOR_OPTIONS[0])
+      setDate(event.date)
+    } else if (mode === "template" && template) {
+      setTitle(template.title)
+      setColor(COLOR_OPTIONS.find((c) => c.value === template.color) || COLOR_OPTIONS[0])
+    } else {
+      setTitle("")
+      setStart("09:00")
+      setEnd("10:00")
+      setDesc("")
+      setColor(COLOR_OPTIONS[0])
+      setDate(initialDate || new Date())
+    }
+  }, [isOpen, mode, event, template, initialDate])
+
+  if (!isOpen) return null
+
+  const isTemplateMode = mode === "template"
+  const isEditMode = mode === "edit"
+
+  // 验证时间逻辑
+  const isTimeValid = () => {
+    if (isTemplateMode) return true
+    return start < end
+  }
+
+  const handleSave = () => {
+    if (!title.trim()) return
+    if (!isTimeValid()) {
+      alert("结束时间必须晚于开始时间")
+      return
+    }
+
+    if (isTemplateMode) {
+      const newTemplate: EventTemplate = {
+        id: template?.id || Date.now().toString(),
+        title: title.trim(),
+        color: color.value,
+      }
+      onSaveTemplate(newTemplate)
+    } else {
+      const newEvent: CalendarEvent = {
+        id: event?.id || Date.now().toString(),
+        date,
+        title: title.trim(),
+        color: color.value,
+        start,
+        end,
+        desc: desc.trim() || undefined,
+      }
+      onSaveEvent(newEvent)
+    }
+    onClose()
+  }
+
+  const handleDelete = () => {
+    if (isTemplateMode && template) {
+      onDeleteTemplate(template.id)
+    } else if (isEditMode && event) {
+      onDeleteEvent(event.id)
+    }
+    onClose()
   }
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xl">
-      {/* 这里暂时保留原生弹窗结构，后续接 HeroUI Modal 时可以整体替换这个节点。 */}
-      <div className="w-full max-w-lg rounded-[48px] border border-white/20 bg-white p-10 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-        <div className="mb-8 flex items-center justify-between">
-          <h3 className="text-3xl font-black tracking-tighter text-slate-800 dark:text-slate-100">
-            {isEditModalOpen ? "日程详情" : "新建事件模板"}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden">
+        {/* 头部 */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h3 className="text-lg font-semibold text-gray-900">
+            {isTemplateMode
+              ? template
+                ? "编辑模板"
+                : "新建模板"
+              : isEditMode
+                ? "编辑日程"
+                : "新建日程"}
           </h3>
-          <button type="button" onClick={onClose} className="text-slate-600 dark:text-slate-300">
-            <X />
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-500">
-              任务名称
+        {/* 表单内容 */}
+        <div className="px-6 py-5 space-y-4">
+          {/* 标题 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {isTemplateMode ? "模板名称" : "日程标题"}
             </label>
             <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={isTemplateMode ? "输入模板名称" : "输入日程标题"}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-gray-400 focus:outline-none text-sm transition-colors"
               autoFocus
-              value={isEditModalOpen ? editingEvent?.title ?? "" : newTemplateTitle}
-              onChange={(event) => {
-                if (isEditModalOpen && editingEvent) {
-                  onChangeEditingEvent({ ...editingEvent, title: event.target.value })
-                  return
-                }
-                onChangeNewTemplateTitle(event.target.value)
-              }}
-              className="w-full rounded-3xl border-none bg-slate-50 p-6 text-xl font-black text-slate-900 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
 
-          {isEditModalOpen && editingEvent ? (
-            <div className="grid grid-cols-2 gap-6">
+          {/* 日期选择 - 非模板模式 */}
+          {!isTemplateMode && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">日期</label>
               <input
-                type="time"
-                value={editingEvent.start}
-                onChange={(event) =>
-                  onChangeEditingEvent({ ...editingEvent, start: event.target.value })
-                }
-                className="rounded-3xl border-none bg-slate-50 p-5 font-black text-slate-900 dark:bg-slate-800 dark:text-slate-100"
-              />
-              <input
-                type="time"
-                value={editingEvent.end}
-                onChange={(event) =>
-                  onChangeEditingEvent({ ...editingEvent, end: event.target.value })
-                }
-                className="rounded-3xl border-none bg-slate-50 p-5 font-black text-slate-900 dark:bg-slate-800 dark:text-slate-100"
+                type="date"
+                value={date.toISOString().split("T")[0]}
+                onChange={(e) => setDate(new Date(e.target.value))}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-gray-400 focus:outline-none text-sm transition-colors"
               />
             </div>
-          ) : null}
+          )}
 
-          <div className="flex flex-wrap gap-4">
-            {colorOptions.map((option) => {
-              const isActive = isEditModalOpen
-                ? editingEvent?.color === option.value
-                : newTemplateColor === option.value
+          {/* 时间选择 - 非模板模式 */}
+          {!isTemplateMode && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">开始时间</label>
+                <input
+                  type="time"
+                  value={start}
+                  onChange={(e) => setStart(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-gray-400 focus:outline-none text-sm transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">结束时间</label>
+                <input
+                  type="time"
+                  value={end}
+                  onChange={(e) => setEnd(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-gray-400 focus:outline-none text-sm transition-colors"
+                />
+              </div>
+            </div>
+          )}
 
-              return (
+          {/* 描述 - 非模板模式 */}
+          {!isTemplateMode && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">描述</label>
+              <textarea
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+                placeholder="添加描述（可选）"
+                rows={3}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-gray-400 focus:outline-none text-sm resize-none transition-colors"
+              />
+            </div>
+          )}
+
+          {/* 颜色选择 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">颜色</label>
+            <div className="flex flex-wrap gap-2">
+              {COLOR_OPTIONS.map((c) => (
                 <button
-                  key={option.value}
+                  key={c.value}
                   type="button"
-                  title={option.name}
-                  onClick={() => {
-                    if (isEditModalOpen && editingEvent) {
-                      onChangeEditingEvent({ ...editingEvent, color: option.value })
-                      return
-                    }
-                    onChangeNewTemplateColor(option.value)
-                  }}
-                  className={`flex h-10 w-10 items-center justify-center rounded-full ${option.value} ${
-                    isActive ? "ring-4 ring-slate-200 dark:ring-slate-500" : ""
-                  }`}
-                >
-                  {isActive ? <Check className="h-5 w-5 text-white" /> : null}
-                </button>
-              )
-            })}
+                  onClick={() => setColor(c)}
+                  className={`
+                    w-8 h-8 rounded-lg transition-all
+                    ${color.value === c.value ? "ring-2 ring-offset-2 ring-gray-400 scale-110" : "hover:scale-105"}
+                  `}
+                  style={{ backgroundColor: c.dot }}
+                  title={c.name}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="mt-8 flex gap-6">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-5 font-black text-slate-600 dark:text-slate-400"
-          >
-            取消
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="flex-[2] rounded-3xl bg-blue-600 py-5 font-black text-white shadow-xl shadow-blue-100 dark:shadow-blue-900/50"
-          >
-            确认
-          </button>
+        {/* 底部按钮 */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50">
+          {(isEditMode || (isTemplateMode && template)) && (
+            <button
+              onClick={handleDelete}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              删除
+            </button>
+          )}
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              取消
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!title.trim() || !isTimeValid()}
+              className="px-5 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-lg transition-colors"
+            >
+              保存
+            </button>
+          </div>
         </div>
       </div>
     </div>
