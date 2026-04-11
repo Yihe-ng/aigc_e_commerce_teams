@@ -3,7 +3,7 @@
 import { Avatar, Button, Card, Chip, Tooltip } from "@heroui/react"
 import { CheckCircle2, Copy, Lightbulb, RefreshCw, Sparkles } from "lucide-react"
 import { useTypewriter } from "@/lib/hooks/use-typewriter"
-import { extractQuestionsFromContent } from "./message-format"
+import { extractQuestionsFromContent, extractHashtagsFromContent, removeSectionTitles } from "./message-format"
 
 interface AIMessageProps {
   content: string
@@ -31,9 +31,15 @@ export function AIMessage({
   const { displayText, isTyping } = useTypewriter(isStreaming ? content : "", 30)
 
   const rawDisplayContent = isStreaming ? displayText : content
-  const { cleanContent, questions: parsedQuestions } =
-    extractQuestionsFromContent(rawDisplayContent)
+  // 先提取 hashtags，再提取 questions，最后移除标题
+  const { cleanContent: contentWithoutHashtags, hashtags: parsedHashtags } =
+    extractHashtagsFromContent(rawDisplayContent)
+  const { cleanContent: contentWithoutQuestions, questions: parsedQuestions } =
+    extractQuestionsFromContent(contentWithoutHashtags)
+  // 移除标题文字
+  const cleanContent = removeSectionTitles(contentWithoutQuestions)
   const allQuestions = questions.length > 0 ? questions : parsedQuestions
+  const allTags = tags.length > 0 ? tags : parsedHashtags
 
   return (
     <div className="flex max-w-[75%] gap-3">
@@ -50,15 +56,15 @@ export function AIMessage({
             {(isTyping || isStreaming) && <span className="typing-cursor" />}
           </div>
 
-          {tags.length > 0 && (
+          {allTags.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
-              {tags.map((tag) => (
+              {allTags.map((tag) => (
                 <Chip
                   key={tag}
                   size="sm"
                   className="border-0 bg-gray-100 text-gray-600"
                 >
-                  #{tag}
+                  {tag}
                 </Chip>
               ))}
             </div>

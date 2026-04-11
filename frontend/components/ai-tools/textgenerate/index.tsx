@@ -87,10 +87,22 @@ export default function TextGenerateChat() {
     setIsLoading(true)
 
     try {
+      // 根据当前模式选择请求参数
+      const isGuideMode = activeMode === "guide"
+      const requestBody: { query: string; mode?: string; platform?: string } = {
+        query: normalizedContent,
+        mode: isGuideMode ? "guide" : "marketing",
+      }
+
+      // 营销文案模式下可以指定平台，guide模式下不需要
+      if (!isGuideMode) {
+        requestBody.platform = "auto" // 后续可以扩展让用户选择平台
+      }
+
       const response = await fetch("/generate_xiaohongshu_stream_post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: normalizedContent }),
+        body: JSON.stringify(requestBody),
         signal: abortController.signal,
       })
 
@@ -206,7 +218,7 @@ export default function TextGenerateChat() {
         abortControllerRef.current = null
       }
     }
-  }, [isLoading])
+  }, [isLoading, activeMode])  // 添加 activeMode 依赖，确保模式切换时更新请求
 
   useEffect(() => {
     return () => {

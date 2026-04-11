@@ -1949,8 +1949,10 @@ def generate_follow_up_questions(content):
     返回JSON字符串格式的问题列表，如 '["问题1", "问题2", "问题3"]'
     """
     try:
-        # 优先使用 WORKFLOW_KEY，因为我们知道它是可用的
-        api_key = os.getenv("DIFY_WORKFLOW_KEY", "app-LLqziYb1p0ySdDXKTrOa0RQt")
+        # 获取 API Key
+        api_key = os.getenv("DIFY_WORKFLOW_KEY")
+        if not api_key:
+            return {"questions": [], "error": "DIFY_WORKFLOW_KEY 未配置"}
 
         # 截断过长的内容以避免token超限
         content_snippet = content[:2000]
@@ -1973,8 +1975,9 @@ Do NOT include any examples or markdown.
 Just the JSON array.
 """
         # 使用 Dify Chat API (专门用于生成追问，比 Workflow 更灵活)
-        # Key: app-rMfQSR6zkY4OdNECHtBZP4tN
-        chat_api_key = os.getenv("DIFY_CHAT_KEY", "app-rMfQSR6zkY4OdNECHtBZP4tN")
+        chat_api_key = os.getenv("DIFY_CHAT_KEY")
+        if not chat_api_key:
+            return {"questions": [], "error": "DIFY_CHAT_KEY 未配置"}
 
         response = requests.post(
             "https://api.dify.ai/v1/chat-messages",
@@ -2042,7 +2045,10 @@ def handle_xiaohongshu():
         if "必须执行的任务" not in q:
             q = q + "\n" + instruction
 
-        api_key = os.getenv("DIFY_WORKFLOW_KEY", "app-LLqziYb1p0ySdDXKTrOa0RQt")
+        api_key = os.getenv("DIFY_WORKFLOW_KEY")
+        if not api_key:
+            return {"error": "DIFY_WORKFLOW_KEY 未配置", "content": "", "title": ""}
+
         response = requests.post(
             "https://api.dify.ai/v1/workflows/run",
             headers={"Authorization": f"Bearer {api_key}"},
@@ -2173,9 +2179,10 @@ def handle_xiaohongshu_stream():
 
             def worker():
                 try:
-                    api_key = os.getenv(
-                        "DIFY_WORKFLOW_KEY", "app-LLqziYb1p0ySdDXKTrOa0RQt"
-                    )
+                    api_key = os.getenv("DIFY_WORKFLOW_KEY")
+                    if not api_key:
+                        print("Error: DIFY_WORKFLOW_KEY 未配置")
+                        return
                     print(f"Calling Dify API with query length: {len(q)}")  # Debug log
                     r = requests.post(
                         "https://api.dify.ai/v1/workflows/run",
@@ -2320,32 +2327,51 @@ def handle_xiaohongshu_stream():
 
 @app.route("/generate_xiaohongshu_stream_post", methods=["POST"])
 def handle_xiaohongshu_stream_post():
+    """
+    文案生成统一入口
+    根据请求中的 mode 参数自动路由到营销文案或导购文案工作流
+    """
     data = request.get_json()
     q = data.get("query", "")
+    mode = data.get("mode", "marketing")  # marketing 或 guide
+    platform = data.get("platform", "auto")  # 目标平台，营销文案用
 
     @stream_with_context
     def generate():
         try:
             yield 'data: {"status":"init"}\n\n'
 
-            api_key = os.getenv(
-                "DIFY_WORKFLOW_KEY", "app-LLqziYb1p0ySdDXKTrOa0RQt"
-            )
+            # 根据 mode 选择对应的工作流 API Key
+            if mode == "guide":
+                api_key = os.getenv("DIFY_GUIDE_COPY_KEY")
+            else:
+                api_key = os.getenv("DIFY_MARKETING_COPY_KEY")
+
             if not api_key:
-                api_key = os.getenv("DIFY_CHAT_KEY", "app-rMfQSR6zkY4OdNECHtBZP4tN")
+                yield 'data: {"status":"error","message":"API Key未配置，请在.env中设置DIFY_GUIDE_COPY_KEY或DIFY_MARKETING_COPY_KEY"}\n\n'
+                return
 
             url = "https://api.dify.ai/v1/workflows/run"
             headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             }
-            payload = {
-                "inputs": {"query": q, "basic_instruction": q},
-                "response_mode": "streaming",
-                "user": "user-123",
-            }
 
-            print(f"Calling Dify Workflow API with query length: {len(q)}")
+            # 构建 payload，根据模式传递不同参数
+            if mode == "guide":
+                payload = {
+                    "inputs": {"query": q},
+                    "response_mode": "streaming",
+                    "user": "user-123",
+                }
+            else:
+                payload = {
+                    "inputs": {"query": q, "platform": platform},
+                    "response_mode": "streaming",
+                    "user": "user-123",
+                }
+
+            print(f"Calling Dify Workflow API [mode={mode}] with query length: {len(q)}")
 
             with requests.post(
                 url, headers=headers, json=payload, stream=True, timeout=60
