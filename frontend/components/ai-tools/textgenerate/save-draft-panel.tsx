@@ -90,7 +90,7 @@ export function SaveDraftPanel({
                   {products.map((product) => (
                     <ListBox.Item
                       className="cursor-pointer rounded-lg px-3 py-2.5 text-sm text-gray-700 outline-none transition-colors hover:bg-[#91C1FA]/10 hover:text-[#91C1FA] data-[selected=true]:bg-[#91C1FA]/20 data-[selected=true]:font-medium data-[selected=true]:text-[#91C1FA] dark:text-slate-200 dark:hover:bg-sky-950/50 dark:data-[selected=true]:bg-sky-950/60"
-                      id={product.name}
+                      id={product.id.toString()}
                       key={product.id}
                       textValue={product.name}
                     >

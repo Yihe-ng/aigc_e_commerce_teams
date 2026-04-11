@@ -246,7 +246,7 @@ export default function ProductForm(props: ProductFormProps) {
           {/* 下半部分：商品特点和详细描述 */}
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             <label className="flex flex-col gap-2">
-              <span className="text-sm font-semibold text-gray-700">
+              <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">
                 商品特点 <span className="text-red-500">*</span>
               </span>
               <textarea
@@ -261,7 +261,7 @@ export default function ProductForm(props: ProductFormProps) {
             </label>
 
             <label className="flex flex-col gap-2">
-              <span className="text-sm font-semibold text-gray-700">
+              <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">
                 详细描述 <span className="text-red-500">*</span>
               </span>
               <textarea
