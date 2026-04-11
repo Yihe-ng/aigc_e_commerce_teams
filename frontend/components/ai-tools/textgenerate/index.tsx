@@ -32,13 +32,13 @@ type ModeType = "marketing" | "guide" | "product" | "save"
 function EmptyState() {
   return (
     <div className="flex min-h-full flex-col items-center justify-center p-8 text-center">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#91C1FA]/10">
-        <Sparkles className="h-8 w-8 text-[#91C1FA]" />
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#91C1FA]/10 dark:bg-sky-500/10">
+        <Sparkles className="h-8 w-8 text-[#91C1FA] dark:text-sky-400" />
       </div>
-      <p className="mb-2 text-base font-medium text-gray-800">
+      <p className="mb-2 text-base font-medium text-gray-800 dark:text-slate-200">
         输入文案需求开始创作
       </p>
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-gray-400 dark:text-slate-500">
         例如：帮我写一款防晒霜的小红书营销文案
       </p>
     </div>

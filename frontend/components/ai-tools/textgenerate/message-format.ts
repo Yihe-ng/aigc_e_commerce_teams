@@ -115,6 +115,7 @@ export function getUserMessageBubbleClassName(): string {
     "min-w-[96px]",
     "max-w-[75%]",
     "bg-[#91C1FA]",
+    "dark:bg-[#2982CB]",
     "text-white",
     "rounded-2xl",
     "rounded-tr-sm",

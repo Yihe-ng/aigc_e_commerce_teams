@@ -49,20 +49,20 @@ export function AIMessage({
         </Avatar.Fallback>
       </Avatar>
 
-      <Card className="flex-1 rounded-2xl rounded-tl-sm border border-gray-100 bg-white shadow-sm transition-all duration-300 ease-out">
+      <Card className="flex-1 rounded-2xl rounded-tl-sm border-0 bg-white shadow-sm transition-all duration-300 ease-out dark:bg-slate-800/90 dark:ring-1 dark:ring-white/10">
         <Card.Content className="p-4">
-          <div className="text-gray-800 text-[15px] leading-relaxed whitespace-pre-wrap">
+          <div className="text-gray-800 text-[15px] leading-relaxed whitespace-pre-wrap dark:text-slate-100">
             {cleanContent}
             {(isTyping || isStreaming) && <span className="typing-cursor" />}
           </div>
 
           {allTags.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4 dark:border-slate-700">
               {allTags.map((tag) => (
                 <Chip
                   key={tag}
                   size="sm"
-                  className="border-0 bg-gray-100 text-gray-600"
+                  className="border-0 bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300"
                 >
                   {tag}
                 </Chip>
@@ -71,8 +71,8 @@ export function AIMessage({
           )}
 
           {allQuestions.length > 0 && (
-            <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
-              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-700">
+            <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-slate-600 dark:bg-slate-700/50">
+              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200">
                 <Lightbulb className="h-4 w-4 text-[#91C1FA]" />
                 <span>{"\u8ffd\u95ee"}</span>
               </div>
@@ -126,6 +126,7 @@ export function AIMessage({
                       hover:bg-gray-100
                       hover:text-gray-600
                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white
+                      dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-sky-500 dark:focus-visible:ring-offset-slate-800
                     "
                   >
                     <RefreshCw className="w-4 h-4" />
@@ -154,6 +155,7 @@ export function AIMessage({
                       hover:bg-gray-100
                       hover:text-gray-600
                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white
+                      dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-sky-500 dark:focus-visible:ring-offset-slate-800
                     "
                   >
                     <Copy className="w-4 h-4" />
