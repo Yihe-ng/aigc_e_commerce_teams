@@ -103,118 +103,106 @@ export function VideoGenerationHistory({
       </Card.Header>
       <Card.Content className="p-0">
         {hasTasks ? (
-          <Table className="w-full">
-            <Table.ScrollContainer>
-              <Table.Content aria-label="视频生成历史" className="w-full">
-                <Table.Header>
-                  <Table.Column
-                    className="px-6 py-4 text-left text-sm font-medium text-gray-700"
-                    isRowHeader
-                  >
-                    任务 ID
-                  </Table.Column>
-                  <Table.Column className="px-6 py-4 text-left text-sm font-medium text-gray-700">
-                    状态
-                  </Table.Column>
-                  <Table.Column className="px-6 py-4 text-left text-sm font-medium text-gray-700">
-                    创建时间
-                  </Table.Column>
-                  <Table.Column className="px-6 py-4 text-left text-sm font-medium text-gray-700">
-                    操作
-                  </Table.Column>
-                </Table.Header>
-                <Table.Body items={tasks}>
-                  {(task) => {
-                    const videoUrl = getPreferredVideoUrl(task)
-                    const rawVideoUrl = getRawVideoUrl(task)
-                    const hasProductId = Boolean(getTaskProductId(task))
-                    const isSaved = hasSavedOssUrl(task)
-                    const canSave =
-                      task.status === "completed" &&
-                      Boolean(rawVideoUrl) &&
-                      hasProductId &&
-                      !isSaved
-                    const statusMeta =
-                      STATUS_META[task.status] ?? STATUS_META.pending
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed text-left text-sm text-slate-600 dark:text-slate-300" role="grid" aria-label="视频生成历史">
+              <thead className="border-b border-slate-200 bg-[#EFEFEF] text-xs uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-400">
+                <tr>
+                  <th scope="col" className="px-6 py-4 text-left text-sm font-semibold tracking-wider" style={{ width: "25%" }}>任务 ID</th>
+                  <th scope="col" className="px-6 py-4 text-left text-sm font-semibold tracking-wider" style={{ width: "15%" }}>状态</th>
+                  <th scope="col" className="px-6 py-4 text-left text-sm font-semibold tracking-wider" style={{ width: "35%" }}>创建时间</th>
+                  <th scope="col" className="px-6 py-4 text-left text-sm font-semibold tracking-wider" style={{ width: "25%" }}>操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {tasks.map((task) => {
+                  const videoUrl = getPreferredVideoUrl(task)
+                  const rawVideoUrl = getRawVideoUrl(task)
+                  const hasProductId = Boolean(getTaskProductId(task))
+                  const isSaved = hasSavedOssUrl(task)
+                  const canSave =
+                    task.status === "completed" &&
+                    Boolean(rawVideoUrl) &&
+                    hasProductId &&
+                    !isSaved
+                  const statusMeta = STATUS_META[task.status] ?? STATUS_META.pending
 
-                    return (
-                      <Table.Row
-                        className="h-16 border-b border-gray-100 transition-colors hover:bg-gray-50/60"
-                        id={task.id}
-                      >
-                        <Table.Cell className="px-6 py-5">
-                          <span className="font-mono text-sm text-gray-600">
-                            {task.id.slice(0, 8)}...
-                          </span>
-                        </Table.Cell>
-                        <Table.Cell className="px-6 py-5">
-                          <Chip
-                            className="px-3 py-1"
-                            color={statusMeta.color}
-                            size="md"
-                            variant="soft"
-                          >
-                            {statusMeta.label}
-                          </Chip>
-                        </Table.Cell>
-                        <Table.Cell className="px-6 py-5 text-sm text-gray-600">
-                          {formatTimestamp(task.created_at)}
-                        </Table.Cell>
-                        <Table.Cell className="px-6 py-5">
-                          {videoUrl ? (
-                            <div className="flex items-center gap-3">
+                  return (
+                    <tr
+                      key={task.id}
+                      className="h-16 transition-colors hover:bg-gray-50/60 dark:hover:bg-slate-800/60"
+                    >
+                      <td className="px-6 py-5">
+                        <span className="font-mono text-sm text-slate-600 dark:text-slate-400">
+                          {task.id.slice(0, 8)}...
+                        </span>
+                      </td>
+                      <td className="px-6 py-5">
+                        <Chip
+                          className="px-3 py-1"
+                          color={statusMeta.color}
+                          size="md"
+                          variant="soft"
+                        >
+                          {statusMeta.label}
+                        </Chip>
+                      </td>
+                      <td className="px-6 py-5 text-sm text-slate-600 dark:text-slate-400">
+                        {formatTimestamp(task.created_at)}
+                      </td>
+                      <td className="px-6 py-5">
+                        {videoUrl ? (
+                          <div className="flex items-center gap-3">
+                            <Button
+                              isIconOnly
+                              aria-label="观看视频"
+                              className="h-9 w-9 rounded-lg text-slate-600 transition-all duration-200 hover:bg-[#91C1FA]/10 hover:text-[#91C1FA] hover:shadow-md hover:shadow-[#91C1FA]/20 active:scale-[0.98] dark:text-slate-400"
+                              size="sm"
+                              variant="tertiary"
+                              onPress={() => onView(task)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              isIconOnly
+                              aria-label="下载视频"
+                              className="h-9 w-9 rounded-lg text-slate-600 transition-all duration-200 hover:bg-[#91C1FA]/10 hover:text-[#91C1FA] hover:shadow-md hover:shadow-[#91C1FA]/20 active:scale-[0.98] dark:text-slate-400"
+                              size="sm"
+                              variant="tertiary"
+                              onPress={() => onDownload(task)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            {canSave ? (
                               <Button
                                 isIconOnly
-                                aria-label="观看视频"
-                                className="h-9 w-9 rounded-lg text-gray-600 transition-all duration-200 hover:bg-[#91C1FA]/10 hover:text-[#91C1FA] hover:shadow-md hover:shadow-[#91C1FA]/20 active:scale-[0.98]"
+                                aria-label="保存到素材库"
+                                className="h-9 w-9 rounded-lg text-slate-600 transition-all duration-200 hover:bg-[#91C1FA]/10 hover:text-[#91C1FA] hover:shadow-md hover:shadow-[#91C1FA]/20 active:scale-[0.98] dark:text-slate-400"
+                                isPending={savingTaskId === task.id}
                                 size="sm"
                                 variant="tertiary"
-                                onPress={() => onView(task)}
+                                onPress={() => onSave(task)}
                               >
-                                <Eye className="h-4 w-4" />
+                                <Save className="h-4 w-4" />
                               </Button>
-                              <Button
-                                isIconOnly
-                                aria-label="下载视频"
-                                className="h-9 w-9 rounded-lg text-gray-600 transition-all duration-200 hover:bg-[#91C1FA]/10 hover:text-[#91C1FA] hover:shadow-md hover:shadow-[#91C1FA]/20 active:scale-[0.98]"
-                                size="sm"
-                                variant="tertiary"
-                                onPress={() => onDownload(task)}
-                              >
-                                <Download className="h-4 w-4" />
-                              </Button>
-                              {canSave ? (
-                                <Button
-                                  isIconOnly
-                                  aria-label="保存到素材库"
-                                  className="h-9 w-9 rounded-lg text-gray-600 transition-all duration-200 hover:bg-[#91C1FA]/10 hover:text-[#91C1FA] hover:shadow-md hover:shadow-[#91C1FA]/20 active:scale-[0.98]"
-                                  isPending={savingTaskId === task.id}
-                                  size="sm"
-                                  variant="tertiary"
-                                  onPress={() => onSave(task)}
-                                >
-                                  <Save className="h-4 w-4" />
-                                </Button>
-                              ) : null}
-                            </div>
-                          ) : task.status === "failed" ? (
-                            <div className="inline-flex items-center gap-2 text-sm text-red-500">
-                              <TriangleAlert className="h-4 w-4" />
-                              <span>{task.error ?? "生成失败"}</span>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-gray-400">-</span>
-                          )}
-                        </Table.Cell>
-                      </Table.Row>
-                    )
-                  }}
-                </Table.Body>
-              </Table.Content>
-            </Table.ScrollContainer>
-          </Table>
+                            ) : null}
+                          </div>
+                        ) : task.status === "failed" ? (
+                          <div className="inline-flex items-center gap-2 text-sm text-red-500">
+                            <TriangleAlert className="h-4 w-4" />
+                            <span>{task.error ?? "生成失败"}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         ) : (
-          <div className="flex h-32 items-center justify-center text-sm text-gray-500">
+          <div className="flex h-32 items-center justify-center text-sm text-gray-500 dark:text-slate-400">
             暂无生成历史
           </div>
         )}

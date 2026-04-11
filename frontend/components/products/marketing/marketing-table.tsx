@@ -118,7 +118,7 @@ export default function MarketingTable(props: MarketingTableProps) {
                               />
                             </div>
                           ) : (
-                            <div className="flex h-24 w-24 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-100 text-slate-400">
+                            <div className="flex h-24 w-24 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500">
                               <ImageIcon className="mb-1 h-5 w-5 opacity-50" />
                               <span className="text-[10px]">无海报</span>
                             </div>
@@ -134,7 +134,7 @@ export default function MarketingTable(props: MarketingTableProps) {
                               </video>
                             </div>
                           ) : (
-                            <div className="flex h-24 w-32 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-100 text-slate-400">
+                            <div className="flex h-24 w-32 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500">
                               <Film className="mb-1 h-5 w-5 opacity-50" />
                               <span className="text-[10px]">无视频</span>
                             </div>
