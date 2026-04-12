@@ -1,0 +1,285 @@
+app:
+  description: 多平台营销文案生成工作流，支持小红书、抖音、微博、天猫、京东、拼多多等平台风格
+  icon: ✍️
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: workflow
+  name: 营销文案生成器
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/longcat:0.0.4@0b1183b9a46499db54e0fe00df51c3fbcaf051c1d212db7184a01e1ab8748128
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 50
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        sourceType: start
+        targetType: llm
+      id: start-source-1744361980000-target
+      source: start
+      sourceHandle: source
+      target: '1744361980000'
+      targetHandle: target
+      type: custom
+    - data:
+        sourceType: llm
+        targetType: llm
+      id: 1744361980000-source-1744361990000-target
+      source: '1744361980000'
+      sourceHandle: source
+      target: '1744361990000'
+      targetHandle: target
+      type: custom
+    - data:
+        sourceType: llm
+        targetType: code
+      id: 1744361990000-source-1744362000000-target
+      source: '1744361990000'
+      sourceHandle: source
+      target: '1744362000000'
+      targetHandle: target
+      type: custom
+    - data:
+        sourceType: code
+        targetType: end
+      id: 1744362000000-source-answer-target
+      source: '1744362000000'
+      sourceHandle: source
+      target: answer
+      targetHandle: target
+      type: custom
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: 开始
+        type: start
+        variables:
+        - label: query
+          max_length: 2000
+          options: []
+          required: true
+          type: paragraph
+          variable: query
+      height: 108
+      id: start
+      position:
+        x: 558.5714285714287
+        y: -340
+      positionAbsolute:
+        x: 558.5714285714287
+        y: -340
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            stop: []
+          mode: chat
+          name: longcat-flash-chat
+          provider: langgenius/longcat/longcat
+        prompt_template:
+        - id: 3d4f5e6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+          role: system
+          text: '你是一个专业的营销文案分析助手，擅长从用户输入中提取关键信息并识别目标平台。请分析用户输入，提取以下信息并以JSON格式返回：{"product":
+            "产品名称", "features": ["特点1", "特点2"], "target_audience": "目标受众", "style_preference":
+            "风格偏好", "requirements": ["要求1", "要求2"], "extracted_platform": "识别出的平台（如用户提到小红书/抖音等）"}'
+        - id: 4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+          role: user
+          text: '{{#start.query#}}'
+        selected: false
+        title: 参数提取
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: '1744361980000'
+      position:
+        x: 542
+        y: -172.85714285714286
+      positionAbsolute:
+        x: 542
+        y: -172.85714285714286
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            stop: []
+          mode: chat
+          name: longcat-flash-chat
+          provider: langgenius/longcat/longcat
+        prompt_template:
+        - id: 5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+          role: system
+          text: '你是一个资深的社交媒体文案创作者，擅长写爆款营销文案。请根据用户提供的产品信息，创作吸引人的文案。
+
+
+            重要：输出格式必须包含以下三部分：
+
+            1. 文案主体内容
+
+            2. 格式为"hashtags": "#标签1 #标签2"的hashtags
+
+            3. 格式为<<< Questions: ["问题1", "问题2", "问题3"] >>>的追问问题列表
+
+
+            追问问题应该是帮助创作者进一步完善文案的问题，例如：
+
+            - "你希望突出产品的哪个核心卖点？"
+
+            - "目标受众是男性还是女性？年龄段是？"
+
+            - "文案需要强调性价比还是品质感？"
+
+            - "是否有特定的促销活动需要提及？"
+
+            - "竞品对比方面有什么优势？"'
+        - id: 6a7b8c9d-0e1f-2a3b-4c5d-6e7f8a9b0c1d
+          role: user
+          text: '产品信息: {{#start.query#}}'
+        selected: true
+        title: 文案生成
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: '1744361990000'
+      position:
+        x: 553
+        y: -25.714285714285708
+      positionAbsolute:
+        x: 553
+        y: -25.714285714285708
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        code: "import json\nimport re\n\ndef main(text: str) -> dict:\n    result_text\
+          \ = text\n    return {\"text\": result_text, \"status\": \"success\"}"
+        code_language: python3
+        desc: ''
+        outputs:
+          status:
+            type: string
+          text:
+            type: string
+        selected: false
+        title: 代码执行
+        type: code
+        variables:
+        - value_selector:
+          - '1744361990000'
+          - text
+          variable: text
+      height: 51
+      id: '1744362000000'
+      position:
+        x: 525.7142857142858
+        y: 103.71428571428578
+      positionAbsolute:
+        x: 525.7142857142858
+        y: 103.71428571428578
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1744362000000'
+          - text
+          variable: text
+        selected: false
+        title: 结束
+        type: end
+      height: 87
+      id: answer
+      position:
+        x: 542
+        y: 234.2857142857144
+      positionAbsolute:
+        x: 542
+        y: 234.2857142857144
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    viewport:
+      x: -140.0807123522544
+      y: 419.4970698716673
+      zoom: 1.0610015965572788
+  rag_pipeline_variables: []
