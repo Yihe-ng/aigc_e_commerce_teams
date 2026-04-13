@@ -106,8 +106,34 @@ export default function TextGenerateChat() {
     ad_best: "",
   })
   const scrollRef = useRef<HTMLDivElement>(null)
+  // 滚动锚点 ref，用于自动滚动到底部
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
   const activeRequestIdRef = useRef(0)
+
+  // 自动滚动到底部的函数
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior })
+  }, [])
+
+  // 消息变化时自动滚动到底部
+  useEffect(() => {
+    if (messages.length > 0) {
+      requestAnimationFrame(() => {
+        scrollToBottom()
+      })
+    }
+  }, [messages.length, scrollToBottom])
+
+  // 流式输出时跟随滚动
+  const lastMessage = messages[messages.length - 1]
+  const isLastMessageStreaming = lastMessage?.type === "ai" && isLoading
+
+  useEffect(() => {
+    if (isLastMessageStreaming && lastMessage?.content) {
+      scrollToBottom("auto")
+    }
+  }, [isLastMessageStreaming, lastMessage?.content, scrollToBottom])
 
   const handleSend = useCallback(async (content: unknown) => {
     if (typeof content !== "string") {
@@ -528,6 +554,8 @@ export default function TextGenerateChat() {
                         )}
                       </div>
                     ))}
+                    {/* 滚动锚点，用于自动定位到底部 */}
+                    <div ref={messagesEndRef} aria-hidden="true" />
                   </div>
                 )}
               </ScrollShadow>
