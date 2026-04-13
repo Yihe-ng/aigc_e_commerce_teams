@@ -2331,104 +2331,198 @@ def handle_xiaohongshu_stream_post():
     文案生成统一入口
     根据请求中的 mode 参数自动路由到营销文案或导购文案工作流
     """
-    data = request.get_json()
+    data = request.get_json() or {}
     q = data.get("query", "")
-    mode = data.get("mode", "marketing")  # marketing 或 guide
-    platform = data.get("platform", "auto")  # 目标平台，营销文案用
+    mode = data.get("mode", "marketing")
+    platform = data.get("platform", "auto")
 
     @stream_with_context
     def generate():
+        def emit_sse(payload):
+            return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+        def normalize_stream_error(raw_error):
+            message = str(raw_error or "").strip().lower()
+
+            if not message:
+                return "生成失败：请稍后重试。"
+            if any(keyword in message for keyword in ("api key", "未配置", "not configured")):
+                return "生成失败：服务配置异常，请稍后再试。"
+            if any(
+                keyword in message
+                for keyword in ("read timed out", "timed out", "timeout", "超时")
+            ):
+                return "生成失败：服务响应超时，请稍后重试。"
+            if any(
+                keyword in message
+                for keyword in (
+                    "connection aborted",
+                    "connection reset",
+                    "connectionreseterror",
+                    "远程主机强迫关闭了一个现有的连接",
+                    "10054",
+                )
+            ):
+                return "生成失败：服务连接中断，请稍后重试。"
+            if any(
+                keyword in message
+                for keyword in ("api error", "status code", "bad gateway", "502", "503", "504")
+            ):
+                return "生成失败：服务暂时不可用，请稍后重试。"
+            return "生成失败：请稍后重试。"
+
+        def extract_output_text(outputs):
+            if not isinstance(outputs, dict):
+                return ""
+
+            for key in (
+                "text",
+                "answer",
+                "content",
+                "output",
+                "result",
+                "reply",
+                "red_content",
+            ):
+                value = outputs.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value
+            return ""
+
         try:
-            yield 'data: {"status":"init"}\n\n'
+            yield emit_sse({"status": "init"})
 
-            # 根据 mode 选择对应的工作流 API Key
-            if mode == "guide":
-                api_key = os.getenv("DIFY_GUIDE_COPY_KEY")
-            else:
-                api_key = os.getenv("DIFY_MARKETING_COPY_KEY")
-
+            api_key = (
+                os.getenv("DIFY_GUIDE_COPY_KEY")
+                if mode == "guide"
+                else os.getenv("DIFY_MARKETING_COPY_KEY")
+            )
             if not api_key:
-                yield 'data: {"status":"error","message":"API Key未配置，请在.env中设置DIFY_GUIDE_COPY_KEY或DIFY_MARKETING_COPY_KEY"}\n\n'
+                yield emit_sse(
+                    {
+                        "error": normalize_stream_error("api key not configured")
+                    }
+                )
                 return
 
-            url = "https://api.dify.ai/v1/workflows/run"
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
+            payload = {
+                "inputs": {"query": q},
+                "response_mode": "streaming",
+                "user": "user-123",
             }
+            if mode != "guide":
+                payload["inputs"]["platform"] = platform
 
-            # 构建 payload，根据模式传递不同参数
-            if mode == "guide":
-                payload = {
-                    "inputs": {"query": q},
-                    "response_mode": "streaming",
-                    "user": "user-123",
-                }
-            else:
-                payload = {
-                    "inputs": {"query": q, "platform": platform},
-                    "response_mode": "streaming",
-                    "user": "user-123",
-                }
+            full_content = ""
+            hashtags = ""
+            questions = []
+            saw_chunk = False
+            finished_outputs = {}
 
             print(f"Calling Dify Workflow API [mode={mode}] with query length: {len(q)}")
 
-            with requests.post(
-                url, headers=headers, json=payload, stream=True, timeout=60
-            ) as response:
-                if response.status_code != 200:
-                    yield f"data: {json.dumps({'error': f'API Error: {response.status_code} - {response.text}'})}\n\n"
-                    return
+            try:
+                with requests.post(
+                    "https://api.dify.ai/v1/workflows/run",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                    stream=True,
+                    timeout=60,
+                ) as response:
+                    if response.status_code != 200:
+                        yield emit_sse(
+                            {
+                                "error": normalize_stream_error(
+                                    f"api error {response.status_code}"
+                                )
+                            }
+                        )
+                        return
 
-                full_content = ""
-                hashtags = ""
-                questions = []
+                    for line in response.iter_lines():
+                        if not line:
+                            continue
 
-                for line in response.iter_lines():
-                    if not line:
-                        continue
+                        decoded_line = line.decode("utf-8")
+                        if not decoded_line.startswith("data:"):
+                            continue
 
-                    decoded_line = line.decode("utf-8")
-                    if not decoded_line.startswith("data:"):
-                        continue
+                        try:
+                            event_data = json.loads(decoded_line[5:])
+                        except Exception as e:
+                            print(f"Error parsing chunk: {e}")
+                            continue
 
-                    try:
-                        json_str = decoded_line[5:]
-                        event_data = json.loads(json_str)
                         event = event_data.get("event")
+                        event_payload = event_data.get("data", {})
 
                         if event == "text_chunk":
-                            chunk = event_data.get("data", {}).get("text", "")
+                            chunk = event_payload.get("text", "")
                             if chunk:
+                                saw_chunk = True
                                 full_content += chunk
-                                yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
+                                yield emit_sse({"chunk": chunk})
                         elif event == "workflow_finished":
-                            pass
+                            finished_outputs = event_payload.get("outputs", {})
+                            fallback_text = extract_output_text(finished_outputs)
+                            if fallback_text and not full_content.strip():
+                                saw_chunk = True
+                                full_content = fallback_text
+                                yield emit_sse({"chunk": fallback_text})
                         elif event == "error":
-                            yield f"data: {json.dumps({'error': event_data.get('message', 'Unknown error')}, ensure_ascii=False)}\n\n"
-                    except Exception as e:
-                        print(f"Error parsing chunk: {e}")
-                        continue
+                            yield emit_sse(
+                                {
+                                    "error": normalize_stream_error(
+                                        event_data.get(
+                                            "message", "Dify returned an unknown error"
+                                        )
+                                    )
+                                }
+                            )
+                            return
+            except requests.exceptions.Timeout as e:
+                print(f"Stream error: {e}")
+                yield emit_sse({"error": normalize_stream_error(e)})
+                return
+            except requests.exceptions.RequestException as e:
+                print(f"Stream error: {e}")
+                yield emit_sse({"error": normalize_stream_error(e)})
+                return
 
-                try:
-                    import re
+            if not full_content.strip():
+                fallback_text = extract_output_text(finished_outputs)
+                if fallback_text:
+                    saw_chunk = True
+                    full_content = fallback_text
+                    yield emit_sse({"chunk": fallback_text})
+                elif not saw_chunk:
+                    yield emit_sse({"error": "生成失败：本次未返回可展示内容，请稍后重试。"})
+                    return
 
-                    ht_match = re.search(r'"hashtags"\s*:\s*"([^"]+)"', full_content)
-                    if ht_match:
-                        hashtags = ht_match.group(1)
+            try:
+                import re
 
-                    question_match = re.search(
-                        r"<<<\s*Questions\s*:\s*([\s\S]*?)\s*>>>", full_content
-                    )
-                    if question_match:
-                        question_payload = question_match.group(1).strip()
-                        first_bracket = question_payload.find("[")
-                        last_bracket = question_payload.rfind("]")
-                        if first_bracket != -1 and last_bracket != -1:
-                            question_payload = question_payload[
-                                first_bracket : last_bracket + 1
-                            ]
+                ht_match = re.search(r'"hashtags"\s*:\s*"([^"]+)"', full_content)
+                if ht_match:
+                    hashtags = ht_match.group(1)
 
+                question_match = re.search(
+                    r"<<<\s*Questions\s*:\s*([\s\S]*?)\s*>>>", full_content
+                )
+                if question_match:
+                    question_payload = question_match.group(1).strip()
+                    first_bracket = question_payload.find("[")
+                    last_bracket = question_payload.rfind("]")
+                    if first_bracket != -1 and last_bracket != -1:
+                        question_payload = question_payload[
+                            first_bracket : last_bracket + 1
+                        ]
+
+                    # 添加 JSON 解析错误处理，避免服务器崩溃
+                    try:
                         parsed_questions = json.loads(question_payload)
                         if isinstance(parsed_questions, list):
                             questions = [
@@ -2436,41 +2530,46 @@ def handle_xiaohongshu_stream_post():
                                 for item in parsed_questions
                                 if str(item).strip()
                             ]
+                    except json.JSONDecodeError:
+                        # JSON 解析失败时使用空列表，后续会生成默认问题
+                        questions = []
 
-                        full_content = re.sub(
-                            r"\n*\s*<<<\s*Questions\s*:\s*[\s\S]*?\s*>>>",
-                            "",
-                            full_content,
-                        ).strip()
-                except Exception:
-                    pass
+                    full_content = re.sub(
+                        r"\n*\s*<<<\s*Questions\s*:\s*[\s\S]*?\s*>>>",
+                        "",
+                        full_content,
+                    ).strip()
+            except Exception:
+                pass
 
-                if not questions:
-                    dynamic_qs = generate_follow_up_questions(full_content)
-                    if dynamic_qs:
-                        try:
-                            parsed_questions = json.loads(dynamic_qs)
-                            if isinstance(parsed_questions, list):
-                                questions = [
-                                    str(item).strip()
-                                    for item in parsed_questions
-                                    if str(item).strip()
-                                ]
-                        except Exception:
-                            pass
+            if not questions:
+                dynamic_qs = generate_follow_up_questions(full_content)
+                if dynamic_qs:
+                    try:
+                        parsed_questions = json.loads(dynamic_qs)
+                        if isinstance(parsed_questions, list):
+                            questions = [
+                                str(item).strip()
+                                for item in parsed_questions
+                                if str(item).strip()
+                            ]
+                    except Exception:
+                        pass
 
-                if not questions:
-                    questions = [
-                        "精准转化哪类人群？",
-                        "核心卖点还有哪些？",
-                        "补充限时优惠信息？",
-                    ]
+            if not questions:
+                questions = [
+                    "想精准转化哪类人群？",
+                    "核心卖点还需要补充哪些细节？",
+                    "是否要补充优惠或限时信息？",
+                ]
 
-                yield f"data: {json.dumps({'done': True, 'hashtags': hashtags, 'questions': questions}, ensure_ascii=False)}\n\n"
+            yield emit_sse(
+                {"done": True, "hashtags": hashtags, "questions": questions}
+            )
 
         except Exception as e:
             print(f"Stream error: {e}")
-            yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
+            yield emit_sse({"error": normalize_stream_error(e)})
 
     return Response(
         generate(),
@@ -2481,6 +2580,8 @@ def handle_xiaohongshu_stream_post():
             "Connection": "keep-alive",
         },
     )
+
+
 
 
 @app.route("/api/stream_generate", methods=["POST"])  # 新增专用流式端点
