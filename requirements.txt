@@ -1,3 +1,4 @@
+# 基础依赖
 requests
 numpy
 pyaudio~=0.2.11
@@ -6,30 +7,59 @@ ws4py~=0.5.1
 PyQt5==5.15.10
 PyQt5-sip==12.13.0
 PyQtWebEngine==5.15.6
+
+# Web框架与服务器
 flask~=3.0.0
 Flask-Caching~=2.3.0
 openpyxl~=3.0.9
 flask_cors~=3.0.10
+flask-httpauth
 websocket-client
+gevent>=23.9.0
+
+# AI服务集成
 azure-cognitiveservices-speech
 aliyun-python-sdk-core
-simhash
-pytz
-gevent>=23.9.0
-edge_tts~=6.1.13
-pydub
-langchain==0.0.336
-chromadb
-tenacity==8.2.3
-pygame
-scipy
-flask-httpauth
-opencv-python
-psutil
-openai
-pandas
 dashscope
 oss2
-redis
+openai
+langchain==0.0.336
+chromadb
+
+# 音频处理
+edge_tts~=6.1.13
+pydub
+pygame
+scipy
+
+# 数据处理与工具
+pandas
+simhash
+pytz
+tenacity==8.2.3
+opencv-python
+psutil
 python-dotenv
 schedule~=1.2.0
+redis
+
+# Qwen3 TTS/ASR 服务依赖
+torch
+fastapi
+uvicorn
+pydantic
+soundfile
+modelscope
+faster-qwen3-tts
+qwen-asr
+python-multipart
+
+# Hugging Face 相关（用于本地LLM服务）
+transformers
+sentence-transformers
+tiktoken
+loguru
+sse-starlette
+accelerate
+protobuf
+safetensors
