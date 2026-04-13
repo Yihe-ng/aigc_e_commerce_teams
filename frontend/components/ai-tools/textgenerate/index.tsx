@@ -135,6 +135,15 @@ export default function TextGenerateChat() {
     }
   }, [isLastMessageStreaming, lastMessage?.content, scrollToBottom])
 
+  // AI 响应完成时滚动到底部（适用于单 chunk 整块返回）
+  useEffect(() => {
+    if (!isLoading && messages.length > 0) {
+      requestAnimationFrame(() => {
+        scrollToBottom()
+      })
+    }
+  }, [isLoading, messages.length, scrollToBottom])
+
   const handleSend = useCallback(async (content: unknown) => {
     if (typeof content !== "string") {
       return
@@ -250,12 +259,11 @@ export default function TextGenerateChat() {
             if (data.chunk) {
               sawRenderableChunk = true
               aiContent += data.chunk
-              const { cleanContent, questions } =
-                extractQuestionsFromContent(aiContent)
+              const { questions } = extractQuestionsFromContent(aiContent)
 
               updateAiMessage((msg) => ({
                 ...msg,
-                content: cleanContent,
+                content: aiContent,
                 questions:
                   msg.questions && msg.questions.length > 0
                     ? msg.questions

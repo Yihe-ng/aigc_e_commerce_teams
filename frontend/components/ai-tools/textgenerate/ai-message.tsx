@@ -2,8 +2,13 @@
 
 import { Avatar, Button, Card, Chip, Tooltip } from "@heroui/react"
 import { CheckCircle2, Copy, Lightbulb, RefreshCw, Sparkles } from "lucide-react"
-import { useTypewriter } from "@/lib/hooks/use-typewriter"
-import { extractQuestionsFromContent, extractHashtagsFromContent, removeSectionTitles } from "./message-format"
+
+import {
+  extractQuestionsFromContent,
+  extractHashtagsFromContent,
+  removeSectionTitles,
+} from "./message-format"
+import styles from "./ai-message.module.css"
 
 interface AIMessageProps {
   content: string
@@ -28,16 +33,14 @@ export function AIMessage({
   onQuestionClick,
   onAdopt,
 }: AIMessageProps) {
-  const { displayText, isTyping } = useTypewriter(isStreaming ? content : "", 30)
-
-  const rawDisplayContent = isStreaming ? displayText : content
-  // 先提取 hashtags，再提取 questions，最后移除标题
+  const rawContent = String(content || "")
   const { cleanContent: contentWithoutHashtags, hashtags: parsedHashtags } =
-    extractHashtagsFromContent(rawDisplayContent)
+    extractHashtagsFromContent(rawContent)
   const { cleanContent: contentWithoutQuestions, questions: parsedQuestions } =
     extractQuestionsFromContent(contentWithoutHashtags)
-  // 移除标题文字
-  const cleanContent = removeSectionTitles(contentWithoutQuestions)
+  const formattedContent = removeSectionTitles(contentWithoutQuestions)
+  // 关键节点: 统一使用格式化后的内容，确保流式和非流式状态下显示一致
+  const displayedContent = formattedContent
   const allQuestions = questions.length > 0 ? questions : parsedQuestions
   const allTags = tags.length > 0 ? tags : parsedHashtags
 
@@ -45,15 +48,17 @@ export function AIMessage({
     <div className="flex max-w-[75%] gap-3">
       <Avatar className="mt-[2px] flex-shrink-0 bg-indigo-600 text-white" size="sm">
         <Avatar.Fallback>
-          <Sparkles className="w-4 h-4" />
+          <Sparkles className="h-4 w-4" />
         </Avatar.Fallback>
       </Avatar>
 
       <Card className="flex-1 rounded-2xl rounded-tl-sm border-0 bg-white shadow-sm transition-all duration-300 ease-out dark:bg-slate-800/90 dark:ring-1 dark:ring-white/10">
         <Card.Content className="p-4">
-          <div className="text-gray-800 text-[15px] leading-relaxed whitespace-pre-wrap dark:text-slate-100">
-            {cleanContent}
-            {(isTyping || isStreaming) && <span className="typing-cursor" />}
+          <div className="text-[15px] leading-relaxed whitespace-pre-wrap text-gray-800 dark:text-slate-100">
+            {displayedContent}
+            {isStreaming && (
+              <span className={styles.typingCursor} aria-hidden="true" />
+            )}
           </div>
 
           {allTags.length > 0 && (
@@ -74,7 +79,7 @@ export function AIMessage({
             <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-slate-600 dark:bg-slate-700/50">
               <div className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200">
                 <Lightbulb className="h-4 w-4 text-[#91C1FA]" />
-                <span>{"\u8ffd\u95ee"}</span>
+                <span>追问</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {allQuestions.map((question) => (
@@ -95,18 +100,19 @@ export function AIMessage({
           )}
 
           <div className="mt-2 flex justify-end gap-2">
-            {onAdopt && cleanContent.trim().length > 0 && (
+            {onAdopt && formattedContent.trim().length > 0 && (
               <Button
                 size="sm"
                 variant="ghost"
                 isDisabled={interactionsDisabled || isStreaming}
-                onPress={() => onAdopt(cleanContent)}
+                onPress={() => onAdopt(formattedContent)}
                 className="rounded-lg bg-[#EEF6FF] text-[#3B82F6] hover:bg-[#E0EEFF] dark:bg-sky-950/50 dark:text-sky-400 dark:hover:bg-sky-950/70"
               >
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircle2 className="h-4 w-4" />
                 采纳此方案
               </Button>
             )}
+
             {onRegenerate && (
               <Tooltip>
                 <Tooltip.Trigger>
@@ -129,14 +135,15 @@ export function AIMessage({
                       dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-sky-500 dark:focus-visible:ring-offset-slate-800
                     "
                   >
-                    <RefreshCw className="w-4 h-4" />
+                    <RefreshCw className="h-4 w-4" />
                   </Button>
                 </Tooltip.Trigger>
                 <Tooltip.Content>
-                  <p>{"\u91cd\u65b0\u751f\u6210"}</p>
+                  <p>重新生成</p>
                 </Tooltip.Content>
               </Tooltip>
             )}
+
             {onCopy && (
               <Tooltip>
                 <Tooltip.Trigger>
@@ -158,11 +165,11 @@ export function AIMessage({
                       dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-sky-500 dark:focus-visible:ring-offset-slate-800
                     "
                   >
-                    <Copy className="w-4 h-4" />
+                    <Copy className="h-4 w-4" />
                   </Button>
                 </Tooltip.Trigger>
                 <Tooltip.Content>
-                  <p>{"\u590d\u5236"}</p>
+                  <p>复制</p>
                 </Tooltip.Content>
               </Tooltip>
             )}

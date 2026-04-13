@@ -1,0 +1,21 @@
+.typingCursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: #3b82f6;
+  animation: aiMessageBlink 1s infinite;
+}
+
+@keyframes aiMessageBlink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
