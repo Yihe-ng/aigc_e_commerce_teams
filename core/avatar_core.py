@@ -31,6 +31,7 @@ from llm import nlp_ollama_api
 from llm import nlp_coze
 from core import member_db
 from backend.services.product_intro_service import resolve_product_intro
+from backend.lipsync.manager import lip_sync_manager
 from utils.trace_utils import summarize_text, trace_log
 import threading
 import functools
@@ -241,10 +242,11 @@ class FeiFei:
                         text_len=len(text),
                         text_preview=summarize_text(text),
                     )
+                    lip_sync_manager.register_text_timeline(text, request_id=request_id)
 
                     # 文字输出：面板、聊天窗、log、数字人
                     if wsa_server.get_web_instance().is_connected(username):
-                        wsa_server.get_web_instance().add_cmd({"panelMsg": text, "Username": username,
+                        wsa_server.get_web_instance().add_cmd({"panelMsg": "回复中...", "Username": username,
                                                                'robot': f'http://{cfg.backend_api_url}/robot/Speaking.jpg'})
                         wsa_server.get_web_instance().add_cmd(
                             {"panelReply": {"type": "avatar", "content": text, "username": username, "uid": uid},
@@ -288,11 +290,12 @@ class FeiFei:
 
                         # 文字输出：面板、聊天窗、log、数字人
                         if wsa_server.get_web_instance().is_connected(username):
-                            wsa_server.get_web_instance().add_cmd({"panelMsg": text, "Username": username,
+                            wsa_server.get_web_instance().add_cmd({"panelMsg": "回复中...", "Username": username,
                                                                    'robot': f'http://{cfg.backend_api_url}/robot/Speaking.jpg'})
                             wsa_server.get_web_instance().add_cmd(
                                 {"panelReply": {"type": "avatar", "content": text, "username": username, "uid": uid},
                                  "Username": username})
+                        lip_sync_manager.register_text_timeline(text, request_id=interact.data.get("request_id", ""))
                         util.printInfo(1, interact.data.get('user'), '({}) {}'.format(self.__get_mood_voice(), text))
                         if wsa_server.get_instance().is_connected(username):
                             content = {'Topic': 'Unreal', 'Data': {'Key': 'text', 'Value': text}, 'Username': username,
@@ -724,6 +727,8 @@ class FeiFei:
             self.speaking = True
             # 推送远程音频
             MyThread(target=self.__send_remote_device_audio, args=[file_url, interact]).start()
+            # 基于音频能量的唇形同步帧推送
+            MyThread(target=self.__push_web_lip_sync, args=[file_url, interact]).start()
 
             # 发送音频给数字人接口
             if wsa_server.get_instance().is_connected(interact.data.get("user")):
@@ -750,6 +755,21 @@ class FeiFei:
 
         except Exception as e:
             print(f"[AVATAR-CORE] output audio error: {e}")
+
+    def __push_web_lip_sync(self, file_url, interact):
+        try:
+            username = interact.data.get("user", "User")
+            request_id = interact.data.get("request_id", "")
+            if not file_url:
+                return
+            lip_sync_manager.stream_wav_file(
+                file_url,
+                username=username,
+                request_id=request_id,
+                lead_in_ms=220,
+            )
+        except Exception as e:
+            print(f"[AVATAR-CORE] lip sync stream error: {e}")
 
     def send_play_end_msg(self, interact):
         if wsa_server.get_web_instance().is_connected(interact.data.get('user')):

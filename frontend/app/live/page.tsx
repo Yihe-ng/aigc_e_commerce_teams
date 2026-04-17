@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import React, { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 import PendulumClock from '@/components/widgets/PendulumClock'
@@ -7,6 +7,7 @@ import NeonStrips, { useNeonState } from '@/components/widgets/NeonStrips'
 import { fetchProductLibrary } from '@/lib/oss/api'
 import { buildOssAssetUrl, fetchRuntimeOssDomain, resolveOssCustomDomain } from '@/lib/oss/shared'
 import type { Product } from '@/lib/types/product'
+import { computeLipSyncDelay, computeMouthForm, normalizeMouthOpen, smoothTowards } from '@/live2d/lipSync'
 import './live.css'
 
 let PIXI: typeof import('pixi.js') | null = null
@@ -14,6 +15,7 @@ let Live2DModel: typeof import('pixi-live2d-display/cubism4').Live2DModel | null
 
 type CubismWindow = Window & {
   Live2DCubismCore?: unknown
+  PIXI?: typeof import('pixi.js')
 }
 
 type Live2DModelWithTicker = typeof import('pixi-live2d-display/cubism4').Live2DModel & {
@@ -62,7 +64,32 @@ type PanelReply = {
   uid?: number
 }
 
+type MouthCue = {
+  offset_ms: number
+  ts_ms?: number
+  start_ms?: number
+  end_ms?: number
+  phoneme?: string
+  mouth_open: number
+  mouth_form?: number
+  energy?: number
+}
+
+type MouthSyncPayload = {
+  request_id?: string
+  frame_ms?: number
+  duration_ms?: number
+  source?: string
+  cues?: MouthCue[]
+}
+
 type WsPayload = {
+  type?: string
+  timestamp?: number
+  mouth_open?: number
+  rms?: number
+  short_energy?: number
+  request_id?: string
   panelMsg?: string
   panelReply?: PanelReply
   is_connect?: boolean
@@ -77,6 +104,7 @@ type LatestAudioPayload = {
     filename?: string
     mtime_ms?: number
     url?: string
+    mouth_sync?: MouthSyncPayload
   } | null
 }
 
@@ -218,7 +246,13 @@ export default function LivePage() {
   const analyserDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
   const audioSourceRef = useRef<MediaElementAudioSourceNode | null>(null)
   const lipSyncFrameRef = useRef<number | null>(null)
+  const mouthTweenFrameRef = useRef<number | null>(null)
+  const timedMouthFrameRef = useRef<number | null>(null)
+  const wsLipSyncDeadlineRef = useRef(0)
   const mouthOpenRef = useRef(0)
+  const mouthFormRef = useRef(0)
+  const mouthTargetOpenRef = useRef(0)
+  const mouthTargetFormRef = useRef(0)
   const manualStopRef = useRef(false)
   const activeTraceRequestIdRef = useRef('')
   const isAudioPollingRef = useRef(false)
@@ -249,6 +283,16 @@ export default function LivePage() {
   const deviceRuntimeLabel = isHumanConnected ? '数字人设备已连接' : '数字人设备未连接'
   const remoteAudioLabel = remoteAudioConnected ? '远端设备音频已连接' : '远端设备音频未连接'
   const browserAudioLabel = isPlayingAudio ? '浏览器音频播放中' : '浏览器音频空闲'
+  const hostTopic =
+    stageStatus === 'thinking'
+      ? '数字人正在整理话术与回复内容'
+      : stageStatus === 'speaking'
+        ? '数字人正在讲解商品与回复用户问题'
+        : stageStatus === 'listening'
+          ? '数字人正在监听麦克风与等待输入'
+          : liveState === 1
+            ? '检测到当前直播服务正在运行'
+            : '使用提示：启动数字人后将自动对接当前服务链路'
 
   const groupedProducts = useMemo<ProductGroup[]>(() => {
     const groups = new Map<string, Product[]>()
@@ -300,10 +344,75 @@ export default function LivePage() {
     }
   })
 
-  const setModelMouthOpen = useEvent((value: number) => {
-    const normalized = Math.max(0, Math.min(1, value))
-    mouthOpenRef.current = normalized
-    live2dModelRef.current?.internalModel?.coreModel?.setParameterValueById('ParamMouthOpenY', normalized)
+  const stopMouthTween = useEvent(() => {
+    if (mouthTweenFrameRef.current) {
+      cancelAnimationFrame(mouthTweenFrameRef.current)
+      mouthTweenFrameRef.current = null
+    }
+  })
+
+  const stopTimedMouthSync = useEvent(() => {
+    if (timedMouthFrameRef.current) {
+      cancelAnimationFrame(timedMouthFrameRef.current)
+      timedMouthFrameRef.current = null
+    }
+  })
+
+  const applyMouthPose = useEvent((openY: number, mouthForm: number) => {
+    const normalizedOpenY = Math.max(0, Math.min(1, openY))
+    const normalizedForm = Math.max(-1, Math.min(1, mouthForm))
+    mouthOpenRef.current = normalizedOpenY
+    mouthFormRef.current = normalizedForm
+
+    const coreModel = live2dModelRef.current?.internalModel?.coreModel
+    if (!coreModel) {
+      return
+    }
+
+    coreModel.setParameterValueById('ParamMouthOpenY', normalizedOpenY)
+    coreModel.setParameterValueById('ParamMouthForm', normalizedForm)
+  })
+
+  const smoothMouthValue = useEvent((current: number, target: number, alpha: number, epsilon = 0.0015) => {
+    return smoothTowards(current, target, alpha, epsilon)
+  })
+
+  const startMouthTween = useEvent(() => {
+    if (mouthTweenFrameRef.current) {
+      return
+    }
+
+    const tick = () => {
+      const nextOpen = smoothMouthValue(mouthOpenRef.current, mouthTargetOpenRef.current, 0.28)
+    const nextForm = smoothMouthValue(mouthFormRef.current, mouthTargetFormRef.current, 0.24)
+
+      applyMouthPose(nextOpen, nextForm)
+
+      const openSettled = Math.abs(nextOpen - mouthTargetOpenRef.current) <= 0.0015
+      const formSettled = Math.abs(nextForm - mouthTargetFormRef.current) <= 0.0015
+
+      if (openSettled && formSettled) {
+        mouthTweenFrameRef.current = null
+        return
+      }
+
+      mouthTweenFrameRef.current = requestAnimationFrame(tick)
+    }
+
+    mouthTweenFrameRef.current = requestAnimationFrame(tick)
+  })
+
+  const setMouthTargets = useEvent((openY: number, mouthForm = 0) => {
+    mouthTargetOpenRef.current = Math.max(0, Math.min(1, openY))
+    mouthTargetFormRef.current = Math.max(-1, Math.min(1, mouthForm))
+    startMouthTween()
+  })
+
+  const resetMouthImmediately = useEvent((openY = 0, mouthForm = 0) => {
+    stopMouthTween()
+    mouthTargetOpenRef.current = Math.max(0, Math.min(1, openY))
+    mouthTargetFormRef.current = Math.max(-1, Math.min(1, mouthForm))
+    applyMouthPose(mouthTargetOpenRef.current, mouthTargetFormRef.current)
   })
 
   const stopLipSync = useEvent(() => {
@@ -311,6 +420,7 @@ export default function LivePage() {
       cancelAnimationFrame(lipSyncFrameRef.current)
       lipSyncFrameRef.current = null
     }
+    stopTimedMouthSync()
     if (audioSourceRef.current) {
       try {
         audioSourceRef.current.disconnect()
@@ -332,7 +442,54 @@ export default function LivePage() {
       audioContextRef.current = null
     }
     analyserDataRef.current = null
-    setModelMouthOpen(0)
+    setMouthTargets(0, 0)
+  })
+
+  const startTimedMouthSync = useEvent((
+    player: HTMLAudioElement,
+    mouthSync?: MouthSyncPayload,
+  ) => {
+    const cues = mouthSync?.cues
+    if (!cues?.length) {
+      startLipSync(player)
+      return
+    }
+
+    stopLipSync()
+
+    const tick = () => {
+      const currentPlayer = audioPlayerRef.current
+      if (!currentPlayer || currentPlayer !== player) {
+        timedMouthFrameRef.current = null
+        return
+      }
+
+      const currentMs = Math.max(0, player.currentTime * 1000)
+      if (wsLipSyncDeadlineRef.current > Date.now()) {
+        timedMouthFrameRef.current = requestAnimationFrame(tick)
+        return
+      }
+      let activeCue = cues[0]
+      for (let i = 0; i < cues.length; i += 1) {
+        if (cues[i].offset_ms <= currentMs) {
+          activeCue = cues[i]
+        } else {
+          break
+        }
+      }
+
+    const cueOpen = activeCue.mouth_open ?? 0
+    setMouthTargets(cueOpen, activeCue.mouth_form ?? computeMouthForm(cueOpen))
+
+      if (!player.paused && !player.ended) {
+        timedMouthFrameRef.current = requestAnimationFrame(tick)
+        return
+      }
+
+      timedMouthFrameRef.current = null
+    }
+
+    timedMouthFrameRef.current = requestAnimationFrame(tick)
   })
 
   const startLipSync = useEvent((player: HTMLAudioElement) => {
@@ -377,9 +534,9 @@ export default function LivePage() {
         }
 
         const average = sum / activeData.length / 255
-        const target = average < 0.03 ? 0 : Math.min(1, average * 2.8)
-        const smoothed = mouthOpenRef.current + (target - mouthOpenRef.current) * 0.35
-        setModelMouthOpen(smoothed)
+        const targetOpen = average < 0.03 ? 0 : Math.min(1, average * 2.8)
+        const targetForm = computeMouthForm(targetOpen)
+        setMouthTargets(targetOpen, targetForm)
         lipSyncFrameRef.current = requestAnimationFrame(tick)
       }
 
@@ -388,7 +545,7 @@ export default function LivePage() {
       }
       tick()
     } catch {
-      setModelMouthOpen(0)
+      resetMouthImmediately(0, 0)
     }
   })
 
@@ -405,7 +562,15 @@ export default function LivePage() {
   })
 
   const playAudioTrack = useEvent(
-    async (src: string, audioKey: string, trace: { request_id?: string; filename?: string } = {}) => {
+    async (
+      src: string,
+      audioKey: string,
+      trace: {
+        request_id?: string
+        filename?: string
+        mouthSync?: MouthSyncPayload
+      } = {},
+    ) => {
       stopNativeAudio()
       const player = new window.Audio()
       player.crossOrigin = 'anonymous'
@@ -422,7 +587,7 @@ export default function LivePage() {
         })
         setIsPlayingAudio(true)
         setPendingAudio(null)
-        startLipSync(player)
+        startTimedMouthSync(player, trace.mouthSync)
         pulseSpeakingState(3200)
       }
 
@@ -726,7 +891,11 @@ export default function LivePage() {
             await playAudioTrack(
               `${getApiBaseUrl()}${audio.url}?t=${audio.mtime_ms ?? Date.now()}`,
               audioKey,
-              { request_id: effectiveRequestId, filename: audio.filename || '' },
+              {
+                request_id: effectiveRequestId,
+                filename: audio.filename || '',
+                mouthSync: audio.mouth_sync,
+              },
             )
             return
           }
@@ -758,6 +927,23 @@ export default function LivePage() {
   })
 
   const handleIncomingMessage = useEvent((data: WsPayload) => {
+    if (data.type === 'lip_sync' && typeof data.mouth_open === 'number') {
+      const now = Date.now()
+      wsLipSyncDeadlineRef.current = now + 180
+      window.setTimeout(() => {
+        const mouthOpen = normalizeMouthOpen(data.mouth_open)
+        const mouthForm = computeMouthForm(mouthOpen)
+        setMouthTargets(mouthOpen, mouthForm)
+      }, computeLipSyncDelay(data.timestamp))
+      return
+    }
+
+    if (data.type === 'lip_sync_end') {
+      wsLipSyncDeadlineRef.current = 0
+      setMouthTargets(0, 0)
+      return
+    }
+
     if (typeof data.liveState === 'number') {
       setLiveState(data.liveState)
       if (data.liveState === 1 && stageStatus === 'offline') {
@@ -787,7 +973,17 @@ export default function LivePage() {
         status: 'ok',
         message_preview: summarizeForLog(nextMessage),
       })
-      setPanelMessage(nextMessage || '待命中')
+      const compactPanelMessage =
+        !nextMessage
+          ? '待命中'
+          : nextMessage.includes('思考')
+            ? '思考中...'
+            : nextMessage.includes('聆听') || nextMessage.includes('唤醒')
+              ? '聆听中...'
+              : nextMessage.length > 24
+                ? '回复中...'
+                : nextMessage
+      setPanelMessage(compactPanelMessage)
       if (!nextMessage) {
         enterIdleState()
       } else if (nextMessage.includes('思考')) {
@@ -1187,6 +1383,7 @@ export default function LivePage() {
         if (!PIXI) {
           PIXI = await import('pixi.js')
         }
+        ;(window as CubismWindow).PIXI = PIXI
         if (!Live2DModel) {
           const live2dModule = await import('pixi-live2d-display/cubism4')
           Live2DModel = live2dModule.Live2DModel
@@ -1227,14 +1424,14 @@ export default function LivePage() {
         app.stage.addChild(model)
         live2dModelRef.current = model as StageReadyModel
 
-        const scaleX = (containerWidth * 0.9) / model.width
-        const scaleY = (containerHeight * 0.95) / model.height
+        const scaleX = (containerWidth * 1.32) / model.width
+        const scaleY = (containerHeight * 1.62) / model.height
         const baseScale = Math.min(scaleX, scaleY)
-        const scale = baseScale * 1.3
+      const scale = baseScale * 1.63
 
         model.scale.set(scale, scale)
         model.anchor.set(0.5, 0.5)
-        model.position.set(containerWidth * 0.42, containerHeight * 0.58)
+      model.position.set(containerWidth * 0.43, containerHeight * 1.17)
 
         ;(model as InteractiveLive2DModel).on('hit', (hitAreas: string[]) => {
           if (hitAreas.includes('body')) {
@@ -1253,7 +1450,8 @@ export default function LivePage() {
     return () => {
       clearTimeout(timer)
       live2dModelRef.current = null
-      setModelMouthOpen(0)
+      stopMouthTween()
+      resetMouthImmediately(0, 0)
       if (model) {
         model.destroy()
       }
@@ -1344,7 +1542,7 @@ export default function LivePage() {
             <div className="avatar"></div>
             <div className="host-details">
               <div className="host-name">Live2D Host</div>
-              <div className="host-topic">{panelMessage}</div>
+              <div className="host-topic">{hostTopic}</div>
             </div>
             <div className="live-status">{serviceLabel}</div>
           </div>
