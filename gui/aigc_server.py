@@ -2418,8 +2418,7 @@ def handle_xiaohongshu_stream_post():
             questions = []
             saw_chunk = False
             finished_outputs = {}
-
-            print(f"Calling Dify Workflow API [mode={mode}] with query length: {len(q)}")
+            content_already_sent = False  # 标记是否已发送过内容，避免重复发送
 
             try:
                 with requests.post(
@@ -2461,17 +2460,21 @@ def handle_xiaohongshu_stream_post():
 
                         if event == "text_chunk":
                             chunk = event_payload.get("text", "")
-                            if chunk:
+                            # 对于 Workflow 模式，忽略 text_chunk，等待 workflow_finished 的完整内容
+                            if chunk and mode != "marketing":
                                 saw_chunk = True
                                 full_content += chunk
                                 yield emit_sse({"chunk": chunk})
+                                content_already_sent = True  # 标记已发送
                         elif event == "workflow_finished":
                             finished_outputs = event_payload.get("outputs", {})
                             fallback_text = extract_output_text(finished_outputs)
-                            if fallback_text and not full_content.strip():
+                            # 只在还没发送过内容时才发送，避免重复
+                            if fallback_text and not content_already_sent:
                                 saw_chunk = True
                                 full_content = fallback_text
                                 yield emit_sse({"chunk": fallback_text})
+                                content_already_sent = True  # 标记已发送
                         elif event == "error":
                             yield emit_sse(
                                 {

@@ -39,8 +39,10 @@ export function AIMessage({
   const { cleanContent: contentWithoutQuestions, questions: parsedQuestions } =
     extractQuestionsFromContent(contentWithoutHashtags)
   const formattedContent = removeSectionTitles(contentWithoutQuestions)
-  // 关键节点: 统一使用格式化后的内容，确保流式和非流式状态下显示一致
-  const displayedContent = formattedContent
+  // 若格式化链路意外清空了正文，则回退到原始内容，避免前端出现空白消息卡片。
+  const displayedContent =
+    formattedContent.trim().length > 0 ? formattedContent : rawContent.trim()
+  const adoptContent = displayedContent.trim()
   const allQuestions = questions.length > 0 ? questions : parsedQuestions
   const allTags = tags.length > 0 ? tags : parsedHashtags
 
@@ -100,12 +102,12 @@ export function AIMessage({
           )}
 
           <div className="mt-2 flex justify-end gap-2">
-            {onAdopt && formattedContent.trim().length > 0 && (
+            {onAdopt && adoptContent.length > 0 && (
               <Button
                 size="sm"
                 variant="ghost"
                 isDisabled={interactionsDisabled || isStreaming}
-                onPress={() => onAdopt(formattedContent)}
+                onPress={() => onAdopt(adoptContent)}
                 className="rounded-lg bg-[#EEF6FF] text-[#3B82F6] hover:bg-[#E0EEFF] dark:bg-sky-950/50 dark:text-sky-400 dark:hover:bg-sky-950/70"
               >
                 <CheckCircle2 className="h-4 w-4" />
