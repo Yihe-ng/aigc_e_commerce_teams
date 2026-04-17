@@ -11,6 +11,7 @@ import avatar_runtime
 from backend.adapters.asr.qwen3_adapter import qwen3_asr_adapter
 from backend.config import runtime_config
 from backend.schemas.live_dto import ChatCompletionRequest, ChatRequest, HistoryRequest
+from backend.lipsync.manager import lip_sync_manager
 from core import content_db, member_db, wsa_server
 from core.interact import Interact
 from scheduler.thread_manager import MyThread
@@ -363,6 +364,7 @@ class LiveService:
                 "filename": latest.name,
                 "mtime_ms": mtime_ms,
                 "url": f"/audio/{latest.name}",
+                "mouth_sync": lip_sync_manager.build_audio_timeline(latest, request_id=effective_request_id),
             },
             "request_id": effective_request_id,
         }
