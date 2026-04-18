@@ -38,6 +38,18 @@ _WEAK_QUERY_EXACT = {
     "这款怎么样",
     "这个衣服怎么样",
     "这个怎么样",
+    "这个好看吗",
+    "有什么推荐吗",
+}
+_WEAK_QUERY_SIGNAL_TEXTS = ("好看吗", "推荐吗", "推荐")
+_CATEGORY_STYLE_TERMS = (
+    "斜肩", "短袖", "短t", "t恤", "上衣", "衬衫", "针织", "针织衫", "开衫", "外套",
+    "圆领", "方领", "v领", "吊带", "背心", "半裙", "连衣裙", "牛仔裤", "裤子"
+)
+_CATEGORY_TERM_ALIASES = {
+    "上衣": ("上衣", "t恤", "短t", "短袖", "衬衫", "针织衫", "针织", "开衫", "外套"),
+    "短袖": ("短袖", "t恤", "短t"),
+    "t恤": ("t恤", "短t", "短袖"),
 }
 
 
@@ -207,7 +219,28 @@ def _is_weak_product_query(text: str) -> bool:
     normalized_text = _normalize_text(raw_text)
     normalized_prefixes = [_normalize_text(prefix) for prefix in _WEAK_QUERY_PREFIXES]
     normalized_suffixes = [_normalize_text(suffix) for suffix in _WEAK_QUERY_SUFFIXES]
-    return any(normalized_text.startswith(prefix) for prefix in normalized_prefixes) and any(normalized_text.endswith(suffix) for suffix in normalized_suffixes)
+    if any(normalized_text.startswith(prefix) for prefix in normalized_prefixes) and any(normalized_text.endswith(suffix) for suffix in normalized_suffixes):
+        return True
+    signal_text = _extract_query_signal_text(raw_text)
+    if len(signal_text) < 2:
+        return False
+    normalized_weak_signals = [_normalize_text(item) for item in _WEAK_QUERY_SIGNAL_TEXTS]
+    return signal_text in normalized_weak_signals
+
+
+def _extract_category_style_terms(text: str) -> list[str]:
+    normalized_text = _normalize_text(text)
+    matched_terms: list[str] = []
+    for term in _CATEGORY_STYLE_TERMS:
+        normalized_term = _normalize_text(term)
+        if normalized_term and normalized_term in normalized_text and term not in matched_terms:
+            matched_terms.append(term)
+    return matched_terms
+
+
+def _product_matches_category_term(product_blob: str, term: str) -> bool:
+    aliases = _CATEGORY_TERM_ALIASES.get(term, (term,))
+    return any(_normalize_text(alias) in product_blob for alias in aliases)
 
 
 def _build_candidate_snippet(product: dict[str, Any]) -> str:
@@ -323,6 +356,54 @@ def _filter_confident_candidates(candidates: list[dict[str, Any]], *, require_st
     return confident
 
 
+def _match_category_candidates(text: str, products: list[dict[str, Any]]) -> dict[str, Any]:
+    if _is_weak_product_query(text):
+        return {"status": "not_found", "product": None, "matches": []}
+
+    matched_terms = _extract_category_style_terms(text)
+    if len(matched_terms) < 2:
+        return {"status": "not_found", "product": None, "matches": []}
+
+    candidates: list[dict[str, Any]] = []
+    for product in products:
+        product_blob = _normalize_text(
+            " ".join(
+                [
+                    str(product.get("name") or ""),
+                    str(product.get("category") or ""),
+                    str(product.get("description") or ""),
+                    " ".join(_coerce_features(product.get("features"))),
+                ]
+            )
+        )
+        term_hits = []
+        for term in matched_terms:
+            if _product_matches_category_term(product_blob, term):
+                term_hits.append(term)
+
+        if len(term_hits) >= 2:
+            candidate = _score_product_candidate(text, product)
+            candidate["category_term_hits"] = len(term_hits)
+            candidate["matched_terms"] = term_hits
+            if float(candidate.get("score", 0.0)) < 70:
+                candidate["score"] = 70 + len(term_hits)
+            candidates.append(candidate)
+
+    if not candidates:
+        return {"status": "not_found", "product": None, "matches": []}
+
+    candidates.sort(
+        key=lambda item: (
+            -int(item.get("category_term_hits", 0)),
+            -float(item.get("score", 0.0)),
+            item["product"].get("name") or "",
+        )
+    )
+    if len(candidates) >= 2:
+        return {"status": "multiple", "product": None, "matches": [item["product"] for item in candidates], "candidates": candidates}
+    return {"status": "matched", "product": candidates[0]["product"], "matches": [item["product"] for item in candidates], "candidates": candidates}
+
+
 def _rank_products_for_query(query: str, products: list[dict[str, Any]], *, require_strong_name: bool) -> list[dict[str, Any]]:
     candidates = [_score_product_candidate(query, product) for product in products]
     candidates.sort(key=lambda item: (-float(item.get("score", 0.0)), item["product"].get("name") or ""))
@@ -366,6 +447,10 @@ def match_product(keyword: str, products: list[dict[str, Any]]) -> dict[str, Any
         ranked = _rank_products_for_query(trimmed_keyword, normalized_exact_matches, require_strong_name=False)
         return _build_match_result(ranked)
 
+    category_match = _match_category_candidates(trimmed_keyword, products)
+    if category_match["status"] != "not_found":
+        return category_match
+
     keyword_tokens = _split_keywords(trimmed_keyword)
     signal_text = _extract_query_signal_text(trimmed_keyword)
     if _is_generic_query(keyword_tokens) or len(signal_text) < 2:
@@ -396,6 +481,10 @@ def match_product_from_query(text: str, products: list[dict[str, Any]]) -> dict[
             return {"status": "matched", "product": direct_name_matches[0], "matches": direct_name_matches}
         ranked = _rank_products_for_query(text, direct_name_matches, require_strong_name=True)
         return _build_match_result(ranked)
+
+    category_match = _match_category_candidates(text, products)
+    if category_match["status"] == "multiple":
+        return category_match
 
     ranked = _rank_products_for_query(text, products, require_strong_name=True)
     if ranked:

@@ -82,9 +82,27 @@ modules = {
     "nlp_coze": nlp_coze
 }
 
+GUIDE_IDENTITY_REPLY = "我是这边的导购助手，可以帮你介绍商品、推荐款式、解答面料和洗护问题～你现在想看哪一类呢？"
+GUIDE_IDENTITY_QUERIES = (
+    "你是谁",
+    "介绍一下你自己",
+    "你能做什么",
+    "你叫什么",
+    "你是做什么的",
+)
+
+
+def get_guide_identity_reply(text: str) -> str:
+    content = str(text or "").strip()
+    if not content:
+        return ""
+    if any(query in content for query in GUIDE_IDENTITY_QUERIES):
+        return GUIDE_IDENTITY_REPLY
+    return ""
+
 
 # 大语言模型回复
-def handle_chat_message(msg, username='User', request_id='', chat_context=None):
+def handle_chat_message(msg, username='User', request_id='', chat_context=None, has_product_context=False):
     text = ''
     textlist = []
     started_at = time.perf_counter()
@@ -114,7 +132,12 @@ def handle_chat_message(msg, username='User', request_id='', chat_context=None):
         else:
             uid = member_db.new_instance().find_user(username)
             if module_name == "nlp_gpt":
-                text = selected_module.question(msg, uid, chat_context=chat_context)
+                text = selected_module.question(
+                    msg,
+                    uid,
+                    chat_context=chat_context,
+                    has_product_context=has_product_context,
+                )
             else:
                 text = selected_module.question(msg, uid)
         util.printInfo(1, username, '自然语言处理完成. 耗时: {} ms'.format(math.floor((time.time() - tm) * 1000)))
@@ -257,14 +280,17 @@ class FeiFei:
                         used_audit_fallback = True
                         util.printInfo(1, username, f'[Audit] User input blocked: {input_forbidden_word}')
                     else:
-                        intro_resolution = resolve_product_intro(original_msg)
-                        if intro_resolution.get("reply_text"):
-                            answer = intro_resolution.get("reply_text")
-                        elif not intro_resolution.get("handled"):
-                            answer = self.__get_answer(interact.interleaver, original_msg)
+                        identity_reply = get_guide_identity_reply(original_msg)
+                        if identity_reply:
+                            answer = identity_reply
+                        else:
+                            intro_resolution = resolve_product_intro(original_msg)
+                            if intro_resolution.get("reply_text"):
+                                answer = intro_resolution.get("reply_text")
 
                     llm_input = original_msg
                     should_call_llm = (not has_input_forbidden) and answer is None
+                    has_product_context = intro_resolution.get("response_mode") in ("product_intro", "product_qa") if intro_resolution else False
                     knowledge_context = None
                     knowledge_domain = detect_knowledge_domain(original_msg)
                     knowledge_dataset_name = ""
@@ -311,6 +337,7 @@ class FeiFei:
                                 username,
                                 request_id=request_id,
                                 chat_context=chat_context,
+                                has_product_context=has_product_context,
                             )
                             record_generated_qa = not intro_resolution.get("handled")
                     else:
