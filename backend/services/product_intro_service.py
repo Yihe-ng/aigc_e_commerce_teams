@@ -7,23 +7,38 @@ from backend.services.storage import get_bucket, read_json_object
 
 
 _GENERIC_INTRO_RE = re.compile(
-    "^(?:\u4ecb\u7ecd\u4e00\u4e0b|\u4ecb\u7ecd\u4e0b|\u4ecb\u7ecd|\u8bb2\u8bb2|\u8bf4\u8bf4|\u770b\u770b)(?:\u5df2\u6709\u7684|\u73b0\u6709\u7684)?\u5546\u54c1[\u3002\uff01!\uff1f?]*$"
+    "^(?:介绍一下|介绍下|介绍|讲讲|说说|看看)(?:已有的|现有的)?商品[。！!？?]*$"
 )
 _FIRST_PRODUCT_RE = re.compile(
-    "^(?:\u4ecb\u7ecd\u4e00\u4e0b|\u4ecb\u7ecd\u4e0b|\u4ecb\u7ecd|\u8bb2\u8bb2|\u8bf4\u8bf4|\u770b\u770b)(?:\u7b2c1\u4e2a|\u7b2c\u4e00\u4e2a)\u5546\u54c1[\u3002\uff01!\uff1f?]*$"
+    "^(?:介绍一下|介绍下|介绍|讲讲|说说|看看)(?:第1个|第一个)商品[。！!？?]*$"
 )
-_INTRO_PREFIX_RE = re.compile(
-    "^(?:\u4ecb\u7ecd\u4e00\u4e0b|\u4ecb\u7ecd\u4e0b|\u4ecb\u7ecd|\u8bb2\u8bb2|\u8bf4\u8bf4|\u770b\u770b)"
-)
-_NORMALIZE_RE = re.compile(
-    "[\s\-_.,\uff0c\u3002\uff01\uff1f\u3001\u201c\u201d\"'\uff08\uff09()\u3010\u3011\[\]:\uff1a;\uff1b]+"
-)
-_KEYWORD_TOKEN_RE = re.compile("[a-z0-9]+(?:[\u4e00-\u9fff]{1,3})?|[\u4e00-\u9fff]+")
+_INTRO_PREFIX_RE = re.compile("^(?:介绍一下|介绍下|介绍|讲讲|说说|看看)")
+_NORMALIZE_RE = re.compile(r"[\s\-_.,，。！？、“”\"'（）()\[\]【】:：;；/]+")
+_KEYWORD_TOKEN_RE = re.compile(r"[a-z0-9]+(?:[\u4e00-\u9fff]{1,3})?|[\u4e00-\u9fff]+")
 _TEXT_VARIANT_MAP = str.maketrans({
-    "\u6856": "\u6064",
-    "\uff34": "T",
-    "\uff54": "t",
+    "桖": "恤",
+    "Ｔ": "T",
+    "ｔ": "t",
 })
+_GENERIC_PRODUCT_TOKENS = {
+    "商品", "这件", "那件", "款", "衣服", "上衣", "外套", "开衫", "针织衫", "衬衫", "裙子",
+    "裤子", "t恤", "短t", "短袖", "连衣裙", "半裙", "牛仔裤"
+}
+_GENERIC_QUERY_HINTS = (
+    "我想看", "想看", "看看", "介绍一下", "介绍下", "介绍", "讲讲", "说说",
+    "这件衣服", "这件", "这款衣服", "这款", "这个衣服", "这个", "那件", "那款",
+    "怎么样", "怎么", "想了解"
+)
+_WEAK_QUERY_PREFIXES = ("这件", "这款", "这个", "那件", "那款")
+_WEAK_QUERY_SUFFIXES = ("怎么样", "如何", "怎么选", "怎么回事")
+_WEAK_QUERY_EXACT = {
+    "这件衣服怎么样",
+    "这件怎么样",
+    "这款衣服怎么样",
+    "这款怎么样",
+    "这个衣服怎么样",
+    "这个怎么样",
+}
 
 
 def _normalize_text(value: str | None) -> str:
@@ -33,8 +48,8 @@ def _normalize_text(value: str | None) -> str:
 
 def _strip_intro_suffix(text: str) -> str:
     stripped = str(text or "").strip()
-    stripped = re.sub("[\u3002\uff01!\uff1f?]+$", "", stripped)
-    if stripped.endswith("\u5546\u54c1"):
+    stripped = re.sub(r"[。！!？?]+$", "", stripped)
+    if stripped.endswith("商品"):
         stripped = stripped[:-2]
     return stripped.strip()
 
@@ -50,7 +65,7 @@ def _extract_intro_keyword(text: str) -> str:
 
     remainder = raw_text[prefix_match.end():].strip()
     remainder = _strip_intro_suffix(remainder)
-    if not remainder or remainder in {"\u5df2\u6709\u7684", "\u73b0\u6709\u7684"}:
+    if not remainder or remainder in {"已有的", "现有的"}:
         return ""
     return remainder
 
@@ -61,7 +76,7 @@ def _extract_direct_product_keyword(text: str) -> str:
         return ""
 
     stripped = _strip_intro_suffix(raw_text)
-    if stripped != raw_text and stripped and stripped not in {"\u5df2\u6709\u7684", "\u73b0\u6709\u7684"}:
+    if stripped != raw_text and stripped and stripped not in {"已有的", "现有的"}:
         return stripped
     return ""
 
@@ -70,7 +85,8 @@ def _split_keywords(value: str | None) -> list[str]:
     text = str(value or "").strip()
     if not text:
         return []
-    coarse_parts = re.split("[\s,\uff0c\u3001/]+", text)
+
+    coarse_parts = re.split(r"[\s,，、/]+", text)
     tokens: list[str] = []
     for part in coarse_parts:
         mixed_parts = _KEYWORD_TOKEN_RE.findall(str(part or "").lower())
@@ -97,7 +113,7 @@ def _coerce_features(value: Any) -> list[str]:
     if isinstance(value, list):
         return [str(item).strip() for item in value if str(item or "").strip()]
     if isinstance(value, str):
-        return [item.strip() for item in re.split("[\uff0c,\u3001/]", value) if item.strip()]
+        return [item.strip() for item in re.split(r"[，,、/]", value) if item.strip()]
     return []
 
 
@@ -158,96 +174,243 @@ def pick_default_product(products: list[dict[str, Any]]) -> dict[str, Any] | Non
     return products[0] if products else None
 
 
+def _token_overlap_score(source_tokens: list[str], target_tokens: list[str]) -> float:
+    if not source_tokens or not target_tokens:
+        return 0.0
+    overlap = sum(1 for token in source_tokens if token in target_tokens)
+    return overlap / max(len(source_tokens), 1)
+
+
+def _is_generic_query(tokens: list[str]) -> bool:
+    meaningful_tokens = [token for token in tokens if token]
+    if not meaningful_tokens:
+        return True
+    return all(token in _GENERIC_PRODUCT_TOKENS for token in meaningful_tokens)
+
+
+def _extract_query_signal_text(text: str) -> str:
+    normalized_text = _normalize_text(text)
+    signal_text = normalized_text
+    for hint in _GENERIC_QUERY_HINTS:
+        signal_text = signal_text.replace(_normalize_text(hint), "")
+    for token in _GENERIC_PRODUCT_TOKENS:
+        signal_text = signal_text.replace(_normalize_text(token), "")
+    return signal_text.strip()
+
+
+def _is_weak_product_query(text: str) -> bool:
+    raw_text = str(text or "").strip()
+    if not raw_text:
+        return True
+    if raw_text in _WEAK_QUERY_EXACT:
+        return True
+    normalized_text = _normalize_text(raw_text)
+    normalized_prefixes = [_normalize_text(prefix) for prefix in _WEAK_QUERY_PREFIXES]
+    normalized_suffixes = [_normalize_text(suffix) for suffix in _WEAK_QUERY_SUFFIXES]
+    return any(normalized_text.startswith(prefix) for prefix in normalized_prefixes) and any(normalized_text.endswith(suffix) for suffix in normalized_suffixes)
+
+
+def _build_candidate_snippet(product: dict[str, Any]) -> str:
+    product_features = _coerce_features(product.get("features"))
+    product_description = str(product.get("description") or "").strip()
+    product_category = str(product.get("category") or "").strip()
+    product_price = str(product.get("price") or "").strip()
+    raw_info = product.get("raw_info") if isinstance(product.get("raw_info"), dict) else {}
+
+    if product_features:
+        return "，".join(product_features[:2])
+    if product_description:
+        return product_description[:24]
+    if product_category and product_price:
+        return f"{product_category}，价格约{product_price}"
+    if product_category:
+        return f"偏{product_category}"
+
+    for key, value in raw_info.items():
+        if key in {"name", "price", "description", "features", "category"}:
+            continue
+        if isinstance(value, str) and value.strip():
+            return value.strip()[:24]
+        if isinstance(value, list):
+            values = [str(item).strip() for item in value if str(item).strip()]
+            if values:
+                return "，".join(values[:2])
+    return ""
+
+
+def _score_product_candidate(query: str, product: dict[str, Any]) -> dict[str, Any]:
+    trimmed_query = str(query or "").strip()
+    normalized_query = _normalize_text(trimmed_query)
+    normalized_name = _normalize_text(product.get("name"))
+    query_tokens = _split_keywords(trimmed_query)
+    name_tokens = _split_keywords(product.get("name"))
+    feature_tokens = _split_keywords(" ".join(_coerce_features(product.get("features"))))
+    description_tokens = _split_keywords(product.get("description"))
+    category_tokens = _split_keywords(product.get("category"))
+
+    score = 0.0
+    strong_name_signal = False
+    full_name_in_query = False
+    partial_name_ratio = 0.0
+
+    if trimmed_query and str(product.get("name") or "").strip() == trimmed_query:
+        score += 120
+        strong_name_signal = True
+        full_name_in_query = True
+    elif normalized_query and normalized_name == normalized_query:
+        score += 110
+        strong_name_signal = True
+        full_name_in_query = True
+    elif normalized_name and normalized_name in normalized_query:
+        score += 95
+        strong_name_signal = True
+        full_name_in_query = True
+    elif normalized_query and normalized_query in normalized_name and len(normalized_query) >= 2:
+        score += 80
+        partial_name_ratio = len(normalized_query) / max(len(normalized_name), 1)
+        if partial_name_ratio >= 0.72:
+            strong_name_signal = True
+
+    name_overlap = _token_overlap_score(name_tokens, query_tokens)
+    feature_overlap = _token_overlap_score(feature_tokens, query_tokens)
+    description_overlap = _token_overlap_score(description_tokens, query_tokens)
+    category_overlap = _token_overlap_score(category_tokens, query_tokens)
+
+    score += name_overlap * 60
+    score += feature_overlap * 18
+    score += description_overlap * 12
+    score += category_overlap * 10
+
+    if len(name_tokens) >= 2 and name_overlap >= 0.66:
+        strong_name_signal = True
+        score += 18
+    elif len(name_tokens) == 1 and normalized_name and normalized_name in normalized_query:
+        strong_name_signal = True
+
+    return {
+        "product": product,
+        "score": round(score, 2),
+        "strong_name_signal": strong_name_signal,
+        "full_name_in_query": full_name_in_query,
+        "partial_name_ratio": round(partial_name_ratio, 2),
+        "query_tokens": query_tokens,
+        "name_overlap": round(name_overlap, 2),
+        "feature_overlap": round(feature_overlap, 2),
+        "description_overlap": round(description_overlap, 2),
+        "category_overlap": round(category_overlap, 2),
+        "snippet": _build_candidate_snippet(product),
+    }
+
+
+def _filter_confident_candidates(candidates: list[dict[str, Any]], *, require_strong_name: bool) -> list[dict[str, Any]]:
+    confident = []
+    for candidate in candidates:
+        score = float(candidate.get("score", 0.0))
+        strong_name_signal = bool(candidate.get("strong_name_signal"))
+        signal_text = _extract_query_signal_text("".join(candidate.get("query_tokens", [])))
+        if not require_strong_name and len(signal_text) < 2 and not strong_name_signal:
+            continue
+        if require_strong_name and _is_generic_query(candidate.get("query_tokens", [])):
+            continue
+        if require_strong_name and len(signal_text) < 3:
+            continue
+        if require_strong_name and not strong_name_signal:
+            continue
+        if score >= 78:
+            confident.append(candidate)
+        elif strong_name_signal and score >= 68:
+            confident.append(candidate)
+    return confident
+
+
+def _rank_products_for_query(query: str, products: list[dict[str, Any]], *, require_strong_name: bool) -> list[dict[str, Any]]:
+    candidates = [_score_product_candidate(query, product) for product in products]
+    candidates.sort(key=lambda item: (-float(item.get("score", 0.0)), item["product"].get("name") or ""))
+    return _filter_confident_candidates(candidates, require_strong_name=require_strong_name)
+
+
+def _build_match_result(candidates: list[dict[str, Any]]) -> dict[str, Any]:
+    if not candidates:
+        return {"status": "not_found", "product": None, "matches": []}
+
+    top = candidates[0]
+    if len(candidates) == 1:
+        return {"status": "matched", "product": top["product"], "matches": [item["product"] for item in candidates], "candidates": candidates}
+
+    second = candidates[1]
+    if bool(top.get("full_name_in_query")) and not bool(second.get("full_name_in_query")):
+        return {"status": "matched", "product": top["product"], "matches": [item["product"] for item in candidates], "candidates": candidates}
+    if float(top.get("score", 0.0)) - float(second.get("score", 0.0)) >= 18:
+        return {"status": "matched", "product": top["product"], "matches": [item["product"] for item in candidates], "candidates": candidates}
+
+    return {"status": "multiple", "product": None, "matches": [item["product"] for item in candidates], "candidates": candidates}
+
+
 def match_product(keyword: str, products: list[dict[str, Any]]) -> dict[str, Any]:
     trimmed_keyword = str(keyword or "").strip()
     if not trimmed_keyword:
         return {"status": "not_found", "product": None, "matches": []}
 
-    exact_matches = [
-        product for product in products if str(product.get("name") or "").strip() == trimmed_keyword
-    ]
+    exact_matches = [product for product in products if str(product.get("name") or "").strip() == trimmed_keyword]
     if len(exact_matches) == 1:
         return {"status": "matched", "product": exact_matches[0], "matches": exact_matches}
     if len(exact_matches) > 1:
-        return {"status": "multiple", "product": None, "matches": exact_matches}
+        ranked = _rank_products_for_query(trimmed_keyword, exact_matches, require_strong_name=False)
+        return _build_match_result(ranked)
 
     normalized_keyword = _normalize_text(trimmed_keyword)
-    normalized_exact_matches = [
-        product for product in products if _normalize_text(product.get("name")) == normalized_keyword
-    ]
+    normalized_exact_matches = [product for product in products if _normalize_text(product.get("name")) == normalized_keyword]
     if len(normalized_exact_matches) == 1:
-        return {
-            "status": "matched",
-            "product": normalized_exact_matches[0],
-            "matches": normalized_exact_matches,
-        }
+        return {"status": "matched", "product": normalized_exact_matches[0], "matches": normalized_exact_matches}
     if len(normalized_exact_matches) > 1:
-        return {"status": "multiple", "product": None, "matches": normalized_exact_matches}
-
-    contains_matches = [
-        product
-        for product in products
-        if normalized_keyword and normalized_keyword in _normalize_text(product.get("name"))
-    ]
-    if len(contains_matches) == 1:
-        return {"status": "matched", "product": contains_matches[0], "matches": contains_matches}
-    if len(contains_matches) > 1:
-        return {"status": "multiple", "product": None, "matches": contains_matches}
+        ranked = _rank_products_for_query(trimmed_keyword, normalized_exact_matches, require_strong_name=False)
+        return _build_match_result(ranked)
 
     keyword_tokens = _split_keywords(trimmed_keyword)
-    if keyword_tokens:
-        token_matches = []
-        for product in products:
-            normalized_name = _normalize_text(product.get("name"))
-            if all(token in normalized_name for token in keyword_tokens):
-                token_matches.append(product)
+    signal_text = _extract_query_signal_text(trimmed_keyword)
+    if _is_generic_query(keyword_tokens) or len(signal_text) < 2:
+        return {"status": "not_found", "product": None, "matches": []}
 
-        if len(token_matches) == 1:
-            return {"status": "matched", "product": token_matches[0], "matches": token_matches}
-        if len(token_matches) > 1:
-            return {"status": "multiple", "product": None, "matches": token_matches}
-
-    return {"status": "not_found", "product": None, "matches": []}
+    ranked = _rank_products_for_query(trimmed_keyword, products, require_strong_name=False)
+    return _build_match_result(ranked)
 
 
 def match_product_from_query(text: str, products: list[dict[str, Any]]) -> dict[str, Any]:
     normalized_text = _normalize_text(text)
     if not normalized_text:
         return {"status": "not_found", "product": None, "matches": []}
+    if _is_weak_product_query(text):
+        return {"status": "not_found", "product": None, "matches": []}
 
-    direct_matches = []
+    direct_name_matches = []
     for product in products:
         normalized_name = _normalize_text(product.get("name"))
         if normalized_name and normalized_name in normalized_text:
-            direct_matches.append(product)
+            direct_name_matches.append(product)
 
-    if len(direct_matches) == 1:
-        return {"status": "matched", "product": direct_matches[0], "matches": direct_matches}
-    if len(direct_matches) > 1:
-        return {"status": "multiple", "product": None, "matches": direct_matches}
+    if len(direct_name_matches) == 1:
+        return {"status": "matched", "product": direct_name_matches[0], "matches": direct_name_matches}
+    if len(direct_name_matches) > 1:
+        direct_name_matches.sort(key=lambda item: len(_normalize_text(item.get("name"))), reverse=True)
+        if len(direct_name_matches) == 1 or len(_normalize_text(direct_name_matches[0].get("name"))) > len(_normalize_text(direct_name_matches[1].get("name"))):
+            return {"status": "matched", "product": direct_name_matches[0], "matches": direct_name_matches}
+        ranked = _rank_products_for_query(text, direct_name_matches, require_strong_name=True)
+        return _build_match_result(ranked)
 
-    query_tokens = _split_keywords(text)
-    if not query_tokens:
+    ranked = _rank_products_for_query(text, products, require_strong_name=True)
+    if ranked:
+        return _build_match_result(ranked)
+
+    signal_text = _extract_query_signal_text(text)
+    signal_tokens = _split_keywords(signal_text)
+    if _is_generic_query(signal_tokens) or len(signal_text) < 2:
         return {"status": "not_found", "product": None, "matches": []}
 
-    token_matches = []
-    for product in products:
-        name_tokens = _split_keywords(product.get("name"))
-        if len(name_tokens) <= 1:
-            continue
-        if all(token in name_tokens for token in query_tokens):
-            token_matches.append(product)
-
-    if len(token_matches) == 1:
-        return {"status": "matched", "product": token_matches[0], "matches": token_matches}
-    if len(token_matches) > 1:
-        return {"status": "multiple", "product": None, "matches": token_matches}
-
-    return {"status": "not_found", "product": None, "matches": []}
+    ranked = _rank_products_for_query(signal_text, products, require_strong_name=False)
+    return _build_match_result(ranked)
 
 
 def _load_rag_context(product: dict[str, Any]) -> list[str]:
-    # Reserved for future retrieval augmentation.
     return []
 
 
@@ -258,30 +421,29 @@ def build_intro_prompt(product: dict[str, Any]) -> str:
     product_features = _coerce_features(product.get("features"))
     product_category = str(product.get("category") or "").strip()
     rag_context = _load_rag_context(product)
-    feature_text = "\u3001".join(product_features[:4])
-    rag_text = "\uff1b".join(rag_context)
+    feature_text = "、".join(product_features[:4])
+    rag_text = "；".join(rag_context)
 
     lines = [
-        "\u4f60\u662f\u4e00\u540d\u76f4\u64ad\u95f4\u4e3b\u64ad\uff0c\u8bf7\u7528\u81ea\u7136\u3001\u7b80\u6d01\u3001\u53e3\u8bed\u5316\u7684\u4e2d\u6587\u4ecb\u7ecd\u5546\u54c1\u3002",
-        f"\u5546\u54c1\u540d\u79f0\uff1a{product_name}",
+        "你是一名直播间主播，请用自然、简洁、口语化的中文介绍商品。",
+        f"商品名称：{product_name}",
     ]
-
     if product_category:
-        lines.append(f"\u5546\u54c1\u5206\u7c7b\uff1a{product_category}")
+        lines.append(f"商品分类：{product_category}")
     if product_price:
-        lines.append(f"\u5546\u54c1\u4ef7\u683c\uff1a{product_price}")
+        lines.append(f"商品价格：{product_price}")
     if product_description:
-        lines.append(f"\u5546\u54c1\u63cf\u8ff0\uff1a{product_description}")
+        lines.append(f"商品描述：{product_description}")
     if product_features:
-        lines.append(f"\u5546\u54c1\u5356\u70b9\uff1a{feature_text}")
+        lines.append(f"商品卖点：{feature_text}")
     if rag_context:
-        lines.append(f"\u8865\u5145\u4fe1\u606f\uff1a{rag_text}")
+        lines.append(f"补充信息：{rag_text}")
 
     lines.extend(
         [
-            "\u8bf7\u76f4\u63a5\u8f93\u51fa\u4e00\u5c0f\u6bb5\u9002\u5408\u76f4\u64ad\u53e3\u64ad\u7684\u4e2d\u6587\u4ecb\u7ecd\u3002",
-            "\u4e0d\u8981\u89e3\u91ca\u89c4\u5219\uff0c\u4e0d\u8981\u8f93\u51fa\u63d0\u793a\u8bcd\uff0c\u4e0d\u8981\u8f93\u51fa\u82f1\u6587\u3002",
-            "\u5982\u679c\u4fe1\u606f\u4e0d\u8db3\uff0c\u53ea\u57fa\u4e8e\u7ed9\u5b9a\u5546\u54c1\u4e8b\u5b9e\u4ecb\u7ecd\uff0c\u4e0d\u8981\u7f16\u9020\u4e0d\u5b58\u5728\u7684\u53c2\u6570\u3002",
+            "请先讲清楚这款商品最值得关注的亮点，再自然补充适合的人群或场景。",
+            "语气要像专业又亲切的导购，不要浮夸，不要像硬广。",
+            "直接输出面向用户的中文介绍，不要解释规则，不要输出提示词。",
         ]
     )
     return "\n".join(lines)
@@ -319,9 +481,9 @@ def _collect_product_context_lines(product: dict[str, Any]) -> list[str]:
 
 def build_product_question_prompt(product: dict[str, Any], original_text: str) -> str:
     lines = [
-        "你是一名直播间主播，请基于已知商品资料回答用户当前的问题。",
-        "回答时要自然、简洁、口语化，不要编造商品资料里没有的参数。",
-        "如果商品资料不足，可以明确说明已知信息有限，再结合常识做保守表达。",
+        "你是一名直播间导购，请基于已知商品资料回答用户当前的问题。",
+        "先直接回答用户最关心的问题，再结合商品特点、描述和卖点做自然补充。",
+        "语气要亲切、专业、可信，可以适度给出场景或搭配建议，但不要浮夸，不要像硬广。",
     ]
     lines.extend(_collect_product_context_lines(product))
     lines.append(f"用户问题：{str(original_text or '').strip()}")
@@ -332,50 +494,91 @@ def build_product_question_prompt(product: dict[str, Any], original_text: str) -
 def build_not_found_prompt(original_text: str, keyword: str) -> str:
     return "\n".join(
         [
-            f"\u7528\u6237\u539f\u8bdd\uff1a{str(original_text or '').strip()}",
+            f"用户原话：{str(original_text or '').strip()}",
             (
-                f"\u8bf7\u7528\u81ea\u7136\u3001\u7b80\u6d01\u3001\u53cb\u597d\u7684\u4e2d\u6587\u56de\u590d\uff1a"
-                f"\u5f53\u524d\u6ca1\u6709\u627e\u5230\u540d\u79f0\u5305\u542b\u201c{str(keyword or '').strip()}\u201d\u7684\u5546\u54c1\uff0c"
-                "\u5e76\u5f15\u5bfc\u7528\u6237\u63d0\u4f9b\u66f4\u5177\u4f53\u3001\u66f4\u5b8c\u6574\u7684\u5546\u54c1\u540d\u79f0\u3002"
+                f"请用自然、简洁、友好的中文回复：当前没有找到名称包含“{str(keyword or '').strip()}”的商品，"
+                "并引导用户提供更具体、更完整的商品名称。"
             ),
-            "\u53ea\u8f93\u51fa\u9762\u5411\u7528\u6237\u7684\u4e2d\u6587\u56de\u590d\uff0c\u4e0d\u8981\u89e3\u91ca\u89c4\u5219\uff0c\u4e0d\u8981\u8f93\u51fa\u82f1\u6587\u3002",
+            "只输出面向用户的中文回复，不要解释规则，不要输出英文。",
         ]
     )
 
 
+def _limit_candidate_candidates(matches: list[dict[str, Any]] | list[dict]) -> list[dict]:
+    limited = []
+    for item in matches[:2]:
+        if "product" in item:
+            limited.append(item)
+        else:
+            limited.append({"product": item, "snippet": _build_candidate_snippet(item), "score": 0.0})
+    return limited
+
+
 def build_multiple_matches_prompt(original_text: str, matches: list[dict[str, Any]]) -> str:
-    candidate_names = [str(item.get("name") or "").strip() for item in matches if str(item.get("name") or "").strip()]
-    candidate_text = "\u3001".join(candidate_names[:5]) if candidate_names else "\u591a\u4e2a\u5546\u54c1"
+    top_candidates = _limit_candidate_candidates(matches)
+    candidate_lines: list[str] = []
+    for index, item in enumerate(top_candidates, start=1):
+        product = item["product"]
+        name = str(product.get("name") or "").strip()
+        snippet = str(item.get("snippet") or "").strip()
+        if snippet:
+            candidate_lines.append(f"{index}. {name}（{snippet}）")
+        else:
+            candidate_lines.append(f"{index}. {name}")
+
+    candidate_text = "；".join(candidate_lines) if candidate_lines else "几款相关商品"
     return "\n".join(
         [
-            f"\u7528\u6237\u539f\u8bdd\uff1a{str(original_text or '').strip()}",
+            f"用户原话：{str(original_text or '').strip()}",
             (
-                "\u8bf7\u7528\u81ea\u7136\u3001\u7b80\u6d01\u3001\u53cb\u597d\u7684\u4e2d\u6587\u56de\u590d\uff1a"
-                "\u5f53\u524d\u5339\u914d\u5230\u591a\u4e2a\u5546\u54c1\uff0c\u8bf7\u7528\u6237\u8bf4\u5f97\u66f4\u5177\u4f53\u4e00\u4e9b\u3002"
+                "请用自然、亲切、像导购确认需求一样的中文回复。"
+                "先告诉用户你已经帮他锁定了1到2款可能相关的商品，再邀请他确认具体是哪一款。"
             ),
-            f"\u5019\u9009\u5546\u54c1\uff1a{candidate_text}",
-            "\u53ea\u8f93\u51fa\u9762\u5411\u7528\u6237\u7684\u4e2d\u6587\u56de\u590d\uff0c\u4e0d\u8981\u5217\u51fa\u5185\u90e8\u63d0\u793a\u8bcd\uff0c\u4e0d\u8981\u8f93\u51fa\u82f1\u6587\u3002",
+            f"候选商品：{candidate_text}",
+            "回复里要顺手告诉用户：确认商品后，我可以继续帮你看材质、场景、搭配或洗护建议。",
+            "不要像系统报错，不要说“请更具体一些哦”这种机械提示，不要编造商品信息。",
         ]
+    )
+
+
+def build_multiple_matches_reply(original_text: str, matches: list[dict[str, Any]]) -> str:
+    top_candidates = _limit_candidate_candidates(matches)
+    if not top_candidates:
+        return "我这边先帮你看看更具体的商品款式，你也可以直接回我完整商品名，我继续帮你看。"
+
+    candidate_lines: list[str] = []
+    for index, item in enumerate(top_candidates, start=1):
+        product = item["product"]
+        name = str(product.get("name") or "").strip()
+        snippet = str(item.get("snippet") or "").strip()
+        if snippet:
+            candidate_lines.append(f"{index}. {name}（{snippet}）")
+        else:
+            candidate_lines.append(f"{index}. {name}")
+
+    if len(candidate_lines) == 1:
+        return (
+            f"你是在问 {candidate_lines[0]} 吗？"
+            "如果是这款，我可以继续帮你看材质、场景、搭配或洗护建议。"
+        )
+
+    return (
+        f"我这边先帮你锁定了两款可能相关的商品：{'；'.join(candidate_lines)}。"
+        "你想先了解哪一款呢？你回我商品名，我继续帮你看材质、场景、搭配或洗护建议。"
     )
 
 
 def build_no_products_prompt(original_text: str) -> str:
     return "\n".join(
         [
-            f"\u7528\u6237\u539f\u8bdd\uff1a{str(original_text or '').strip()}",
-            (
-                "\u8bf7\u7528\u81ea\u7136\u3001\u7b80\u6d01\u3001\u53cb\u597d\u7684\u4e2d\u6587\u56de\u590d\uff1a"
-                "\u5f53\u524d\u5546\u54c1\u5e93\u91cc\u8fd8\u6ca1\u6709\u53ef\u4ecb\u7ecd\u7684\u5546\u54c1\uff0c"
-                "\u8bf7\u7528\u6237\u5148\u8865\u5145\u5546\u54c1\u57fa\u7840\u4fe1\u606f\u3002"
-            ),
-            "\u53ea\u8f93\u51fa\u9762\u5411\u7528\u6237\u7684\u4e2d\u6587\u56de\u590d\uff0c\u4e0d\u8981\u8f93\u51fa\u82f1\u6587\u3002",
+            f"用户原话：{str(original_text or '').strip()}",
+            "请用自然、简洁、友好的中文回复：当前商品库里还没有可介绍的商品，请用户先补充商品基础信息。",
+            "只输出面向用户的中文回复，不要输出英文。",
         ]
     )
 
 
-def resolve_product_intro(
-    text: str, products: list[dict[str, Any]] | None = None, bucket=None
-) -> dict[str, Any]:
+def resolve_product_intro(text: str, products: list[dict[str, Any]] | None = None, bucket=None) -> dict[str, Any]:
     intent = detect_intro_intent(text)
     available_products = products if products is not None else load_products_for_intro(bucket=bucket)
 
@@ -392,14 +595,16 @@ def resolve_product_intro(
                 "response_mode": "product_qa",
             }
         if query_match["status"] == "multiple":
+            multiple_reply = build_multiple_matches_reply(text, query_match.get("candidates") or query_match["matches"])
             return {
                 "handled": True,
-                "llm_input": build_multiple_matches_prompt(text, query_match["matches"]),
-                "reply_text": None,
+                "llm_input": build_multiple_matches_prompt(text, query_match.get("candidates") or query_match["matches"]),
+                "reply_text": multiple_reply,
                 "matched_product": None,
                 "allow_knowledge_enhance": False,
                 "response_mode": "product_multiple",
             }
+
         direct_keyword = _extract_direct_product_keyword(text)
         if not direct_keyword:
             return {
@@ -430,6 +635,8 @@ def resolve_product_intro(
                 "llm_input": build_no_products_prompt(text),
                 "reply_text": None,
                 "matched_product": None,
+                "allow_knowledge_enhance": False,
+                "response_mode": "product_empty",
             }
         return {
             "handled": True,
@@ -453,10 +660,11 @@ def resolve_product_intro(
         }
 
     if match_result["status"] == "multiple":
+        multiple_reply = build_multiple_matches_reply(text, match_result.get("candidates") or match_result["matches"])
         return {
             "handled": True,
-            "llm_input": build_multiple_matches_prompt(text, match_result["matches"]),
-            "reply_text": None,
+            "llm_input": build_multiple_matches_prompt(text, match_result.get("candidates") or match_result["matches"]),
+            "reply_text": multiple_reply,
             "matched_product": None,
             "allow_knowledge_enhance": False,
             "response_mode": "product_multiple",
@@ -474,10 +682,11 @@ def resolve_product_intro(
             "response_mode": "product_qa",
         }
     if query_match["status"] == "multiple":
+        multiple_reply = build_multiple_matches_reply(text, query_match.get("candidates") or query_match["matches"])
         return {
             "handled": True,
-            "llm_input": build_multiple_matches_prompt(text, query_match["matches"]),
-            "reply_text": None,
+            "llm_input": build_multiple_matches_prompt(text, query_match.get("candidates") or query_match["matches"]),
+            "reply_text": multiple_reply,
             "matched_product": None,
             "allow_knowledge_enhance": False,
             "response_mode": "product_multiple",

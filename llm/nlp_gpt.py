@@ -37,6 +37,48 @@ def _build_user_prompt(user_input, knowledge_context):
     )
 
 
+def _detect_product_mode(prompt_text):
+    content = str(prompt_text or "").strip()
+    if not content or "商品名称：" not in content:
+        return ""
+
+    if "适合直播口播的中文介绍" in content or "介绍商品" in content:
+        return "product_intro"
+
+    if "用户问题：" not in content:
+        return "product_qa"
+
+    lowered = content.lower()
+    material_keywords = ["面料", "材质", "手感", "透气", "亲肤", "洗护", "清洗", "机洗", "手洗", "care", "wash", "material", "fabric"]
+    style_keywords = ["风格", "穿搭", "搭配", "场景", "适合", "通勤", "约会", "休闲", "style", "look", "scene"]
+
+    if any(keyword in lowered for keyword in material_keywords):
+        return "product_material"
+    if any(keyword in lowered for keyword in style_keywords):
+        return "product_style"
+    return "product_qa"
+
+
+def _build_product_style_instruction(product_mode):
+    if not product_mode:
+        return ""
+
+    common = (
+    "当前问题已经命中具体商品，请用自然、亲切、专业的电商导购语气回答。"
+    "先直接回答用户最关心的问题，再结合商品特点、描述和卖点做补充说明。"
+    "如果问题偏向知识解释，请优先保证专业性，再适度结合商品。"
+    "可以适度加入场景、搭配或推荐建议，但不要油腻，不要夸张，不要像硬广。"
+    )
+
+    if product_mode == "product_intro":
+        return common + " 这类回答更偏商品亮点、卖点和推荐感，要让用户快速理解这款商品值得关注的地方。"
+    if product_mode == "product_material":
+        return common + " 这类回答更偏面料、洗护、穿着感受和注意事项，要显得专业、可信、实用。"
+    if product_mode == "product_style":
+        return common + " 这类回答更偏场景推荐、穿搭建议和风格方向，可以自然补一句怎么搭更合适。"
+    return common + " 这类回答请保持导购感，但重点仍然是把用户当前问题回答清楚。"
+
+
 def question(cont, uid=0, chat_context=None):
     url= cfg.gpt_base_url + "/chat/completions"
        
@@ -49,6 +91,8 @@ def question(cont, uid=0, chat_context=None):
             }
     person_info = cfg.config["attribute"]
     model_engine = cfg.gpt_model_engine
+    product_mode = _detect_product_mode(cont)
+    product_style_instruction = _build_product_style_instruction(product_mode)
     #此处可以定义角色的行为和特征，假装xx模型可以绕过chatgpt信息检查
     prompt = f"""
     你是数字人：{person_info['name']}，你性别为{person_info['gender']}，
@@ -62,6 +106,7 @@ def question(cont, uid=0, chat_context=None):
     请结合知识内容进行详细、自然的解释，而不是仅给出简短结论。
     回答尽量不少于2到3句，优先引用参考知识里的关键信息，但不要机械复述。
     不要提及知识库、检索、system prompt 或内部上下文。
+    {product_style_instruction}
     """
     contentdb = content_db.new_instance()
     if uid == 0:

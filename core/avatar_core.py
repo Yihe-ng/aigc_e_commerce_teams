@@ -258,7 +258,9 @@ class FeiFei:
                         util.printInfo(1, username, f'[Audit] User input blocked: {input_forbidden_word}')
                     else:
                         intro_resolution = resolve_product_intro(original_msg)
-                        if not intro_resolution.get("handled"):
+                        if intro_resolution.get("reply_text"):
+                            answer = intro_resolution.get("reply_text")
+                        elif not intro_resolution.get("handled"):
                             answer = self.__get_answer(interact.interleaver, original_msg)
 
                     llm_input = original_msg
