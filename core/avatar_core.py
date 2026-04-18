@@ -256,15 +256,27 @@ class FeiFei:
                     has_input_forbidden = False
                     input_forbidden_word = ""
                     if getattr(cfg, "audit_enabled", True) and getattr(cfg, "audit_input_enabled", True):
-                        has_input_forbidden, input_forbidden_word = check_forbidden_text(original_msg)
-                        trace_log(
-                            module="avatar",
-                            stage="audit_input",
-                            status="blocked" if has_input_forbidden else "pass",
-                            request_id=request_id,
-                            user=username,
-                            blocked_word=input_forbidden_word if has_input_forbidden else "",
-                        )
+                        try:
+                            has_input_forbidden, input_forbidden_word = check_forbidden_text(original_msg)
+                            trace_log(
+                                module="avatar",
+                                stage="audit_input",
+                                status="blocked" if has_input_forbidden else "pass",
+                                request_id=request_id,
+                                user=username,
+                                blocked_word=input_forbidden_word if has_input_forbidden else "",
+                            )
+                        except Exception as e:
+                            trace_log(
+                                module="avatar",
+                                stage="audit_input",
+                                status="error",
+                                request_id=request_id,
+                                user=username,
+                                error=str(e),
+                            )
+                            has_input_forbidden = False
+                            input_forbidden_word = ""
                     else:
                         trace_log(
                             module="avatar",

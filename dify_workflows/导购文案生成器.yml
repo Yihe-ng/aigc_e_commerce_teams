@@ -12,6 +12,11 @@ dependencies:
   value:
     marketplace_plugin_unique_identifier: langgenius/longcat:0.0.4@0b1183b9a46499db54e0fe00df51c3fbcaf051c1d212db7184a01e1ab8748128
     version: null
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/siliconflow:0.0.47@1dc82901e33f15a28b28a8e4996dc222c99b85bda95f8224525875e5121fc21d
+    version: null
 kind: app
 version: 0.6.0
 workflow:
@@ -77,15 +82,6 @@ workflow:
       type: custom
     - data:
         sourceType: llm
-        targetType: llm
-      id: 1744362990000-source-1744363000000-target
-      source: '1744362990000'
-      sourceHandle: source
-      target: '1744363000000'
-      targetHandle: target
-      type: custom
-    - data:
-        sourceType: llm
         targetType: code
       id: 1744363000000-source-1744363010000-target
       source: '1744363000000'
@@ -94,14 +90,62 @@ workflow:
       targetHandle: target
       type: custom
     - data:
+        isInLoop: false
+        sourceType: llm
+        targetType: knowledge-retrieval
+      id: 1744362990000-source-1776395355979-target
+      source: '1744362990000'
+      sourceHandle: source
+      target: '1776395355979'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: 1776395355979-source-1744363000000-target
+      source: '1776395355979'
+      sourceHandle: source
+      target: '1744363000000'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
         sourceType: code
-        targetType: end
-      id: 1744363010000-source-answer-target
+        targetType: knowledge-retrieval
+      id: 1744363010000-source-1776395738196-target
       source: '1744363010000'
+      sourceHandle: source
+      target: '1776395738196'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: 1776395738196-source-1776396541165-target
+      source: '1776395738196'
+      sourceHandle: source
+      target: '1776396541165'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: 1776396541165-source-answer-target
+      source: '1776396541165'
       sourceHandle: source
       target: answer
       targetHandle: target
       type: custom
+      zIndex: 0
     nodes:
     - data:
         desc: ''
@@ -118,11 +162,11 @@ workflow:
       height: 108
       id: start
       position:
-        x: 538
-        y: -28
+        x: 493.1367310337216
+        y: -76.82179269859708
       positionAbsolute:
-        x: 538
-        y: -28
+        x: 493.1367310337216
+        y: -76.82179269859708
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -157,11 +201,11 @@ workflow:
       height: 87
       id: '1744362990000'
       position:
-        x: 545
-        y: 116
+        x: 581.946221501641
+        y: 68.49771521217582
       positionAbsolute:
-        x: 545
-        y: 116
+        x: 581.946221501641
+        y: 68.49771521217582
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -169,8 +213,10 @@ workflow:
       width: 241
     - data:
         context:
-          enabled: false
-          variable_selector: []
+          enabled: true
+          variable_selector:
+          - '1776395355979'
+          - result
         desc: ''
         model:
           completion_params:
@@ -181,16 +227,70 @@ workflow:
         prompt_template:
         - id: 3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f
           role: system
-          text: "你是一个电商详情页文案专家，擅长写高转化率的导购文案。请根据用户提供的产品信息，创作专业的导购文案。\n\n输出格式要求（严格遵守）：\n\
-            1. 【文案主体】\n   这里写商品详情页文案，包括商品介绍、核心卖点、使用场景、购买理由等。\n\n2. 【标签】\n   hashtags:\
-            \ #标签1 #标签2 #标签3\n\n3. 【追问】\n   <<< Questions: [\"问题1\", \"问题2\", \"问题3\"\
-            ] >>>\n\n追问问题应该是帮助创作者进一步完善导购文案的问题，例如：\n- \"商品的规格参数有哪些需要特别强调的？\"\n- \"\
-            是否有用户评价或销量数据可以作为信任背书？\"\n- \"售后服务政策有什么亮点？\"\n- \"目标用户群体的痛点是什么？\"\n- \"\
-            与同类商品相比，核心差异化优势是什么？\""
+          text: '你是一个电商详情页文案专家，擅长写高转化率的导购文案。
+
+
+            【专家面料知识库】
+
+            {{#context#}}
+
+
+            【任务判断】
+
+            分析用户输入：
+
+            - 包含完整商品描述 → 首次创作。在此模式下，你必须严格参考上方【专家面料知识库】的内容，提取对应面料的硬核参数（如纤维细度、克重等）并转化为消费者听得懂的“利益点”（如：发丝般细腻）。同时，必须将该面料的“洗护注意事项”自然融入文案末尾，体现专业度。若知识库无匹配面料，则按通用常识撰写，绝不虚构参数。
+
+            - 格式为"emoji + 动词 + 商品【方向】" → 针对该商品的优化方向。
+
+
+            【输出格式 - 严格遵守】
+
+            1. 文案主体内容（不要加任何标题。如果是首次创作，主体需包含商品介绍、核心卖点、使用场景、贴心洗护指南）
+
+
+            2. hashtags: #标签1 #标签2 #标签3（不要加标题）
+
+
+            3. <<< Questions: ["建议1", "建议2", "建议3"] >>>（不要加标题，直接输出）
+
+
+            【优化建议格式】
+
+            必须包含商品关键词，格式：emoji + 动词 + 商品【方向】
+
+            例如：
+
+            - "🏆 添加【商品名】的【销量/好评数据】"
+
+            - "⭐ 插入【商品名】的【用户评价】"
+
+            - "📋 补充【商品名】的【规格参数】"
+
+            - "🛡️ 强调【商品名】的【售后保障】"
+
+            - "🏠 增加【商品名】的【居家使用场景】"
+
+            - "🎁 补充【商品名】的【送礼场景】"
+
+            - "⚡ 对比竞品，突出【商品名】的【差异化优势】"
+
+            - "💰 强调【商品名】的【性价比/促销活动】"
+
+            - "👗 结合【面料特性】细化【商品名】的【洗护保养指南】"
+
+
+            【重要】
+
+            - 只输出上述3部分内容
+
+            - 不要输出任何【】标题
+
+            - Questions部分直接输出 <<< Questions: [...] >>> 格式，前面不要加任何文字'
         - id: 4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f9a
           role: user
           text: '商品信息: {{#start.query#}}'
-        selected: true
+        selected: false
         title: 文案生成
         type: llm
         vision:
@@ -198,12 +298,12 @@ workflow:
       height: 87
       id: '1744363000000'
       position:
-        x: 570
-        y: 274
+        x: 576
+        y: 320
       positionAbsolute:
-        x: 570
-        y: 274
-      selected: true
+        x: 576
+        y: 320
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -230,10 +330,10 @@ workflow:
       id: '1744363010000'
       position:
         x: 576
-        y: 417
+        y: 454
       positionAbsolute:
         x: 576
-        y: 417
+        y: 454
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -243,8 +343,9 @@ workflow:
         desc: ''
         outputs:
         - value_selector:
-          - '1744363010000'
+          - '1776396541165'
           - text
+          value_type: string
           variable: text
         selected: false
         title: 结束
@@ -252,18 +353,152 @@ workflow:
       height: 87
       id: answer
       position:
-        x: 576
-        y: 534
+        x: 632
+        y: 696
       positionAbsolute:
-        x: 576
-        y: 534
+        x: 632
+        y: 696
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 241
+    - data:
+        dataset_ids:
+        - Gu1IBAaJMxaL9AOL5GGobcZXAK+bMD8owQDfcgE+C9ZQdJbSJINyUF45+dOhidi7
+        metadata_filtering_mode: automatic
+        metadata_model_config:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: longcat-flash-chat
+          provider: langgenius/longcat/longcat
+        multiple_retrieval_config:
+          reranking_enable: true
+          reranking_mode: reranking_model
+          reranking_model:
+            model: BAAI/bge-reranker-v2-m3
+            provider: langgenius/siliconflow/siliconflow
+          top_k: 4
+        query_attachment_selector: []
+        query_variable_selector:
+        - '1744362990000'
+        - text
+        retrieval_mode: multiple
+        selected: false
+        title: 面料检索
+        type: knowledge-retrieval
+      height: 89
+      id: '1776395355979'
+      position:
+        x: 590.1598662263362
+        y: 191.83036600962828
+      positionAbsolute:
+        x: 590.1598662263362
+        y: 191.83036600962828
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        dataset_ids:
+        - fFC7XNZu83pYjiC41Aaf8jOXj5d15XZsSfFIHJ5OU3R15qKtIF/D7Nrzm16X4CPz
+        multiple_retrieval_config:
+          reranking_enable: true
+          reranking_mode: reranking_model
+          reranking_model:
+            model: BAAI/bge-reranker-v2-m3
+            provider: langgenius/siliconflow/siliconflow
+          top_k: 4
+        query_attachment_selector: []
+        query_variable_selector:
+        - '1744363010000'
+        - text
+        retrieval_mode: multiple
+        selected: false
+        title: 审核
+        type: knowledge-retrieval
+      height: 89
+      id: '1776395738196'
+      position:
+        x: 605
+        y: 543
+      positionAbsolute:
+        x: 605
+        y: 543
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1776395738196'
+          - result
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: longcat-flash-chat
+          provider: langgenius/longcat/longcat
+        prompt_template:
+        - id: 29e5b71b-aeef-4659-ac42-b48d469868a3
+          role: system
+          text: '你是一位极其严苛的电商法务审核员。请严格审查文案初稿（包括标题、正文、标签），对照【违禁词库】进行强制清洗。
+
+
+            【平台违禁词与排版规范库】
+
+            {{#context#}}
+
+
+            审核与输出要求：
+
+            1. 逐字排查！一旦发现“全网首发”、“第一”、“最”、“首个”等绝对化用语或极限词，直接在文中删除或替换为合规的中性描述。
+
+            2. 绝对禁止输出任何“修改说明”、“修改备注”或解释性语言！
+
+            3. 必须完整保留初稿末尾的 hashtags 和追问模块，绝对不可遗漏。
+
+
+            【强制输出格式】（必须严格遵守下方面板输出，禁止添加任何前缀或后缀文字）：
+
+
+            (这里输出清洗后的文案主体，确保无违禁词)
+
+
+            (这里完整保留原有的 hashtags 标签)
+
+
+            (这里完整保留原有的 <<< Questions: [...] >>> 模块)'
+        - id: 68d57836-3b1b-486e-b98b-c6254af8f9aa
+          role: user
+          text: '【待审核的文案初稿】：
+
+            {{#1744363010000.text#}}'
+        selected: false
+        title: 审核后修改
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: '1776396541165'
+      position:
+        x: 864.6468592201068
+        y: 614.2192980098162
+      positionAbsolute:
+        x: 864.6468592201068
+        y: 614.2192980098162
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
     viewport:
-      x: -55
-      y: 113
-      zoom: 1
+      x: -113.58929888033344
+      y: -221.2721415574838
+      zoom: 0.8705505632961241
   rag_pipeline_variables: []

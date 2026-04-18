@@ -117,16 +117,27 @@ def _get_domain_aliases(domain: str, options: dict) -> list[str]:
 
 
 def _request_json(method: str, path: str, *, params: dict | None = None, payload: dict | None = None) -> dict:
-    response = requests.request(
-        method=method,
-        url=f"{_get_base_url()}{path}",
-        headers=_get_headers(),
-        params=params,
-        json=payload,
-        timeout=_get_timeout_seconds(),
-    )
-    response.raise_for_status()
-    return response.json()
+    try:
+        response = requests.request(
+            method=method,
+            url=f"{_get_base_url()}{path}",
+            headers=_get_headers(),
+            params=params,
+            json=payload,
+            timeout=_get_timeout_seconds(),
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as exc:
+        trace_log(
+            module="knowledge_service",
+            stage="api_request",
+            status="error",
+            request_id="-",
+            path=path,
+            error=summarize_text(exc),
+        )
+        raise
 
 
 def _match_domain_to_dataset(domain: str, datasets: list[dict]) -> tuple[dict | None, str]:
