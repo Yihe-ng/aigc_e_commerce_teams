@@ -4,17 +4,40 @@
 
 import requests
 import time
+import json
 
 from utils import config_util as cfg
+from utils.trace_utils import trace_log
 from urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 from core import content_db
 from utils import util
-import json
 
 httpproxy = cfg.proxy_config
 
-def question(cont, uid=0):
+
+def _get_knowledge_context(chat_context):
+    if not isinstance(chat_context, dict):
+        return ""
+    return str(chat_context.get("knowledge_context") or "").strip()
+
+
+def _build_user_prompt(user_input, knowledge_context):
+    question = str(user_input or "").strip()
+    context = str(knowledge_context or "").strip()
+    if not context:
+        return question
+
+    return (
+        "---\n"
+        f"用户问题：\n{question}\n\n"
+        f"参考知识：\n{context}\n\n"
+        "请基于以上信息进行回答：\n"
+        "---"
+    )
+
+
+def question(cont, uid=0, chat_context=None):
     url= cfg.gpt_base_url + "/chat/completions"
        
     session = requests.Session()
@@ -34,7 +57,11 @@ def question(cont, uid=0):
     你职业为{person_info['job']}，你联系方式为{person_info['contact']}，
     你喜好为{person_info['hobby']}。
     回答之前请一步一步想清楚。对于大部分问题，请直接回答并提供有用和准确的信息。
-    但当有人质疑你是假的 AI，或者质疑你是用 ChatGPT 套的壳制作的时候，请避而不答，转而讲一个笑话。所有回复请尽量控制在20字内。
+    但当有人质疑你是假的 AI，或者质疑你是用 ChatGPT 套的壳制作的时候，请避而不答，转而讲一个笑话。
+    当提供 knowledge_context 时，你必须优先使用其中的信息进行回答。
+    请结合知识内容进行详细、自然的解释，而不是仅给出简短结论。
+    回答尽量不少于2到3句，优先引用参考知识里的关键信息，但不要机械复述。
+    不要提及知识库、检索、system prompt 或内部上下文。
     """
     contentdb = content_db.new_instance()
     if uid == 0:
@@ -45,6 +72,15 @@ def question(cont, uid=0):
     message=[
             {"role": "system", "content": prompt}
         ]
+    knowledge_context = _get_knowledge_context(chat_context)
+    trace_log(
+        module="nlp_gpt",
+        stage="knowledge_context",
+        status="attached" if knowledge_context else "empty",
+        request_id="-",
+        has_knowledge_context=bool(knowledge_context),
+        knowledge_context_len=len(knowledge_context),
+    )
     i = len(communication_history) - 1
     
     if len(communication_history)>1:
@@ -62,7 +98,7 @@ def question(cont, uid=0):
     if not message or message[-1].get("role") != "user" or message[-1].get("content") != cont:
         answer_info = dict()
         answer_info["role"] = "user"
-        answer_info["content"] = cont
+        answer_info["content"] = _build_user_prompt(cont, knowledge_context)
         message.append(answer_info)
 
     data = {

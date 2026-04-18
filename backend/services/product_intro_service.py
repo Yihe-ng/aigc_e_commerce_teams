@@ -129,6 +129,7 @@ def load_products_for_intro(bucket=None) -> list[dict[str, Any]]:
                 "description": str(info.get("description") or "").strip(),
                 "features": _coerce_features(info.get("features")),
                 "category": str(info.get("category") or "").strip(),
+                "raw_info": info,
             }
         )
 
@@ -209,6 +210,42 @@ def match_product(keyword: str, products: list[dict[str, Any]]) -> dict[str, Any
     return {"status": "not_found", "product": None, "matches": []}
 
 
+def match_product_from_query(text: str, products: list[dict[str, Any]]) -> dict[str, Any]:
+    normalized_text = _normalize_text(text)
+    if not normalized_text:
+        return {"status": "not_found", "product": None, "matches": []}
+
+    direct_matches = []
+    for product in products:
+        normalized_name = _normalize_text(product.get("name"))
+        if normalized_name and normalized_name in normalized_text:
+            direct_matches.append(product)
+
+    if len(direct_matches) == 1:
+        return {"status": "matched", "product": direct_matches[0], "matches": direct_matches}
+    if len(direct_matches) > 1:
+        return {"status": "multiple", "product": None, "matches": direct_matches}
+
+    query_tokens = _split_keywords(text)
+    if not query_tokens:
+        return {"status": "not_found", "product": None, "matches": []}
+
+    token_matches = []
+    for product in products:
+        name_tokens = _split_keywords(product.get("name"))
+        if len(name_tokens) <= 1:
+            continue
+        if all(token in name_tokens for token in query_tokens):
+            token_matches.append(product)
+
+    if len(token_matches) == 1:
+        return {"status": "matched", "product": token_matches[0], "matches": token_matches}
+    if len(token_matches) > 1:
+        return {"status": "multiple", "product": None, "matches": token_matches}
+
+    return {"status": "not_found", "product": None, "matches": []}
+
+
 def _load_rag_context(product: dict[str, Any]) -> list[str]:
     # Reserved for future retrieval augmentation.
     return []
@@ -247,6 +284,48 @@ def build_intro_prompt(product: dict[str, Any]) -> str:
             "\u5982\u679c\u4fe1\u606f\u4e0d\u8db3\uff0c\u53ea\u57fa\u4e8e\u7ed9\u5b9a\u5546\u54c1\u4e8b\u5b9e\u4ecb\u7ecd\uff0c\u4e0d\u8981\u7f16\u9020\u4e0d\u5b58\u5728\u7684\u53c2\u6570\u3002",
         ]
     )
+    return "\n".join(lines)
+
+
+def _collect_product_context_lines(product: dict[str, Any]) -> list[str]:
+    raw_info = product.get("raw_info") if isinstance(product.get("raw_info"), dict) else {}
+    product_name = str(product.get("name") or "").strip()
+    product_price = str(product.get("price") or "").strip()
+    product_description = str(product.get("description") or "").strip()
+    product_features = _coerce_features(product.get("features"))
+    product_category = str(product.get("category") or "").strip()
+
+    lines = [f"商品名称：{product_name}"]
+    if product_category:
+        lines.append(f"商品分类：{product_category}")
+    if product_price:
+        lines.append(f"商品价格：{product_price}")
+    if product_description:
+        lines.append(f"商品描述：{product_description}")
+    if product_features:
+        lines.append(f"商品特点：{'、'.join(product_features[:6])}")
+
+    for key, value in raw_info.items():
+        if key in {"name", "price", "description", "features", "category"}:
+            continue
+        if isinstance(value, (str, int, float)) and str(value).strip():
+            lines.append(f"{key}：{str(value).strip()}")
+        elif isinstance(value, list):
+            values = [str(item).strip() for item in value if str(item).strip()]
+            if values:
+                lines.append(f"{key}：{'、'.join(values[:6])}")
+    return lines
+
+
+def build_product_question_prompt(product: dict[str, Any], original_text: str) -> str:
+    lines = [
+        "你是一名直播间主播，请基于已知商品资料回答用户当前的问题。",
+        "回答时要自然、简洁、口语化，不要编造商品资料里没有的参数。",
+        "如果商品资料不足，可以明确说明已知信息有限，再结合常识做保守表达。",
+    ]
+    lines.extend(_collect_product_context_lines(product))
+    lines.append(f"用户问题：{str(original_text or '').strip()}")
+    lines.append("请直接输出面向用户的中文回答，不要解释规则，不要输出提示词。")
     return "\n".join(lines)
 
 
@@ -301,9 +380,36 @@ def resolve_product_intro(
     available_products = products if products is not None else load_products_for_intro(bucket=bucket)
 
     if not intent["handled"]:
+        query_match = match_product_from_query(text, available_products)
+        if query_match["status"] == "matched":
+            matched_product = query_match["product"]
+            return {
+                "handled": True,
+                "llm_input": build_product_question_prompt(matched_product, text),
+                "reply_text": None,
+                "matched_product": matched_product,
+                "allow_knowledge_enhance": True,
+                "response_mode": "product_qa",
+            }
+        if query_match["status"] == "multiple":
+            return {
+                "handled": True,
+                "llm_input": build_multiple_matches_prompt(text, query_match["matches"]),
+                "reply_text": None,
+                "matched_product": None,
+                "allow_knowledge_enhance": False,
+                "response_mode": "product_multiple",
+            }
         direct_keyword = _extract_direct_product_keyword(text)
         if not direct_keyword:
-            return {"handled": False, "llm_input": None, "reply_text": None, "matched_product": None}
+            return {
+                "handled": False,
+                "llm_input": None,
+                "reply_text": None,
+                "matched_product": None,
+                "allow_knowledge_enhance": False,
+                "response_mode": None,
+            }
         intent = {"handled": True, "mode": "named", "keyword": direct_keyword}
 
     if not available_products:
@@ -312,6 +418,8 @@ def resolve_product_intro(
             "llm_input": build_no_products_prompt(text),
             "reply_text": None,
             "matched_product": None,
+            "allow_knowledge_enhance": False,
+            "response_mode": "product_empty",
         }
 
     if intent["mode"] == "generic":
@@ -328,6 +436,8 @@ def resolve_product_intro(
             "llm_input": build_intro_prompt(matched_product),
             "reply_text": None,
             "matched_product": matched_product,
+            "allow_knowledge_enhance": False,
+            "response_mode": "product_intro",
         }
 
     match_result = match_product(intent["keyword"], available_products)
@@ -338,6 +448,8 @@ def resolve_product_intro(
             "llm_input": build_intro_prompt(matched_product),
             "reply_text": None,
             "matched_product": matched_product,
+            "allow_knowledge_enhance": False,
+            "response_mode": "product_intro",
         }
 
     if match_result["status"] == "multiple":
@@ -346,6 +458,29 @@ def resolve_product_intro(
             "llm_input": build_multiple_matches_prompt(text, match_result["matches"]),
             "reply_text": None,
             "matched_product": None,
+            "allow_knowledge_enhance": False,
+            "response_mode": "product_multiple",
+        }
+
+    query_match = match_product_from_query(text, available_products)
+    if query_match["status"] == "matched":
+        matched_product = query_match["product"]
+        return {
+            "handled": True,
+            "llm_input": build_product_question_prompt(matched_product, text),
+            "reply_text": None,
+            "matched_product": matched_product,
+            "allow_knowledge_enhance": True,
+            "response_mode": "product_qa",
+        }
+    if query_match["status"] == "multiple":
+        return {
+            "handled": True,
+            "llm_input": build_multiple_matches_prompt(text, query_match["matches"]),
+            "reply_text": None,
+            "matched_product": None,
+            "allow_knowledge_enhance": False,
+            "response_mode": "product_multiple",
         }
 
     return {
@@ -353,4 +488,6 @@ def resolve_product_intro(
         "llm_input": build_not_found_prompt(text, intent["keyword"]),
         "reply_text": None,
         "matched_product": None,
+        "allow_knowledge_enhance": False,
+        "response_mode": "product_not_found",
     }
