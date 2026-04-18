@@ -47,6 +47,13 @@ ref_audio_path = None
 gpt_prompt_text = None
 prompt_lang = None
 text_lang = None
+audit_enabled = None
+audit_input_enabled = None
+audit_output_enabled = None
+audit_fallback_reply = None
+knowledge_enabled = None
+knowledge_for_gpt_only = None
+knowledge_timeout_ms = None
 
 def load_config():
     global config
@@ -95,6 +102,13 @@ def load_config():
     global gpt_prompt_text
     global prompt_lang
     global text_lang
+    global audit_enabled
+    global audit_input_enabled
+    global audit_output_enabled
+    global audit_fallback_reply
+    global knowledge_enabled
+    global knowledge_for_gpt_only
+    global knowledge_timeout_ms
 
     system_config = ConfigParser()
     system_config.read('system.conf', encoding='UTF-8')
@@ -169,6 +183,34 @@ def load_config():
         text_lang = system_config.get('key', 'text_lang')
     except:
         text_lang = "zh"
+    try:
+        audit_enabled = system_config.getboolean('key', 'audit_enabled')
+    except:
+        audit_enabled = True
+    try:
+        audit_input_enabled = system_config.getboolean('key', 'audit_input_enabled')
+    except:
+        audit_input_enabled = True
+    try:
+        audit_output_enabled = system_config.getboolean('key', 'audit_output_enabled')
+    except:
+        audit_output_enabled = True
+    try:
+        audit_fallback_reply = system_config.get('key', 'audit_fallback_reply')
+    except:
+        audit_fallback_reply = '这个问题我不太方便回答，我们换个话题聊聊吧'
+    try:
+        knowledge_enabled = system_config.getboolean('key', 'knowledge_enabled')
+    except:
+        knowledge_enabled = False
+    try:
+        knowledge_for_gpt_only = system_config.getboolean('key', 'knowledge_for_gpt_only')
+    except:
+        knowledge_for_gpt_only = True
+    try:
+        knowledge_timeout_ms = system_config.getint('key', 'knowledge_timeout_ms')
+    except:
+        knowledge_timeout_ms = 3000
     config = json.load(codecs.open('config.json', encoding='utf-8'))
 
 # 兼容旧代码里的 fay_url 访问，默认仍指向新的 backend_api_url。

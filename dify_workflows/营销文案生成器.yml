@@ -12,6 +12,11 @@ dependencies:
   value:
     marketplace_plugin_unique_identifier: langgenius/longcat:0.0.4@0b1183b9a46499db54e0fe00df51c3fbcaf051c1d212db7184a01e1ab8748128
     version: null
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/siliconflow:0.0.47@1dc82901e33f15a28b28a8e4996dc222c99b85bda95f8224525875e5121fc21d
+    version: null
 kind: app
 version: 0.6.0
 workflow:
@@ -77,15 +82,6 @@ workflow:
       type: custom
     - data:
         sourceType: llm
-        targetType: llm
-      id: 1744361980000-source-1744361990000-target
-      source: '1744361980000'
-      sourceHandle: source
-      target: '1744361990000'
-      targetHandle: target
-      type: custom
-    - data:
-        sourceType: llm
         targetType: code
       id: 1744361990000-source-1744362000000-target
       source: '1744361990000'
@@ -94,14 +90,64 @@ workflow:
       targetHandle: target
       type: custom
     - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: knowledge-retrieval
+      id: 1744361980000-source-1776402474036-target
+      source: '1744361980000'
+      sourceHandle: source
+      target: '1776402474036'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: 1776402474036-source-1744361990000-target
+      source: '1776402474036'
+      sourceHandle: source
+      target: '1744361990000'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
         sourceType: code
-        targetType: end
-      id: 1744362000000-source-answer-target
+        targetType: knowledge-retrieval
+      id: 1744362000000-source-1776402605108-target
       source: '1744362000000'
+      sourceHandle: source
+      target: '1776402605108'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: 1776402605108-source-1776402608537-target
+      source: '1776402605108'
+      sourceHandle: source
+      target: '1776402608537'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: 1776402608537-source-answer-target
+      selected: false
+      source: '1776402608537'
       sourceHandle: source
       target: answer
       targetHandle: target
       type: custom
+      zIndex: 0
     nodes:
     - data:
         desc: ''
@@ -149,6 +195,7 @@ workflow:
           role: user
           text: '{{#start.query#}}'
         selected: false
+        structured_output_enabled: false
         title: 参数提取
         type: llm
         vision:
@@ -168,8 +215,10 @@ workflow:
       width: 241
     - data:
         context:
-          enabled: false
-          variable_selector: []
+          enabled: true
+          variable_selector:
+          - '1776402474036'
+          - result
         desc: ''
         model:
           completion_params:
@@ -180,33 +229,52 @@ workflow:
         prompt_template:
         - id: 5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
           role: system
-          text: '你是一个资深的社交媒体文案创作者，擅长写爆款营销文案。请根据用户提供的产品信息，创作吸引人的文案。
+          text: '你是一个资深的社交媒体文案创作者，极其擅长写爆款营销文案（如小红书、抖音风格）。
 
 
-            重要：输出格式必须包含以下三部分：
+            【2026服装营销风格与趋势知识库】
 
-            1. 文案主体内容
-
-            2. 格式为"hashtags": "#标签1 #标签2"的hashtags
-
-            3. 格式为<<< Questions: ["问题1", "问题2", "问题3"] >>>的追问问题列表
+            {{#context#}}
 
 
-            追问问题应该是帮助创作者进一步完善文案的问题，例如：
+            创作要求：
 
-            - "你希望突出产品的哪个核心卖点？"
+            1. 深度分析用户的产品信息，如果它属于上方【知识库】中的某种流行风格（如Clean Fit、新中式等），请务必在文案中巧妙植入该风格的“视觉特征”和“适合的营销情绪词”（如：松弛感、边界感、文化自信等），不要像背书，要像有品位的时尚博主。
 
-            - "目标受众是男性还是女性？年龄段是？"
+            2. 如果用户指定了发布平台（如小红书/抖音），请自动适配该平台的网感和说话口吻。
 
-            - "文案需要强调性价比还是品质感？"
 
-            - "是否有特定的促销活动需要提及？"
+            【输出格式 - 严格遵守】
 
-            - "竞品对比方面有什么优势？"'
+            1. 文案主体内容（不要加标题）
+
+
+            2. hashtags: #标签1 #标签2 #标签3（不要加标题）
+
+
+            3. <<< Questions: ["建议1", "建议2", "建议3"] >>>（不要加标题，直接输出）
+
+
+            【追问建议格式】
+
+            必须包含商品或风格关键词，格式：emoji + 动词 + 商品【方向】
+
+            例如：
+
+            - "📸 补充【单品】在【具体场景（如咖啡店/山野）】的上身图"
+
+            - "👗 结合知识库，为【商品】增加【某种流行风格】的穿搭公式"
+
+            - "💰 补充【单品】的【早鸟价/发售机制】"
+
+
+            【重要】
+
+            只输出上述3部分内容，不要输出任何【】标题，Questions部分严格按指定格式输出。'
         - id: 6a7b8c9d-0e1f-2a3b-4c5d-6e7f8a9b0c1d
           role: user
           text: '产品信息: {{#start.query#}}'
-        selected: true
+        selected: false
         title: 文案生成
         type: llm
         vision:
@@ -219,7 +287,7 @@ workflow:
       positionAbsolute:
         x: 553
         y: -25.714285714285708
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -259,8 +327,9 @@ workflow:
         desc: ''
         outputs:
         - value_selector:
-          - '1744362000000'
+          - '1776402608537'
           - text
+          value_type: string
           variable: text
         selected: false
         title: 结束
@@ -268,18 +337,162 @@ workflow:
       height: 87
       id: answer
       position:
-        x: 542
-        y: 234.2857142857144
+        x: 591.8021157567703
+        y: 332.80729110889024
       positionAbsolute:
-        x: 542
-        y: 234.2857142857144
+        x: 591.8021157567703
+        y: 332.80729110889024
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        dataset_ids:
+        - F38ZFiSyycMx/2MBHiYwgOhIzcypzkXpLm5m42vezJce68cxjxi/nqiRB1MLcc6v
+        metadata_filtering_mode: automatic
+        metadata_model_config:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: longcat-flash-chat
+          provider: langgenius/longcat/longcat
+        multiple_retrieval_config:
+          reranking_enable: true
+          reranking_mode: reranking_model
+          reranking_model:
+            model: BAAI/bge-reranker-v2-m3
+            provider: langgenius/siliconflow/siliconflow
+          top_k: 4
+        query_attachment_selector: []
+        query_variable_selector:
+        - '1744361980000'
+        - text
+        retrieval_mode: multiple
+        selected: false
+        title: 营销风格
+        type: knowledge-retrieval
+      height: 89
+      id: '1776402474036'
+      position:
+        x: 843
+        y: -172.85714285714286
+      positionAbsolute:
+        x: 843
+        y: -172.85714285714286
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        dataset_ids:
+        - fFC7XNZu83pYjiC41Aaf8jOXj5d15XZsSfFIHJ5OU3R15qKtIF/D7Nrzm16X4CPz
+        metadata_filtering_mode: automatic
+        metadata_model_config:
+          completion_params:
+            max_tokens: 1024
+            temperature: 0.7
+          mode: chat
+          name: longcat-flash-chat
+          provider: langgenius/longcat/longcat
+        multiple_retrieval_config:
+          reranking_enable: true
+          reranking_mode: reranking_model
+          reranking_model:
+            model: BAAI/bge-reranker-v2-m3
+            provider: langgenius/siliconflow/siliconflow
+          top_k: 4
+        query_attachment_selector: []
+        query_variable_selector:
+        - '1744362000000'
+        - text
+        retrieval_mode: multiple
+        selected: false
+        title: 合规审查
+        type: knowledge-retrieval
+      height: 89
+      id: '1776402605108'
+      position:
+        x: 826.7142857142858
+        y: 103.71428571428578
+      positionAbsolute:
+        x: 826.7142857142858
+        y: 103.71428571428578
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1776402605108'
+          - result
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: longcat-flash-chat
+          provider: langgenius/longcat/longcat
+        prompt_template:
+        - id: 5109f979-d8d0-483e-beb3-2b7480a0dfbf
+          role: system
+          text: '你是一位极其严苛的电商与社交媒体法务审核员。请严格审查营销文案初稿，对照【违禁词与排版规范库】进行强制清洗。
+
+
+            【三大平台违禁词与排版规范库】
+
+            {{#context#}}
+
+
+            审核与输出要求：
+
+            1. 逐字排查！如果初稿中包含对应平台的违禁词（如极限词、未经证实的功效词等），直接删除或替换为合规表述。
+
+            2. 检查排版是否符合平台调性（如小红书要留白并合理使用emoji）。
+
+            3. 绝对禁止输出任何“修改说明”、“修改备注”或解释性语言！
+
+            4. 必须完整保留初稿末尾的 hashtags 和追问模块，绝对不可遗漏。
+
+
+            【强制输出格式】（必须严格遵守下方面板输出，禁止添加任何前缀或后缀文字）：
+
+
+            (这里输出清洗后的文案主体，确保无违禁词且符合排版规范)
+
+
+            (这里完整保留原有的 hashtags 标签)
+
+
+            (这里完整保留原有的 <<< Questions: [...] >>> 模块)'
+        - id: 4db4b34b-d493-4ff6-beeb-b2f3b79c91f4
+          role: user
+          text: '【待审核的文案初稿】：
+
+            {{#1744361990000.text#}}'
+        selected: false
+        title: 审核修改
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: '1776402608537'
+      position:
+        x: 1127.7142857142858
+        y: 103.71428571428578
+      positionAbsolute:
+        x: 1127.7142857142858
+        y: 103.71428571428578
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 241
     viewport:
-      x: -140.0807123522544
-      y: 419.4970698716673
-      zoom: 1.0610015965572788
+      x: 1.6759413935282055
+      y: 137.31240238380212
+      zoom: 0.7578582832551988
   rag_pipeline_variables: []
