@@ -22,10 +22,6 @@ const nextConfig = {
         destination: "http://localhost:5000/generate_xiaohongshu_stream",
       },
       {
-        source: "/generate_xiaohongshu_stream_post",
-        destination: "http://localhost:5000/generate_xiaohongshu_stream_post",
-      },
-      {
         source: "/submit-form-data",
         destination: "http://localhost:5000/submit-form-data",
       },
