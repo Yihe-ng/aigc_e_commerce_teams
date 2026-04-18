@@ -17,6 +17,7 @@ from core.interact import Interact
 from tts.tts_voice import EnumVoice
 from scheduler.thread_manager import MyThread
 from tts import tts_voice
+from tts.sample_manager import cleanup_sample_outputs
 from utils import util, config_util
 from core import qa_service
 from utils import config_util as cfg
@@ -141,6 +142,7 @@ class FeiFei:
         self.lock = threading.Lock()
         self.mood = 0.0  # 情绪值
         self.old_mood = 0.0
+        self.active_web_username = "User"
         self.item_index = 0
         self.X = np.array([1, 0, 0, 0, 0, 0, 0, 0]).reshape(1, -1)  # 适应模型变量矩阵
         # self.W = np.array([0.01577594,1.16119452,0.75828,0.207746,1.25017864,0.1044121,0.4294899,0.2770932]).reshape(-1,1) #适应模型变量矩阵
@@ -206,6 +208,13 @@ class FeiFei:
                     text = ''
                     textlist = []
                     intro_resolution = resolve_product_intro(interact.data["msg"])
+                    visual_context = intro_resolution.get("visual_context")
+                    if visual_context and wsa_server.get_web_instance().is_connected(username):
+                        visual_context["request_id"] = request_id
+                        wsa_server.get_web_instance().add_cmd({
+                            "visualContext": visual_context,
+                            "Username": username,
+                        })
                     answer = None
                     if not intro_resolution.get("handled"):
                         answer = self.__get_answer(interact.interleaver, interact.data["msg"])
@@ -260,7 +269,7 @@ class FeiFei:
                                                                        "Username": username,
                                                                        'robot': f'http://{cfg.backend_api_url}/robot/Speaking.jpg'})
                             i += 1
-                    util.printInfo(1, interact.data.get('user'), '({}) {}'.format(self.__get_mood_voice(), text))
+                    util.printInfo(1, interact.data.get('user'), '({}) {}'.format(selected_tts_style, text))
                     if wsa_server.get_instance().is_connected(username):
                         content = {'Topic': 'Unreal', 'Data': {'Key': 'text', 'Value': text}, 'Username': username,
                                    'robot': f'http://{cfg.backend_api_url}/robot/Speaking.jpg'}
@@ -330,11 +339,130 @@ class FeiFei:
         while self.__running:
             time.sleep(3)
             ws_instance = wsa_server.get_instance()
-            if ws_instance is not None and ws_instance.is_connected("User"):
-                if self.old_mood != self.mood:
+            web_instance = wsa_server.get_web_instance()
+            if self.old_mood != self.mood:
+                if ws_instance is not None and ws_instance.is_connected("User"):
                     content = {'Topic': 'Unreal', 'Data': {'Key': 'mood', 'Value': self.mood}}
                     ws_instance.add_cmd(content)
-                    self.old_mood = self.mood
+                username = self.active_web_username or "User"
+                if web_instance is not None and web_instance.is_connected(username):
+                    web_instance.add_cmd(self.__build_web_emotion_payload(username=username, source="mood_tick"))
+                self.old_mood = self.mood
+
+    def __resolve_mood_preset(self):
+        if self.mood <= -0.5:
+            return "doubt"
+        if self.mood < -0.1:
+            return "thinking"
+        if self.mood < 0.1:
+            return "calm"
+        if self.mood < 0.5:
+            return "soothe"
+        return "cheerful"
+
+    def __build_web_emotion_payload(self, username="User", source="mood_update", trigger_text=""):
+        preview = str(trigger_text or "").strip()
+        if len(preview) > 48:
+            preview = preview[:48] + "..."
+        return {
+            "emotion": {
+                "mood": round(float(self.mood), 4),
+                "voice_style": self.__get_mood_voice(),
+                "preset": self.__resolve_mood_preset(),
+                "source": source,
+                "trigger_text": preview,
+            },
+            "Username": username,
+        }
+
+    def __get_voice_style_map(self):
+        voice = tts_voice.get_voice_of(config_util.config["attribute"]["voice"])
+        if voice is None:
+            voice = EnumVoice.XIAO_XIAO
+        return voice.value["styleList"]
+
+    def __get_voice_style_by_key(self, style_key):
+        style_list = self.__get_voice_style_map()
+        return style_list.get(style_key, style_list.get("calm"))
+
+    def __resolve_reply_style_key(self, text):
+        content = str(text or "").strip()
+        if not content:
+            return None
+
+        if any(keyword in content for keyword in ("你好", "您好", "欢迎", "大家好", "限时", "优惠", "折扣", "秒杀", "抢购", "福利", "活动价", "下单", "优惠券")):
+            return "cheerful"
+
+        if any(keyword in content for keyword in ("放心", "别担心", "不用担心", "售后", "保障", "包退", "包换", "我理解", "可以放心", "解释一下")):
+            return "assistant"
+
+        if any(keyword in content for keyword in ("让我想想", "我先想想", "我分析一下", "我先确认", "原因", "为什么", "怎么证明", "靠谱吗", "值不值", "需不需要")):
+            return "lyrical"
+
+        if any(keyword in content for keyword in ("谢谢", "感谢", "喜欢你", "爱你", "支持", "辛苦了", "宝宝们", "宝子们")):
+            return "cheerful"
+
+        return None
+
+    def __resolve_reply_expression_preset(self, text):
+        content = str(text or "").strip()
+        if not content:
+            return None
+
+        if any(keyword in content for keyword in ("你好", "您好", "欢迎", "大家好")):
+            return "cheerful"
+        if any(keyword in content for keyword in ("限时", "优惠", "折扣", "秒杀", "抢购", "福利", "活动价", "下单", "优惠券")):
+            return "promotion"
+        if any(keyword in content for keyword in ("放心", "别担心", "不用担心", "售后", "保障", "包退", "包换", "我理解")):
+            return "soothe"
+        if any(keyword in content for keyword in ("让我想想", "我先想想", "我分析一下", "我先确认")):
+            return "thinking"
+        if any(keyword in content for keyword in ("谢谢", "感谢", "喜欢你", "爱你", "支持")):
+            return "shy"
+        return None
+
+    def __resolve_reply_voice_style(self, interact, text):
+        style_override = str(interact.data.get("tts_style", "") or "").strip()
+        if style_override:
+            return style_override
+
+        style_key = self.__resolve_reply_style_key(text)
+        if style_key:
+            return self.__get_voice_style_by_key(style_key)
+
+        return self.__get_mood_voice()
+
+    def __prepare_reply_expression(self, interact, text):
+        selected_style = self.__resolve_reply_voice_style(interact, text)
+        interact.data["tts_style"] = selected_style
+
+        preset = self.__resolve_reply_expression_preset(text)
+        if preset:
+            interact.data["expression_preset"] = preset
+
+        username = interact.data.get("user", "User")
+        web_instance = wsa_server.get_web_instance()
+        if web_instance is not None and web_instance.is_connected(username):
+            preview = str(text or "").strip()
+            if len(preview) > 48:
+                preview = preview[:48] + "..."
+            web_instance.add_cmd({
+                "emotion": {
+                    "mood": round(float(self.mood), 4),
+                    "voice_style": selected_style,
+                    "preset": preset or self.__resolve_mood_preset(),
+                    "source": "reply_expression",
+                    "trigger_text": preview,
+                },
+                "Username": username,
+            })
+        return selected_style
+
+    def __push_web_emotion(self, username="User", source="mood_update", trigger_text=""):
+        self.active_web_username = username or "User"
+        web_instance = wsa_server.get_web_instance()
+        if web_instance is not None and web_instance.is_connected(self.active_web_username):
+            web_instance.add_cmd(self.__build_web_emotion_payload(username=self.active_web_username, source=source, trigger_text=trigger_text))
 
     # TODO 考虑重构这个逻辑
     # 更新情绪
@@ -378,6 +506,11 @@ class FeiFei:
             self.mood = 1
         if self.mood <= -1:
             self.mood = -1
+        self.__push_web_emotion(
+            username=interact.data.get("user", "User"),
+            source="nlp_sentiment",
+            trigger_text=interact.data.get("msg", ""),
+        )
 
     # 获取不同情绪声音
     def __get_mood_voice(self):
@@ -529,6 +662,7 @@ class FeiFei:
                 util.printInfo(1, interact.data.get('user'), '合成音频...')
                 tm = time.time()
                 sp = self.__get_tts_speech()
+                selected_tts_style = str(interact.data.get("tts_style", "") or "").strip() or self.__get_mood_voice()
                 try:
                     trace_log(
                         module="avatar",
@@ -537,10 +671,11 @@ class FeiFei:
                         request_id=request_id,
                         user=interact.data.get("user"),
                         provider=type(sp).__module__ + "." + type(sp).__name__,
+                        tts_style=selected_tts_style,
                         text_len=len(text),
                         text_preview=summarize_text(text),
                     )
-                    result = sp.to_sample(text.replace("*", ""), self.__get_mood_voice(), request_id=request_id)
+                    result = sp.to_sample(text.replace("*", ""), selected_tts_style, request_id=request_id)
                     tts_error_code = getattr(sp, "last_error_code", "")
                     tts_error_detail = getattr(sp, "last_error_detail", "")
                 except AttributeError as ae:
@@ -635,6 +770,8 @@ class FeiFei:
             # 确保保存目录存在
             if not os.path.exists(save_directory):
                 os.makedirs(save_directory)
+
+            cleanup_sample_outputs(save_directory)
 
             # 构建保存文件的路径
             save_path = os.path.join(save_directory, filename)

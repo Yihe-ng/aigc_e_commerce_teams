@@ -65,6 +65,10 @@ class QAService:
         return qna
 
     def record_qapair(self, question, answer):
+        auto_record_enabled = cfg.config.get('interact', {}).get('autoRecordQA', False)
+        if not auto_record_enabled:
+            util.log(1, '自动记录 QA 已关闭，跳过写入 qa.csv')
+            return
         if not cfg.config['interact']['QnA'] or cfg.config['interact']['QnA'][-3:] != 'csv':
             util.log(1, 'qa文件没有指定，不记录大模型回复')
             return

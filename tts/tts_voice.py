@@ -90,6 +90,18 @@ class EnumVoice(Enum):
             "cheerful": "用开朗、活泼、阳光的语气说话"
         }
     }
+    QWEN3_SWEET_FEMALE = {
+        "name": "Qwen3-甜美女声",
+        "voiceName": "vivian",
+        "aliases": ["Qwen3-主播甜美女声", "qwen3_sweet_female"],
+        "styleList": {
+            "angry": "用克制但带一点严肃提醒感的语气说话，不要过于凶狠",
+            "lyrical": "用轻柔、甜美、带一点安抚感的语气说话，像温柔主播在认真解释",
+            "calm": "用柔和、自然、亲切、略带甜感的语气说话",
+            "assistant": "用温柔、贴心、亲和，像直播间小姐姐耐心介绍商品的语气说话",
+            "cheerful": "用甜美、元气、俏皮、很有亲和力的语气说话，像正在热情带货的主播"
+        }
+    }
     QWEN3_MALE = {
         "name": "Qwen3-稳重男声",
         "voiceName": "eric",
@@ -207,7 +219,7 @@ ALI_VOICE_OPTIONS = [
 
 
 def get_voice_list():
-    return [EnumVoice.XIAO_XIAO_NEW, EnumVoice.YUN_XI, EnumVoice.XIAO_XIAO, EnumVoice.YUN_JIAN, EnumVoice.XIAO_YI, EnumVoice.YUN_YANG, EnumVoice.YUN_XIA, EnumVoice.QWEN3_FEMALE, EnumVoice.QWEN3_MALE, EnumVoice.GPT_FEMALE , EnumVoice.GPT_MALE]
+    return [EnumVoice.XIAO_XIAO_NEW, EnumVoice.YUN_XI, EnumVoice.XIAO_XIAO, EnumVoice.YUN_JIAN, EnumVoice.XIAO_YI, EnumVoice.YUN_YANG, EnumVoice.YUN_XIA, EnumVoice.QWEN3_FEMALE, EnumVoice.QWEN3_SWEET_FEMALE, EnumVoice.QWEN3_MALE, EnumVoice.GPT_FEMALE , EnumVoice.GPT_MALE]
 
 
 def get_voice_of(name):
@@ -229,7 +241,7 @@ def get_builtin_voice_options():
 
 
 def get_qwen_voice_options():
-    return [_to_voice_option(EnumVoice.QWEN3_FEMALE), _to_voice_option(EnumVoice.QWEN3_MALE)]
+    return [_to_voice_option(EnumVoice.QWEN3_FEMALE), _to_voice_option(EnumVoice.QWEN3_SWEET_FEMALE), _to_voice_option(EnumVoice.QWEN3_MALE)]
 
 
 def get_ali_voice_options():

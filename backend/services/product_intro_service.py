@@ -7,7 +7,7 @@ from backend.services.storage import get_bucket, read_json_object
 
 
 _GENERIC_INTRO_RE = re.compile(
-    "^(?:\u4ecb\u7ecd\u4e00\u4e0b|\u4ecb\u7ecd\u4e0b|\u4ecb\u7ecd|\u8bb2\u8bb2|\u8bf4\u8bf4|\u770b\u770b)(?:\u5df2\u6709\u7684|\u73b0\u6709\u7684)?\u5546\u54c1[\u3002\uff01!\uff1f?]*$"
+    "^(?:\u4ecb\u7ecd\u4e00\u4e0b|\u4ecb\u7ecd\u4e0b|\u4ecb\u7ecd|\u8bb2\u8bb2|\u8bf4\u8bf4|\u770b\u770b)(?:\u5df2\u6709\u7684|\u73b0\u6709\u7684|\u8fd9\u6b3e|\u8fd9\u4e2a|\u5f53\u524d\u7684)?\u5546\u54c1[\u3002\uff01!\uff1f?]*$"
 )
 _FIRST_PRODUCT_RE = re.compile(
     "^(?:\u4ecb\u7ecd\u4e00\u4e0b|\u4ecb\u7ecd\u4e0b|\u4ecb\u7ecd|\u8bb2\u8bb2|\u8bf4\u8bf4|\u770b\u770b)(?:\u7b2c1\u4e2a|\u7b2c\u4e00\u4e2a)\u5546\u54c1[\u3002\uff01!\uff1f?]*$"
@@ -101,6 +101,93 @@ def _coerce_features(value: Any) -> list[str]:
     return []
 
 
+def _coerce_images(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item or "").strip()]
+    if isinstance(value, str):
+        normalized = str(value).strip()
+        return [normalized] if normalized else []
+    return []
+
+
+def _strip_visual_noise(value: str | None) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    text = re.sub("<[^>]+>", " ", text)
+    text = re.sub("[\s\n\r\t]+", " ", text)
+    return text.strip()
+
+
+def _pick_visual_highlights(product: dict[str, Any]) -> list[str]:
+    highlights: list[str] = []
+    category = str(product.get("category") or "").strip()
+    name = str(product.get("name") or "").strip()
+    description = _strip_visual_noise(product.get("description"))
+    features = _coerce_features(product.get("features"))
+
+    category_hint_map = {
+        "\u73e0\u5b9d": "\u91cd\u70b9\u5c55\u793a\u5149\u6cfd\u3001\u5207\u5de5\u548c\u4f69\u6234\u8d28\u611f",
+        "\u9996\u9970": "\u91cd\u70b9\u5c55\u793a\u7ec6\u8282\u5149\u6cfd\u548c\u4e0a\u8eab\u642d\u914d\u611f",
+        "\u670d\u9970": "\u91cd\u70b9\u5c55\u793a\u7248\u578b\u3001\u9762\u6599\u548c\u4e0a\u8eab\u6548\u679c",
+        "\u7f8e\u5986": "\u91cd\u70b9\u5c55\u793a\u5305\u88c5\u8d28\u611f\u3001\u8272\u6cfd\u548c\u4f7f\u7528\u573a\u666f",
+        "\u98df\u54c1": "\u91cd\u70b9\u5c55\u793a\u5305\u88c5\u3001\u5207\u9762\u548c\u98df\u7528\u573a\u666f",
+        "\u5bb6\u5c45": "\u91cd\u70b9\u5c55\u793a\u6750\u8d28\u7ec6\u8282\u548c\u573a\u666f\u642d\u914d",
+    }
+
+    for key, hint in category_hint_map.items():
+        if key in category or key in name:
+            highlights.append(hint)
+            break
+
+    for feature in features[:4]:
+        normalized_feature = _strip_visual_noise(feature)
+        if normalized_feature and normalized_feature not in highlights:
+            highlights.append(normalized_feature)
+
+    if description:
+        visual_sentences = re.split("[\u3002\uff01\uff1f!?\uff1b;]", description)
+        for sentence in visual_sentences:
+            normalized_sentence = sentence.strip()
+            if not normalized_sentence:
+                continue
+            if any(token in normalized_sentence for token in ("\u5916\u89c2", "\u8d28\u611f", "\u5149\u6cfd", "\u989c\u8272", "\u7248\u578b", "\u5305\u88c5", "\u7ec6\u8282", "\u98ce\u683c")):
+                if normalized_sentence not in highlights:
+                    highlights.append(normalized_sentence)
+            if len(highlights) >= 4:
+                break
+
+    if not highlights and category:
+        highlights.append(f"\u53ef\u7ed3\u5408{category}\u4e3b\u56fe\u5c55\u793a\u5546\u54c1\u5916\u89c2\u4e0e\u4f7f\u7528\u573a\u666f")
+
+    return highlights[:4]
+
+
+def _build_visual_context(product: dict[str, Any]) -> dict[str, Any]:
+    highlights = _pick_visual_highlights(product)
+    price = str(product.get("price") or "").strip()
+    category = str(product.get("category") or "").strip()
+    description = _strip_visual_noise(product.get("description"))
+    image_list = _coerce_images(product.get("images"))
+    main_image = str(product.get("main_image") or "").strip() or (image_list[0] if image_list else "")
+
+    summary_parts = [part for part in [category, price] if part]
+    summary = "\u3001".join(summary_parts)
+    if description:
+        summary = f"{summary}\uff1b{description[:48]}" if summary else description[:48]
+
+    return {
+        "product_id": str(product.get("id") or "").strip(),
+        "product_name": str(product.get("name") or "").strip(),
+        "category": category,
+        "price": price,
+        "main_image": main_image,
+        "images": image_list[:4],
+        "summary": summary,
+        "highlights": highlights,
+    }
+
+
 def load_products_for_intro(bucket=None) -> list[dict[str, Any]]:
     local_bucket = bucket or get_bucket()
     products: list[dict[str, Any]] = []
@@ -129,6 +216,8 @@ def load_products_for_intro(bucket=None) -> list[dict[str, Any]]:
                 "description": str(info.get("description") or "").strip(),
                 "features": _coerce_features(info.get("features")),
                 "category": str(info.get("category") or "").strip(),
+                "images": _coerce_images(info.get("images")),
+                "main_image": str(info.get("main_image") or "").strip(),
             }
         )
 
@@ -221,8 +310,10 @@ def build_intro_prompt(product: dict[str, Any]) -> str:
     product_features = _coerce_features(product.get("features"))
     product_category = str(product.get("category") or "").strip()
     rag_context = _load_rag_context(product)
+    visual_context = _build_visual_context(product)
     feature_text = "\u3001".join(product_features[:4])
     rag_text = "\uff1b".join(rag_context)
+    visual_text = "\uff1b".join(visual_context.get("highlights") or [])
 
     lines = [
         "\u4f60\u662f\u4e00\u540d\u76f4\u64ad\u95f4\u4e3b\u64ad\uff0c\u8bf7\u7528\u81ea\u7136\u3001\u7b80\u6d01\u3001\u53e3\u8bed\u5316\u7684\u4e2d\u6587\u4ecb\u7ecd\u5546\u54c1\u3002",
@@ -237,12 +328,15 @@ def build_intro_prompt(product: dict[str, Any]) -> str:
         lines.append(f"\u5546\u54c1\u63cf\u8ff0\uff1a{product_description}")
     if product_features:
         lines.append(f"\u5546\u54c1\u5356\u70b9\uff1a{feature_text}")
+    if visual_text:
+        lines.append(f"\u89c6\u89c9\u5c55\u793a\u91cd\u70b9\uff1a{visual_text}")
     if rag_context:
         lines.append(f"\u8865\u5145\u4fe1\u606f\uff1a{rag_text}")
 
     lines.extend(
         [
             "\u8bf7\u76f4\u63a5\u8f93\u51fa\u4e00\u5c0f\u6bb5\u9002\u5408\u76f4\u64ad\u53e3\u64ad\u7684\u4e2d\u6587\u4ecb\u7ecd\u3002",
+            "\u82e5\u6709\u89c6\u89c9\u5c55\u793a\u91cd\u70b9\uff0c\u8bf7\u81ea\u7136\u5730\u628a\u4e3b\u56fe\u3001\u5916\u89c2\u3001\u7ec6\u8282\u6216\u4f69\u6234/\u4f7f\u7528\u573a\u666f\u8bb2\u51fa\u6765\uff0c\u8ba9\u53e3\u64ad\u66f4\u50cf\u5728\u7ed3\u5408\u5546\u54c1\u56fe\u8bb2\u89e3\u3002",
             "\u4e0d\u8981\u89e3\u91ca\u89c4\u5219\uff0c\u4e0d\u8981\u8f93\u51fa\u63d0\u793a\u8bcd\uff0c\u4e0d\u8981\u8f93\u51fa\u82f1\u6587\u3002",
             "\u5982\u679c\u4fe1\u606f\u4e0d\u8db3\uff0c\u53ea\u57fa\u4e8e\u7ed9\u5b9a\u5546\u54c1\u4e8b\u5b9e\u4ecb\u7ecd\uff0c\u4e0d\u8981\u7f16\u9020\u4e0d\u5b58\u5728\u7684\u53c2\u6570\u3002",
         ]
@@ -322,12 +416,14 @@ def resolve_product_intro(
                 "llm_input": build_no_products_prompt(text),
                 "reply_text": None,
                 "matched_product": None,
+                "visual_context": None,
             }
         return {
             "handled": True,
             "llm_input": build_intro_prompt(matched_product),
             "reply_text": None,
             "matched_product": matched_product,
+            "visual_context": _build_visual_context(matched_product),
         }
 
     match_result = match_product(intent["keyword"], available_products)
@@ -338,6 +434,7 @@ def resolve_product_intro(
             "llm_input": build_intro_prompt(matched_product),
             "reply_text": None,
             "matched_product": matched_product,
+            "visual_context": _build_visual_context(matched_product),
         }
 
     if match_result["status"] == "multiple":
@@ -346,6 +443,7 @@ def resolve_product_intro(
             "llm_input": build_multiple_matches_prompt(text, match_result["matches"]),
             "reply_text": None,
             "matched_product": None,
+            "visual_context": None,
         }
 
     return {
@@ -353,4 +451,5 @@ def resolve_product_intro(
         "llm_input": build_not_found_prompt(text, intent["keyword"]),
         "reply_text": None,
         "matched_product": None,
+        "visual_context": None,
     }
