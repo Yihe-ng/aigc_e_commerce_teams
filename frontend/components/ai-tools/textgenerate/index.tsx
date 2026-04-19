@@ -75,6 +75,24 @@ const normalizeStreamError = (rawMessage: unknown) => {
   return "生成失败：请稍后重试。"
 }
 
+const ENV_AIGC_API_BASE_URL = process.env.NEXT_PUBLIC_AIGC_API_BASE_URL?.trim()
+
+const getTextGenerateApiBaseUrl = () => {
+  if (ENV_AIGC_API_BASE_URL) {
+    return ENV_AIGC_API_BASE_URL
+  }
+
+  if (typeof window === "undefined") {
+    return "http://localhost:5000"
+  }
+
+  if (window.location.protocol === "https:") {
+    return window.location.origin
+  }
+
+  return `http://${window.location.hostname}:5000`
+}
+
 function EmptyState() {
   return (
     <div className="flex min-h-full flex-col items-center justify-center p-8 text-center">
@@ -210,12 +228,15 @@ export default function TextGenerateChat() {
         }))
       }
 
-      const response = await fetch("/generate_xiaohongshu_stream_post", {
+      const response = await fetch(
+        `${getTextGenerateApiBaseUrl()}/generate_xiaohongshu_stream_post`,
+        {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
         signal: abortController.signal,
-      })
+        }
+      )
 
       if (!response.ok) {
         throw new Error("请求失败，请稍后重试。")
@@ -232,6 +253,86 @@ export default function TextGenerateChat() {
       let sawRenderableChunk = false
       let streamFailed = false
 
+      const processSseFrame = async (rawFrame: string) => {
+        const frame = rawFrame.trim()
+        if (!frame) {
+          return false
+        }
+
+        const dataPayload = frame
+          .split(/\r?\n/)
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trimStart())
+          .join("\n")
+
+        if (!dataPayload) {
+          return false
+        }
+
+        try {
+          const data = JSON.parse(dataPayload)
+
+          if (data.chunk) {
+            sawRenderableChunk = true
+            aiContent += data.chunk
+            const { questions } = extractQuestionsFromContent(aiContent)
+
+            updateAiMessage((msg) => {
+              return {
+                ...msg,
+                content: aiContent,
+                questions:
+                  msg.questions && msg.questions.length > 0
+                    ? msg.questions
+                    : questions,
+                isError: false,
+              }
+            })
+          }
+
+          if (data.error) {
+            streamFailed = true
+            applyStreamError(data.error)
+            await reader.cancel()
+            return true
+          }
+
+          if (data.done) {
+            const { cleanContent, questions: parsedQuestions } =
+              extractQuestionsFromContent(aiContent)
+            const normalizedQuestions = normalizeQuestionsPayload(data.questions)
+            const questions =
+              normalizedQuestions.length > 0
+                ? normalizedQuestions
+                : parsedQuestions
+            const tags = data.hashtags
+              ? data.hashtags
+                  .match(/#[\u4e00-\u9fa5\w]+/g)
+                  ?.map((tag: string) => tag.slice(1)) || []
+              : []
+
+            if (!sawRenderableChunk && !cleanContent.trim()) {
+              streamFailed = true
+              applyStreamError("生成失败：上游未返回可显示内容，请稍后重试。")
+            } else {
+              updateAiMessage((msg) => ({
+                ...msg,
+                content: cleanContent,
+                questions,
+                tags,
+                isError: false,
+              }))
+            }
+
+            return true
+          }
+        } catch (error) {
+          console.error("Failed to parse SSE payload:", error)
+        }
+
+        return false
+      }
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) {
@@ -244,72 +345,13 @@ export default function TextGenerateChat() {
         }
 
         pendingSseBuffer += decoder.decode(value, { stream: true })
-        const lines = pendingSseBuffer.split("\n")
-        pendingSseBuffer = lines.pop() ?? ""
+        const frames = pendingSseBuffer.split(/\r?\n\r?\n/)
+        pendingSseBuffer = frames.pop() ?? ""
 
-        for (const rawLine of lines) {
-          const line = rawLine.trim()
-          if (!line.startsWith("data: ")) {
-            continue
-          }
-
-          try {
-            const data = JSON.parse(line.slice(6))
-
-            if (data.chunk) {
-              sawRenderableChunk = true
-              aiContent += data.chunk
-              const { questions } = extractQuestionsFromContent(aiContent)
-
-              updateAiMessage((msg) => ({
-                ...msg,
-                content: aiContent,
-                questions:
-                  msg.questions && msg.questions.length > 0
-                    ? msg.questions
-                    : questions,
-                isError: false,
-              }))
-            }
-
-            if (data.error) {
-              streamFailed = true
-              applyStreamError(data.error)
-              await reader.cancel()
-              break
-            }
-
-            if (data.done) {
-              const { cleanContent, questions: parsedQuestions } =
-                extractQuestionsFromContent(aiContent)
-              const normalizedQuestions = normalizeQuestionsPayload(
-                data.questions
-              )
-              const questions =
-                normalizedQuestions.length > 0
-                  ? normalizedQuestions
-                  : parsedQuestions
-              const tags = data.hashtags
-                ? data.hashtags
-                    .match(/#[\u4e00-\u9fa5\w]+/g)
-                    ?.map((tag: string) => tag.slice(1)) || []
-                : []
-
-              if (!sawRenderableChunk && !cleanContent.trim()) {
-                streamFailed = true
-                applyStreamError("生成失败：上游未返回可显示内容，请稍后重试。")
-              } else {
-                updateAiMessage((msg) => ({
-                  ...msg,
-                  content: cleanContent,
-                  questions,
-                  tags,
-                  isError: false,
-                }))
-              }
-            }
-          } catch {
-            // Ignore incomplete SSE frames and wait for the next buffered chunk.
+        for (const frame of frames) {
+          const shouldStop = await processSseFrame(frame)
+          if (shouldStop) {
+            break
           }
         }
 
@@ -318,17 +360,10 @@ export default function TextGenerateChat() {
         }
       }
 
-      const trailingLine = pendingSseBuffer.trim()
-      if (!streamFailed && trailingLine.startsWith("data: ")) {
-        try {
-          const data = JSON.parse(trailingLine.slice(6))
-          if (data.error) {
-            streamFailed = true
-            applyStreamError(data.error)
-          }
-        } catch {
-          // Ignore an incomplete trailing SSE frame.
-        }
+      pendingSseBuffer += decoder.decode()
+      const trailingFrame = pendingSseBuffer.trim()
+      if (!streamFailed && trailingFrame) {
+        await processSseFrame(trailingFrame)
       }
 
       if (!streamFailed && !sawRenderableChunk) {

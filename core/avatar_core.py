@@ -30,6 +30,10 @@ from llm import nlp_langchain
 from llm import nlp_ollama_api
 from llm import nlp_coze
 from core import member_db
+from backend.services.forbidden_words_service import check_text as check_forbidden_text
+from backend.services.knowledge_service import detect_domain as detect_knowledge_domain
+from backend.services.knowledge_service import retrieve_context_details as retrieve_knowledge_context_details
+from backend.services.knowledge_service import should_enhance as should_knowledge_enhance
 from backend.services.product_intro_service import resolve_product_intro
 from backend.lipsync.manager import lip_sync_manager
 from utils.trace_utils import summarize_text, trace_log
@@ -78,9 +82,27 @@ modules = {
     "nlp_coze": nlp_coze
 }
 
+GUIDE_IDENTITY_REPLY = "我是这边的导购助手，可以帮你介绍商品、推荐款式、解答面料和洗护问题～你现在想看哪一类呢？"
+GUIDE_IDENTITY_QUERIES = (
+    "你是谁",
+    "介绍一下你自己",
+    "你能做什么",
+    "你叫什么",
+    "你是做什么的",
+)
+
+
+def get_guide_identity_reply(text: str) -> str:
+    content = str(text or "").strip()
+    if not content:
+        return ""
+    if any(query in content for query in GUIDE_IDENTITY_QUERIES):
+        return GUIDE_IDENTITY_REPLY
+    return ""
+
 
 # 大语言模型回复
-def handle_chat_message(msg, username='User', request_id=''):
+def handle_chat_message(msg, username='User', request_id='', chat_context=None, has_product_context=False):
     text = ''
     textlist = []
     started_at = time.perf_counter()
@@ -93,13 +115,31 @@ def handle_chat_message(msg, username='User', request_id=''):
         if selected_module is None:
             # 默认使用GPT模型
             selected_module = nlp_gpt
+        trace_log(
+            module="avatar",
+            stage="nlp_dispatch",
+            status="ok",
+            request_id=request_id,
+            user=username,
+            provider=module_name,
+            has_knowledge_context=bool(isinstance(chat_context, dict) and str(chat_context.get("knowledge_context") or "").strip()),
+            knowledge_context_len=len(str((chat_context or {}).get("knowledge_context") or "")),
+        )
 
         if cfg.key_chat_module == 'rasa':
             textlist = selected_module.question(msg)
             text = textlist[0]['text']
         else:
             uid = member_db.new_instance().find_user(username)
-            text = selected_module.question(msg, uid)
+            if module_name == "nlp_gpt":
+                text = selected_module.question(
+                    msg,
+                    uid,
+                    chat_context=chat_context,
+                    has_product_context=has_product_context,
+                )
+            else:
+                text = selected_module.question(msg, uid)
         util.printInfo(1, username, '自然语言处理完成. 耗时: {} ms'.format(math.floor((time.time() - tm) * 1000)))
         if text == '哎呀，你这么说我也不懂，详细点呗' or text == '':
             util.printInfo(1, username, '[!] 自然语言无语了！')
@@ -206,15 +246,95 @@ class FeiFei:
                     # 商品介绍类请求优先走结构化匹配，避免被历史 QA 误命中并持续污染 qa.csv
                     text = ''
                     textlist = []
-                    intro_resolution = resolve_product_intro(interact.data["msg"])
+                    original_msg = interact.data["msg"]
+                    safe_reply = getattr(cfg, "audit_fallback_reply", '这个问题我不太方便回答，我们换个话题聊聊吧')
+                    intro_resolution = {"handled": False, "llm_input": None, "reply_text": None, "matched_product": None}
                     answer = None
-                    if not intro_resolution.get("handled"):
-                        answer = self.__get_answer(interact.interleaver, interact.data["msg"])
+                    used_audit_fallback = False
+                    record_generated_qa = False
 
-                    llm_input = interact.data["msg"]
-                    should_call_llm = answer is None
-                    if answer is None:
-                        llm_input = intro_resolution.get("llm_input") or interact.data["msg"]
+                    has_input_forbidden = False
+                    input_forbidden_word = ""
+                    if getattr(cfg, "audit_enabled", True) and getattr(cfg, "audit_input_enabled", True):
+                        try:
+                            has_input_forbidden, input_forbidden_word = check_forbidden_text(original_msg)
+                            trace_log(
+                                module="avatar",
+                                stage="audit_input",
+                                status="blocked" if has_input_forbidden else "pass",
+                                request_id=request_id,
+                                user=username,
+                                blocked_word=input_forbidden_word if has_input_forbidden else "",
+                            )
+                        except Exception as e:
+                            trace_log(
+                                module="avatar",
+                                stage="audit_input",
+                                status="error",
+                                request_id=request_id,
+                                user=username,
+                                error=str(e),
+                            )
+                            has_input_forbidden = False
+                            input_forbidden_word = ""
+                    else:
+                        trace_log(
+                            module="avatar",
+                            stage="audit_input",
+                            status="skip",
+                            request_id=request_id,
+                            user=username,
+                            reason="audit_disabled",
+                        )
+
+                    if has_input_forbidden:
+                        text = safe_reply
+                        used_audit_fallback = True
+                        util.printInfo(1, username, f'[Audit] User input blocked: {input_forbidden_word}')
+                    else:
+                        identity_reply = get_guide_identity_reply(original_msg)
+                        if identity_reply:
+                            answer = identity_reply
+                        else:
+                            intro_resolution = resolve_product_intro(original_msg)
+                            if intro_resolution.get("reply_text"):
+                                answer = intro_resolution.get("reply_text")
+
+                    llm_input = original_msg
+                    should_call_llm = (not has_input_forbidden) and answer is None
+                    has_product_context = intro_resolution.get("response_mode") in ("product_intro", "product_qa") if intro_resolution else False
+                    knowledge_context = None
+                    knowledge_domain = detect_knowledge_domain(original_msg)
+                    knowledge_dataset_name = ""
+                    if should_call_llm:
+                        llm_input = intro_resolution.get("llm_input") or original_msg
+                        knowledge_reason = "not_attempted"
+                        if intro_resolution.get("handled") and not intro_resolution.get("allow_knowledge_enhance", False):
+                            knowledge_reason = "product_intro_handled"
+                        elif not getattr(cfg, "knowledge_enabled", False):
+                            knowledge_reason = "knowledge_disabled"
+                        elif not should_knowledge_enhance(original_msg):
+                            knowledge_reason = "no_keyword_match"
+                        elif cfg.key_chat_module != 'gpt':
+                            knowledge_reason = "provider_not_supported"
+                        else:
+                            knowledge_result = retrieve_knowledge_context_details(original_msg, domain=knowledge_domain)
+                            knowledge_context = knowledge_result.get("context")
+                            knowledge_domain = knowledge_result.get("domain") or knowledge_domain
+                            knowledge_dataset_name = str(knowledge_result.get("dataset_name") or "")
+                            knowledge_reason = knowledge_result.get("reason") or ("context_loaded" if knowledge_context else "context_unavailable")
+                        trace_log(
+                            module="avatar",
+                            stage="knowledge",
+                            status="hit" if knowledge_context else "skip",
+                            request_id=request_id,
+                            user=username,
+                            provider=str(cfg.key_chat_module),
+                            domain=knowledge_domain or "",
+                            dataset_name=knowledge_dataset_name,
+                            reason=knowledge_reason,
+                            context_len=len(knowledge_context or ""),
+                        )
                         if should_call_llm and wsa_server.get_web_instance().is_connected(username):
                             wsa_server.get_web_instance().add_cmd({"panelMsg": "思考中...", "Username": username,
                                                                    'robot': f'http://{cfg.backend_api_url}/robot/Thinking.jpg'})
@@ -223,12 +343,59 @@ class FeiFei:
                                        'Username': username, 'robot': f'http://{cfg.backend_api_url}/robot/Thinking.jpg'}
                             wsa_server.get_instance().add_cmd(content)
                         if should_call_llm:
-                            text, textlist = handle_chat_message(llm_input, username, request_id=request_id)
-
-                        if should_call_llm and not intro_resolution.get("handled"):
-                            qa_service.QAService().record_qapair(interact.data["msg"], text)  # 沟通记录缓存到qa文件
+                            chat_context = {"knowledge_context": knowledge_context} if knowledge_context else None
+                            text, textlist = handle_chat_message(
+                                llm_input,
+                                username,
+                                request_id=request_id,
+                                chat_context=chat_context,
+                                has_product_context=has_product_context,
+                            )
+                            record_generated_qa = not intro_resolution.get("handled")
                     else:
-                        text = answer
+                        knowledge_skip_reason = "input_audit_blocked" if has_input_forbidden else "answer_already_available"
+                        trace_log(
+                            module="avatar",
+                            stage="knowledge",
+                            status="skip",
+                            request_id=request_id,
+                            user=username,
+                            provider=str(cfg.key_chat_module),
+                            domain=knowledge_domain or "",
+                            dataset_name="",
+                            reason=knowledge_skip_reason,
+                            context_len=0,
+                        )
+                        if answer is not None:
+                            text = answer
+
+                    if text and getattr(cfg, "audit_enabled", True) and getattr(cfg, "audit_output_enabled", True):
+                        has_output_forbidden, output_forbidden_word = check_forbidden_text(text)
+                        trace_log(
+                            module="avatar",
+                            stage="audit_output",
+                            status="blocked" if has_output_forbidden else "pass",
+                            request_id=request_id,
+                            user=username,
+                            blocked_word=output_forbidden_word if has_output_forbidden else "",
+                        )
+                        if has_output_forbidden:
+                            text = safe_reply
+                            textlist = []
+                            used_audit_fallback = True
+                            util.printInfo(1, username, f'[Audit] Model output blocked: {output_forbidden_word}')
+                    else:
+                        trace_log(
+                            module="avatar",
+                            stage="audit_output",
+                            status="skip",
+                            request_id=request_id,
+                            user=username,
+                            reason="audit_disabled_or_empty_reply",
+                        )
+
+                    if record_generated_qa and text and not used_audit_fallback:
+                        qa_service.QAService().record_qapair(original_msg, text)  # 沟通记录缓存到qa文件
 
                     # 记录回复
                     self.write_to_file("./logs", "answer_result.txt", text)

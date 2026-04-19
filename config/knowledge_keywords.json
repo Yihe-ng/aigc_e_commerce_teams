@@ -1,0 +1,82 @@
+{
+  "fabric": {
+    "description": "Fabric, material, and texture related questions.",
+    "keywords": [
+      "fabric",
+      "material",
+      "面料",
+      "材质",
+      "透气",
+      "柔软",
+      "亲肤",
+      "棉",
+      "麻",
+      "羊毛",
+      "针织",
+      "手感",
+      "质感"
+    ],
+    "dataset_aliases": [
+      "fabric",
+      "material",
+      "面料",
+      "材质",
+      "布料",
+      "材质面料"
+    ]
+  },
+  "care": {
+    "description": "Washing, care, and maintenance related questions.",
+    "keywords": [
+      "care",
+      "wash",
+      "clean",
+      "洗护",
+      "清洗",
+      "怎么洗",
+      "机洗",
+      "手洗",
+      "晾晒",
+      "保养",
+      "缩水",
+      "掉色",
+      "变形"
+    ],
+    "dataset_aliases": [
+      "care",
+      "wash",
+      "clean",
+      "洗护",
+      "清洗",
+      "保养",
+      "洗涤"
+    ]
+  },
+  "style": {
+    "description": "Style, outfit matching, and scene related questions.",
+    "keywords": [
+      "style",
+      "look",
+      "风格",
+      "搭配",
+      "穿搭",
+      "适合",
+      "场合",
+      "通勤",
+      "约会",
+      "休闲",
+      "正式",
+      "显瘦",
+      "修身"
+    ],
+    "dataset_aliases": [
+      "style",
+      "look",
+      "风格",
+      "穿搭",
+      "搭配",
+      "场景",
+      "场合"
+    ]
+  }
+}
