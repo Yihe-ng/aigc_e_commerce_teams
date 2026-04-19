@@ -69,6 +69,9 @@ from gui.ai_tools_task_result_utils import (
     extract_task_product_id,
     merge_saved_video_result,
 )
+from backend.services.forbidden_words_service import get_stats as get_forbidden_words_stats
+from backend.services.forbidden_words_service import reload_words as reload_forbidden_words
+from backend.services.knowledge_service import get_status as get_knowledge_status
 from backend.services.live_service import live_service
 from backend.services.storage import (
     build_public_url as storage_build_public_url,
@@ -2418,8 +2421,7 @@ def handle_xiaohongshu_stream_post():
             questions = []
             saw_chunk = False
             finished_outputs = {}
-
-            print(f"Calling Dify Workflow API [mode={mode}] with query length: {len(q)}")
+            content_already_sent = False  # 标记是否已发送过内容，避免重复发送
 
             try:
                 with requests.post(
@@ -2461,17 +2463,21 @@ def handle_xiaohongshu_stream_post():
 
                         if event == "text_chunk":
                             chunk = event_payload.get("text", "")
-                            if chunk:
+                            # 对于 Workflow 模式，忽略 text_chunk，等待 workflow_finished 的完整内容
+                            if chunk and mode != "marketing":
                                 saw_chunk = True
                                 full_content += chunk
                                 yield emit_sse({"chunk": chunk})
+                                content_already_sent = True  # 标记已发送
                         elif event == "workflow_finished":
                             finished_outputs = event_payload.get("outputs", {})
                             fallback_text = extract_output_text(finished_outputs)
-                            if fallback_text and not full_content.strip():
+                            # 只在还没发送过内容时才发送，避免重复
+                            if fallback_text and not content_already_sent:
                                 saw_chunk = True
                                 full_content = fallback_text
                                 yield emit_sse({"chunk": fallback_text})
+                                content_already_sent = True  # 标记已发送
                         elif event == "error":
                             yield emit_sse(
                                 {
@@ -2890,6 +2896,51 @@ def api_live_health():
         stage="api_live_health",
         status=payload.get("overall_status", "unknown"),
         request_id=request.headers.get("X-Request-Id", "") or "-",
+    )
+    return jsonify(payload)
+
+
+@app.route("/api/admin/forbidden-words/status")
+def api_forbidden_words_status():
+    payload = get_forbidden_words_stats()
+    trace_log(
+        module="aigc_server",
+        stage="api_forbidden_words_status",
+        status="ok",
+        request_id=request.headers.get("X-Request-Id", "") or "-",
+        count=payload.get("count", 0),
+        source=payload.get("source", ""),
+        file_exists=payload.get("file_exists", False),
+    )
+    return jsonify(payload)
+
+
+@app.route("/api/admin/forbidden-words/reload", methods=["POST"])
+def api_forbidden_words_reload():
+    payload = reload_forbidden_words()
+    trace_log(
+        module="aigc_server",
+        stage="api_forbidden_words_reload",
+        status="ok",
+        request_id=request.headers.get("X-Request-Id", "") or "-",
+        count=payload.get("count", 0),
+        source=payload.get("source", ""),
+        file_exists=payload.get("file_exists", False),
+    )
+    return jsonify(payload)
+
+
+@app.route("/api/admin/knowledge/status")
+def api_knowledge_status():
+    payload = get_knowledge_status()
+    trace_log(
+        module="aigc_server",
+        stage="api_knowledge_status",
+        status="ok",
+        request_id=request.headers.get("X-Request-Id", "") or "-",
+        provider=payload.get("provider", ""),
+        enabled=payload.get("enabled", False),
+        gpt_only=payload.get("gpt_only", True),
     )
     return jsonify(payload)
 
