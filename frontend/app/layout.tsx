@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import Script from 'next/script'
 
 import { ThemeProvider } from '@/components/theme/theme-provider'
 import './globals.css'
@@ -26,10 +27,13 @@ export default function RootLayout({
         <link rel="preconnect" href="https://cubism.live2d.com" />
         <link rel="dns-prefetch" href="https://cubism.live2d.com" />
         {/* 预加载 Live2D 运行时 */}
-        <link rel="preload" href="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js" as="script" /> 
-        <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js" async />
+        <link rel="preload" href="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js" as="script" />
       </head>
       <body className={inter.className}>
+        <Script
+          src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"
+          strategy="beforeInteractive"
+        />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

@@ -110,20 +110,20 @@ class LipSyncManager:
             send_lipsync_end(web, base_wallclock + offset_ms, username=username, request_id=request_id)
 
     def build_audio_timeline(self, wav_path: str | Path, *, request_id: str = "") -> dict:
+        text_timeline = self.get_text_timeline(request_id)
+        if text_timeline and text_timeline.get("cues"):
+            return text_timeline
+
         path = Path(wav_path)
-        frame_ms = getattr(self.provider, "frame_ms", 20)
         if not path.exists():
-            text_timeline = self.get_text_timeline(request_id)
-            if text_timeline and text_timeline.get("cues"):
-                return text_timeline
-            return {"request_id": request_id, "frame_ms": frame_ms, "duration_ms": 0, "source": "audio", "cues": []}
+            return {"request_id": request_id, "frame_ms": getattr(self.provider, "frame_ms", 20), "duration_ms": 0, "cues": []}
 
         cues = []
         with wave.open(str(path), "rb") as wav_reader:
             sample_rate = wav_reader.getframerate()
             sample_width = wav_reader.getsampwidth()
             channels = wav_reader.getnchannels()
-            samples_per_chunk = max(1, int(sample_rate * frame_ms / 1000))
+            samples_per_chunk = max(1, int(sample_rate * getattr(self.provider, "frame_ms", 20) / 1000))
             self.reset()
             offset_ms = 0
 
@@ -138,40 +138,22 @@ class LipSyncManager:
                     channels=channels,
                     timestamp_ms=offset_ms,
                 )
-                actual_frames = max(1, len(raw) // (sample_width * channels))
-                chunk_duration_ms = int(actual_frames / float(sample_rate) * 1000) if sample_rate else frame_ms
-                end_ms = offset_ms + chunk_duration_ms
                 cues.append(
                     {
                         "offset_ms": frame.timestamp,
                         "ts_ms": frame.timestamp,
-                        "start_ms": offset_ms,
-                        "end_ms": end_ms,
                         "mouth_open": frame.mouth_open,
                         "mouth_form": 0.0,
                         "energy": frame.short_energy,
                     }
                 )
-                offset_ms = end_ms
-
-        if cues and cues[-1]["mouth_open"] > 0:
-            cues.append(
-                {
-                    "offset_ms": offset_ms,
-                    "ts_ms": offset_ms,
-                    "start_ms": offset_ms,
-                    "end_ms": offset_ms + frame_ms,
-                    "mouth_open": 0.0,
-                    "mouth_form": 0.0,
-                    "energy": 0.0,
-                }
-            )
+                actual_frames = max(1, len(raw) // (sample_width * channels))
+                offset_ms += int(actual_frames / float(sample_rate) * 1000) if sample_rate else getattr(self.provider, "frame_ms", 20)
 
         return {
             "request_id": request_id,
-            "frame_ms": frame_ms,
+            "frame_ms": getattr(self.provider, "frame_ms", 20),
             "duration_ms": offset_ms,
-            "source": "audio",
             "cues": cues,
         }
 
