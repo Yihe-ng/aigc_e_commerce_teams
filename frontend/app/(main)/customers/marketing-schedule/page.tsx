@@ -1,4 +1,18 @@
-import MarketingScheduleContent from "@/components/customers/marketing-schedule/marketing-schedule-content"
+"use client"
+
+import dynamic from "next/dynamic"
+
+const MarketingScheduleContent = dynamic(
+  () => import("@/components/customers/marketing-schedule/marketing-schedule-content"),
+  {
+    loading: () => (
+      <div className="space-y-4">
+        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-96 animate-pulse rounded-xl bg-muted" />
+      </div>
+    )
+  }
+)
 
 export default function MarketingSchedulePage() {
   return (

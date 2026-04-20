@@ -2,17 +2,40 @@ const path = require("path");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // output: 'export', // 娉ㄩ噴鎺夐潤鎬佸鍑?
   reactStrictMode: true,
   outputFileTracingRoot: path.resolve(__dirname),
-  // 鎭㈠ rewrites 浠ｇ悊锛岃 Next.js 鑷姩杞彂 API 璇锋眰鍒?Flask (5000)
+
+  // 实验性功能优化
+  experimental: {
+    // 优化大型包的导入
+    optimizePackageImports: [
+      "@heroui/react",
+      "lucide-react",
+      "@radix-ui/react-checkbox",
+      "@radix-ui/react-label",
+      "@radix-ui/react-slot"
+    ]
+  },
+
+  // 图片优化配置
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**"
+      }
+    ],
+    formats: ["image/webp", "image/avif"],
+    minimumCacheTTL: 60
+  },
+
+  // API 代理配置
   async rewrites() {
     return [
       {
         source: "/api/login",
-        destination: "http://localhost:3002/api/login", // Login server
+        destination: "http://localhost:3002/api/login",
       },
-      // 文案智造器 API 代理
       {
         source: "/generate_xiaohongshu",
         destination: "http://localhost:5000/generate_xiaohongshu",
@@ -75,7 +98,7 @@ const nextConfig = {
       },
       {
         source: "/api/:path*",
-        destination: "http://localhost:5000/api/:path*", // Flask backend
+        destination: "http://localhost:5000/api/:path*",
       },
     ];
   },

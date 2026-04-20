@@ -3,7 +3,7 @@
 import { startTransition, useCallback, useEffect, useRef, useState } from "react"
 import { ScrollShadow } from "@heroui/react"
 import { Sparkles } from "lucide-react"
-import { fetchProductLibrary } from "@/lib/oss/api"
+import { useProducts } from "@/lib/hooks/use-products"
 import type { Product } from "@/lib/types/product"
 
 import {
@@ -114,9 +114,9 @@ export default function TextGenerateChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [savedContentsRefreshKey, setSavedContentsRefreshKey] = useState(0)
-  const [products, setProducts] = useState<Product[]>([])
+  // 使用缓存的 hook 获取商品数据
+  const { data: products, isLoading: isLoadingProducts } = useProducts()
   const [saveDraft, setSaveDraft] = useState<SaveDraftValue>({
     product_id: null,
     product_name: "",
@@ -406,27 +406,8 @@ export default function TextGenerateChat() {
     }
   }, [])
 
-  useEffect(() => {
-    const controller = new AbortController()
-
-    setIsLoadingProducts(true)
-    fetchProductLibrary(controller.signal)
-      .then((items) => {
-        setProducts(items)
-      })
-      .catch((error) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return
-        }
-        console.error("加载商品列表失败:", error)
-        setProducts([])
-      })
-      .finally(() => {
-        setIsLoadingProducts(false)
-      })
-
-    return () => controller.abort()
-  }, [])
+  // 商品数据通过 useProducts hook 自动获取和缓存
+  // 无需手动调用 fetchProductLibrary
 
   const handleCopy = useCallback((content: unknown) => {
     if (typeof content !== "string") {
@@ -502,9 +483,9 @@ export default function TextGenerateChat() {
       ad_best: saveDraft.ad_best.trim(),
       copy_type: saveDraft.copy_type,
     }
-    const hasSelectedProduct = products.some(
+    const hasSelectedProduct = products?.some(
       (product) => product.id === payload.product_id
-    )
+    ) ?? false
 
     if (!payload.product_id || !payload.product_name || !payload.ad_best) {
       alert("请先完善商品名称和最终文案")
@@ -615,7 +596,7 @@ export default function TextGenerateChat() {
             <div className="flex-1 space-y-4 overflow-y-auto p-4 md:p-6">
               <SaveDraftPanel
                 value={saveDraft}
-                products={products}
+                products={products ?? []}
                 isLoadingProducts={isLoadingProducts}
                 isSaving={isSavingDraft}
                 onChange={handleSaveDraftChange}
