@@ -240,7 +240,8 @@ class FeiFei:
                     if wsa_server.get_web_instance().is_connected(username):
                         wsa_server.get_web_instance().add_cmd({"panelReply": {"type": "member",
                                                                               "content": interact.data["msg"],
-                                                                              "username": username, "uid": uid},
+                                                                              "username": username, "uid": uid,
+                                                                              "request_id": request_id},
                                                                "Username": username})
 
                     # 商品介绍类请求优先走结构化匹配，避免被历史 QA 误命中并持续污染 qa.csv
@@ -416,7 +417,8 @@ class FeiFei:
                         wsa_server.get_web_instance().add_cmd({"panelMsg": "回复中...", "Username": username,
                                                                'robot': f'http://{cfg.backend_api_url}/robot/Speaking.jpg'})
                         wsa_server.get_web_instance().add_cmd(
-                            {"panelReply": {"type": "avatar", "content": text, "username": username, "uid": uid},
+                            {"panelReply": {"type": "avatar", "content": text, "username": username, "uid": uid,
+                                            "request_id": request_id},
                              "Username": username})
                     if len(textlist) > 1:
                         i = 1
@@ -425,7 +427,8 @@ class FeiFei:
                             if wsa_server.get_web_instance().is_connected(username):
                                 wsa_server.get_web_instance().add_cmd({"panelReply": {"type": "avatar",
                                                                                       "content": textlist[i]['text'],
-                                                                                      "username": username, "uid": uid},
+                                                                                      "username": username, "uid": uid,
+                                                                                      "request_id": request_id},
                                                                        "Username": username,
                                                                        'robot': f'http://{cfg.backend_api_url}/robot/Speaking.jpg'})
                             i += 1
@@ -460,7 +463,8 @@ class FeiFei:
                             wsa_server.get_web_instance().add_cmd({"panelMsg": "回复中...", "Username": username,
                                                                    'robot': f'http://{cfg.backend_api_url}/robot/Speaking.jpg'})
                             wsa_server.get_web_instance().add_cmd(
-                                {"panelReply": {"type": "avatar", "content": text, "username": username, "uid": uid},
+                                {"panelReply": {"type": "avatar", "content": text, "username": username, "uid": uid,
+                                                "request_id": interact.data.get("request_id", "")},
                                  "Username": username})
                         lip_sync_manager.register_text_timeline(text, request_id=interact.data.get("request_id", ""))
                         util.printInfo(1, interact.data.get('user'), '({}) {}'.format(self.__get_mood_voice(), text))
@@ -754,6 +758,21 @@ class FeiFei:
                     filename=os.path.basename(result),
                     text_len=len(text),
                 )
+                try:
+                    username = interact.data.get("user")
+                    web_instance = wsa_server.get_web_instance()
+                    if web_instance is not None and web_instance.is_connected(username):
+                        filename = os.path.basename(result)
+                        web_instance.add_cmd({
+                            "type": "audio_ready",
+                            "audio_url": f"/audio/{filename}",
+                            "filename": filename,
+                            "mtime_ms": int(time.time() * 1000),
+                            "request_id": request_id,
+                            "Username": username,
+                        })
+                except Exception as e:
+                    util.log(1, f"[AVATAR-CORE] audio_ready push failed: {e}")
                 MyThread(target=self.__process_output_audio, args=[result, interact, text]).start()
                 return result
             else:

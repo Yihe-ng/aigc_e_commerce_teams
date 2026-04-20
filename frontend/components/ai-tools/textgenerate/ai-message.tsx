@@ -81,7 +81,7 @@ export function AIMessage({
             <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-slate-600 dark:bg-slate-700/50">
               <div className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200">
                 <Lightbulb className="h-4 w-4 text-[#91C1FA]" />
-                <span>追问</span>
+                <span>改进建议</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {allQuestions.map((question) => (

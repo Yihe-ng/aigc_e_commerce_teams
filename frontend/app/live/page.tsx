@@ -62,6 +62,7 @@ type PanelReply = {
   content?: string
   username?: string
   uid?: number
+  request_id?: string
 }
 
 type MouthCue = {
@@ -90,6 +91,9 @@ type WsPayload = {
   rms?: number
   short_energy?: number
   request_id?: string
+  audio_url?: string
+  filename?: string
+  mtime_ms?: number
   panelMsg?: string
   panelReply?: PanelReply
   is_connect?: boolean
@@ -113,6 +117,13 @@ type PendingAudio = {
   key: string
 }
 
+type PushedAudio = {
+  src: string
+  key: string
+  requestId: string
+  filename: string
+}
+
 type ProductGroup = {
   category: string
   products: Product[]
@@ -120,6 +131,7 @@ type ProductGroup = {
 
 const DEFAULT_USER = 'User'
 const MAX_CHAT_MESSAGES = 80
+const AUDIO_READY_TIMEOUT_MS = 30000
 const LEGACY_AVATAR_MESSAGE_TYPES = new Set(['avatar', 'assistant', 'fay'])
 
 const SPEAKER_STYLES: Record<string, { level: string; color: string }> = {
@@ -256,8 +268,13 @@ export default function LivePage() {
   const manualStopRef = useRef(false)
   const activeTraceRequestIdRef = useRef('')
   const isAudioPollingRef = useRef(false)
-  const activeAudioPollSinceRef = useRef(0)
-  const activeAudioPollTokenRef = useRef(0)
+  const audioReadyTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const pushedAudioRef = useRef<Map<string, PushedAudio>>(new Map())
+  const startedAudioRequestIdsRef = useRef<Set<string>>(new Set())
+  const requestAudioSinceRef = useRef<Map<string, number>>(new Map())
+  const activePlaybackRequestIdRef = useRef<string | null>(null)
+  const activeAudioPollTokensRef = useRef<Map<string, number>>(new Map())
+  const pollingRequestIdsRef = useRef<Set<string>>(new Set())
 
   const [activeTab, setActiveTab] = useState<LiveTab>('chat')
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -549,6 +566,40 @@ export default function LivePage() {
     }
   })
 
+  const clearAudioReadyTimer = useEvent((requestId: string) => {
+    if (!requestId) {
+      return
+    }
+    const timer = audioReadyTimersRef.current.get(requestId)
+    if (timer) {
+      clearTimeout(timer)
+      audioReadyTimersRef.current.delete(requestId)
+    }
+  })
+
+  const scheduleAudioFallback = useEvent((requestId: string, since: number) => {
+    if (!requestId || !since) {
+      return
+    }
+
+    requestAudioSinceRef.current.set(requestId, since)
+    clearAudioReadyTimer(requestId)
+
+    const timer = setTimeout(() => {
+      audioReadyTimersRef.current.delete(requestId)
+      if (startedAudioRequestIdsRef.current.has(requestId)) {
+        return
+      }
+      logClientTrace('audio_ready_timeout', {
+        request_id: requestId,
+        status: 'timeout',
+      })
+      void pollLatestAudio(since, requestId)
+    }, AUDIO_READY_TIMEOUT_MS)
+
+    audioReadyTimersRef.current.set(requestId, timer)
+  })
+
   const stopNativeAudio = useEvent(() => {
     latestAudioRequestRef.current = -1
     const player = audioPlayerRef.current
@@ -558,6 +609,7 @@ export default function LivePage() {
       player.currentTime = 0
       audioPlayerRef.current = null
     }
+    activePlaybackRequestIdRef.current = null
     setIsPlayingAudio(false)
   })
 
@@ -571,6 +623,10 @@ export default function LivePage() {
         mouthSync?: MouthSyncPayload
       } = {},
     ) => {
+      const requestId = trace.request_id || ''
+      if (requestId) {
+        clearAudioReadyTimer(requestId)
+      }
       stopNativeAudio()
       const player = new window.Audio()
       player.crossOrigin = 'anonymous'
@@ -581,10 +637,11 @@ export default function LivePage() {
 
       player.onplay = () => {
         logClientTrace('audio_play', {
-          request_id: trace.request_id || '',
+          request_id: requestId,
           status: 'playing',
           filename: trace.filename || '',
         })
+        activePlaybackRequestIdRef.current = requestId || null
         setIsPlayingAudio(true)
         setPendingAudio(null)
         startTimedMouthSync(player, trace.mouthSync)
@@ -593,12 +650,17 @@ export default function LivePage() {
 
       player.onended = () => {
         logClientTrace('audio_play', {
-          request_id: trace.request_id || '',
+          request_id: requestId,
           status: 'ended',
           filename: trace.filename || '',
         })
         setIsPlayingAudio(false)
         audioPlayerRef.current = null
+        activePlaybackRequestIdRef.current = null
+        if (requestId) {
+          pushedAudioRef.current.delete(requestId)
+          requestAudioSinceRef.current.delete(requestId)
+        }
         stopLipSync()
         if (stageStatus !== 'thinking' && stageStatus !== 'listening') {
           enterIdleState()
@@ -607,13 +669,14 @@ export default function LivePage() {
 
       player.onerror = () => {
         logClientTrace('audio_play', {
-          request_id: trace.request_id || '',
+          request_id: requestId,
           status: 'error',
           filename: trace.filename || '',
           error: 'audio_element_error',
         })
         setIsPlayingAudio(false)
         audioPlayerRef.current = null
+        activePlaybackRequestIdRef.current = null
         stopLipSync()
         setPendingAudio({ src, key: audioKey })
         setPanelMessage('音频文件已生成，但浏览器播放失败')
@@ -624,13 +687,14 @@ export default function LivePage() {
         await player.play()
       } catch (error) {
         logClientTrace('audio_play', {
-          request_id: trace.request_id || '',
+          request_id: requestId,
           status: 'blocked',
           filename: trace.filename || '',
           error: error instanceof Error ? error.message : 'autoplay_blocked',
         })
         setIsPlayingAudio(false)
         audioPlayerRef.current = null
+        activePlaybackRequestIdRef.current = null
         stopLipSync()
         setPendingAudio({ src, key: audioKey })
         setPanelMessage('音频已生成，但浏览器阻止了自动播放')
@@ -697,13 +761,12 @@ export default function LivePage() {
     })
   })
 
-  const startReplySync = useEvent((since: number) => {
+  const startReplySync = useEvent(() => {
     stopReplySync()
     let attempts = 0
     replySyncTimerRef.current = setInterval(() => {
       attempts += 1
       void fetchMessageHistory()
-      void pollLatestAudio(since)
       if (attempts >= 12) {
         stopReplySync()
       }
@@ -836,21 +899,21 @@ export default function LivePage() {
     }
   })
 
-  const pollLatestAudio = useEvent(async (since: number) => {
+  const pollLatestAudio = useEvent(async (since: number, requestId?: string) => {
     if (!since || typeof window === 'undefined') {
       return
     }
 
-    if (isAudioPollingRef.current && activeAudioPollSinceRef.current === since) {
+    const traceRequestId = requestId || activeTraceRequestIdRef.current || createClientRequestId()
+    if (pollingRequestIdsRef.current.has(traceRequestId)) {
       return
     }
 
-    const requestId = Date.now()
-    const traceRequestId = activeTraceRequestIdRef.current || createClientRequestId()
+    const latestRequestToken = Date.now()
     const pollToken = Date.now() + Math.floor(Math.random() * 1000)
-    latestAudioRequestRef.current = requestId
-    activeAudioPollSinceRef.current = since
-    activeAudioPollTokenRef.current = pollToken
+    latestAudioRequestRef.current = latestRequestToken
+    pollingRequestIdsRef.current.add(traceRequestId)
+    activeAudioPollTokensRef.current.set(traceRequestId, pollToken)
     isAudioPollingRef.current = true
     logClientTrace('latest_audio_poll', {
       request_id: traceRequestId,
@@ -858,26 +921,30 @@ export default function LivePage() {
       since,
     })
 
-    for (let attempt = 0; attempt < 30; attempt += 1) {
-      if (activeAudioPollTokenRef.current !== pollToken) {
-        return
-      }
-      try {
+    try {
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        if (activeAudioPollTokensRef.current.get(traceRequestId) !== pollToken) {
+          return
+        }
+
         const response = await fetch(`${getApiBaseUrl()}/api/latest-audio?since=${since}&request_id=${encodeURIComponent(traceRequestId)}`)
         if (response.ok) {
           const payload = (await response.json()) as LatestAudioPayload
           const effectiveRequestId = payload.request_id || traceRequestId
           const audio = payload.audio
           if (audio?.url) {
-            if (latestAudioRequestRef.current !== requestId) {
+            if (latestAudioRequestRef.current !== latestRequestToken || startedAudioRequestIdsRef.current.has(effectiveRequestId)) {
               return
             }
-            isAudioPollingRef.current = false
 
             const audioKey = `${audio.filename ?? ''}:${audio.mtime_ms ?? ''}`
             if (audioKey && lastPlayedAudioKeyRef.current === audioKey) {
               return
             }
+
+            startedAudioRequestIdsRef.current.add(effectiveRequestId)
+            pushedAudioRef.current.delete(effectiveRequestId)
+            clearAudioReadyTimer(effectiveRequestId)
 
             logClientTrace('latest_audio_poll', {
               request_id: effectiveRequestId,
@@ -900,34 +967,55 @@ export default function LivePage() {
             return
           }
         }
-      } catch (error) {
-        isAudioPollingRef.current = false
-        logClientTrace('latest_audio_poll', {
-          request_id: traceRequestId,
-          status: 'error',
-          since,
-          attempt: attempt + 1,
-          error: error instanceof Error ? error.message : 'latest_audio_failed',
-        })
-        // Keep polling while the backend finishes writing the sample file.
-        return
+
+        await new Promise((resolve) => setTimeout(resolve, 800))
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 800))
-    }
-
-    if (activeAudioPollTokenRef.current === pollToken) {
-      isAudioPollingRef.current = false
+      if (activeAudioPollTokensRef.current.get(traceRequestId) === pollToken) {
+        logClientTrace('latest_audio_poll', {
+          request_id: traceRequestId,
+          status: 'timeout',
+          since,
+        })
+      }
+    } catch (error) {
       logClientTrace('latest_audio_poll', {
         request_id: traceRequestId,
-        status: 'timeout',
+        status: 'error',
         since,
+        error: error instanceof Error ? error.message : 'latest_audio_failed',
       })
+    } finally {
+      pollingRequestIdsRef.current.delete(traceRequestId)
+      activeAudioPollTokensRef.current.delete(traceRequestId)
+      isAudioPollingRef.current = pollingRequestIdsRef.current.size > 0
     }
   })
 
   const handleIncomingMessage = useEvent((data: WsPayload) => {
+    if (data.type === 'audio_ready' && data.audio_url) {
+      const requestId = data.request_id || ''
+      if (!requestId || startedAudioRequestIdsRef.current.has(requestId)) {
+        return
+      }
+
+      const audioKey = `${data.filename ?? ''}:${data.mtime_ms ?? ''}`
+      pushedAudioRef.current.set(requestId, {
+        src: `${getApiBaseUrl()}${data.audio_url}?t=${data.mtime_ms ?? Date.now()}`,
+        key: audioKey,
+        requestId,
+        filename: data.filename || '',
+      })
+      logClientTrace('audio_ready_received', {
+        request_id: requestId,
+        status: 'ok',
+        filename: data.filename || '',
+      })
+      return
+    }
+
     if (data.type === 'lip_sync' && typeof data.mouth_open === 'number') {
+      const lipSyncRequestId = data.request_id || ''
       const now = Date.now()
       wsLipSyncDeadlineRef.current = now + 180
       window.setTimeout(() => {
@@ -935,12 +1023,25 @@ export default function LivePage() {
         const mouthForm = computeMouthForm(mouthOpen)
         setMouthTargets(mouthOpen, mouthForm)
       }, computeLipSyncDelay(data.timestamp))
+
+      const pushedAudio = lipSyncRequestId ? pushedAudioRef.current.get(lipSyncRequestId) : null
+      if (lipSyncRequestId && pushedAudio && !startedAudioRequestIdsRef.current.has(lipSyncRequestId)) {
+        startedAudioRequestIdsRef.current.add(lipSyncRequestId)
+        pushedAudioRef.current.delete(lipSyncRequestId)
+        void playAudioTrack(pushedAudio.src, pushedAudio.key, {
+          request_id: lipSyncRequestId,
+          filename: pushedAudio.filename,
+        })
+      }
       return
     }
 
     if (data.type === 'lip_sync_end') {
       wsLipSyncDeadlineRef.current = 0
       setMouthTargets(0, 0)
+      if (!data.request_id || data.request_id === activePlaybackRequestIdRef.current) {
+        activePlaybackRequestIdRef.current = null
+      }
       return
     }
 
@@ -955,6 +1056,11 @@ export default function LivePage() {
         setNeonState('idle')
         stopAudioPulse()
         stopNativeAudio()
+        audioReadyTimersRef.current.forEach((timer) => clearTimeout(timer))
+        audioReadyTimersRef.current.clear()
+        pushedAudioRef.current.clear()
+        startedAudioRequestIdsRef.current.clear()
+        requestAudioSinceRef.current.clear()
       }
     }
 
@@ -1002,8 +1108,9 @@ export default function LivePage() {
     if (data.panelReply?.content) {
       const isAvatar = isAvatarMessageType(data.panelReply.type)
       const user = data.panelReply.username || (isAvatar ? 'Avatar' : DEFAULT_USER)
+      const replyRequestId = data.panelReply.request_id || activeTraceRequestIdRef.current || ''
       logClientTrace('ws_panel_reply', {
-        request_id: activeTraceRequestIdRef.current || '',
+        request_id: replyRequestId,
         status: 'ok',
         reply_type: data.panelReply.type || '',
         text_len: data.panelReply.content.length,
@@ -1012,8 +1119,9 @@ export default function LivePage() {
       appendChatMessage(createMessage(user, data.panelReply.content, isAvatar ? 'avatar' : 'member'))
       if (isAvatar) {
         pulseSpeakingState()
-        if (lastInteractionAtRef.current > 0) {
-          void pollLatestAudio(lastInteractionAtRef.current)
+        const since = requestAudioSinceRef.current.get(replyRequestId) || lastInteractionAtRef.current
+        if (replyRequestId && since > 0) {
+          scheduleAudioFallback(replyRequestId, since)
         }
       }
     }
@@ -1153,15 +1261,18 @@ export default function LivePage() {
       const payload = (await response.json()) as { request_id?: string }
       const effectiveRequestId = payload.request_id || requestId
       activeTraceRequestIdRef.current = effectiveRequestId
+      requestAudioSinceRef.current.set(effectiveRequestId, lastInteractionAtRef.current)
+      scheduleAudioFallback(effectiveRequestId, lastInteractionAtRef.current)
       logClientTrace('chat_submit', {
         request_id: effectiveRequestId,
         status: 'ok',
       })
       setInputMessage('')
       void fetchMessageHistory()
-      void pollLatestAudio(lastInteractionAtRef.current)
-      startReplySync(lastInteractionAtRef.current)
+      startReplySync()
     } catch (error) {
+      clearAudioReadyTimer(requestId)
+      requestAudioSinceRef.current.delete(requestId)
       logClientTrace('chat_submit', {
         request_id: requestId,
         status: 'error',
@@ -1269,6 +1380,11 @@ export default function LivePage() {
       setNeonState('idle')
       stopAudioPulse()
       stopNativeAudio()
+      audioReadyTimersRef.current.forEach((timer) => clearTimeout(timer))
+      audioReadyTimersRef.current.clear()
+      pushedAudioRef.current.clear()
+      startedAudioRequestIdsRef.current.clear()
+      requestAudioSinceRef.current.clear()
       releaseMicrophone()
       stopReplySync()
       if (websocketRef.current) {
@@ -1469,6 +1585,11 @@ export default function LivePage() {
     void fetchRuntimeStatus()
     connectWebSocket()
 
+    const audioReadyTimers = audioReadyTimersRef.current
+    const pushedAudio = pushedAudioRef.current
+    const startedAudioRequestIds = startedAudioRequestIdsRef.current
+    const requestAudioSince = requestAudioSinceRef.current
+
     return () => {
       activeSocketIdRef.current += 1
       if (reconnectTimerRef.current) {
@@ -1480,6 +1601,11 @@ export default function LivePage() {
       if (websocketRef.current) {
         websocketRef.current.close()
       }
+      audioReadyTimers.forEach((timer) => clearTimeout(timer))
+      audioReadyTimers.clear()
+      pushedAudio.clear()
+      startedAudioRequestIds.clear()
+      requestAudioSince.clear()
       stopReplySync()
       stopNativeAudio()
       releaseMicrophone()
@@ -1603,7 +1729,7 @@ export default function LivePage() {
               聊天互动
             </div>
             <div className={`tab ${activeTab === 'product' ? 'active' : ''}`} onClick={() => setActiveTab('product')}>
-              运行状态
+              商品信息
             </div>
           </div>
 
