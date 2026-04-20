@@ -30,6 +30,14 @@ def _collection_name(domain: str | None) -> str:
     return f"{_collection_prefix()}__{_normalize_domain(domain)}"
 
 
+def get_persist_dir() -> Path:
+    return _persist_dir()
+
+
+def get_collection_name(domain: str | None) -> str:
+    return _collection_name(domain)
+
+
 def get_client() -> chromadb.PersistentClient:
     return chromadb.PersistentClient(path=str(_persist_dir()))
 
@@ -80,6 +88,10 @@ def list_collections() -> list[str]:
     for item in get_client().list_collections():
         names.append(str(getattr(item, "name", item)))
     return sorted(names)
+
+
+def collection_exists(domain: str | None) -> bool:
+    return get_collection_name(domain) in list_collections()
 
 
 def get_collection_stats(domain: str | None) -> dict:

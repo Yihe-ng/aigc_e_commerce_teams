@@ -11,7 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 load_dotenv(PROJECT_ROOT / ".env", override=False)
 
-from backend.services.local_rag.retriever import retrieve
+from backend.services.local_rag_api_service import LocalRagApiError, query_local_rag
 
 
 def main():
@@ -21,8 +21,14 @@ def main():
     parser.add_argument("--top-k", type=int, default=3, help="Number of results to return.")
     args = parser.parse_args()
 
-    result = retrieve(args.query, domain=args.domain or None, top_k=args.top_k)
-    print(f"domain: {result['domain']}")
+    try:
+        result = query_local_rag(args.query, domain=args.domain or None, top_k=args.top_k)
+    except LocalRagApiError as exc:
+        print(exc.message)
+        return 1
+
+    print(f"requested_domain: {result['requested_domain']}")
+    print(f"resolved_domain: {result['resolved_domain']}")
     print(f"records: {result['records']}")
     print("context:")
     print(result["context"] or "<empty>")

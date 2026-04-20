@@ -72,6 +72,12 @@ from gui.ai_tools_task_result_utils import (
 from backend.services.forbidden_words_service import get_stats as get_forbidden_words_stats
 from backend.services.forbidden_words_service import reload_words as reload_forbidden_words
 from backend.services.knowledge_service import get_status as get_knowledge_status
+from backend.services.local_rag_api_service import (
+    LocalRagApiError,
+    get_local_rag_status,
+    import_local_rag_documents,
+    query_local_rag,
+)
 from backend.services.live_service import live_service
 from backend.services.storage import (
     build_public_url as storage_build_public_url,
@@ -2943,6 +2949,38 @@ def api_knowledge_status():
         gpt_only=payload.get("gpt_only", True),
     )
     return jsonify(payload)
+
+
+@app.route("/api/admin/local-rag/status")
+def api_local_rag_status():
+    return jsonify(get_local_rag_status())
+
+
+@app.route("/api/admin/local-rag/import", methods=["POST"])
+def api_local_rag_import():
+    payload = request.get_json(silent=True) or {}
+    try:
+        result = import_local_rag_documents(
+            domain=payload.get("domain"),
+            reset=bool(payload.get("reset", False)),
+        )
+        return jsonify(result)
+    except LocalRagApiError as exc:
+        return jsonify({"status": "error", "error": exc.message}), exc.status_code
+
+
+@app.route("/api/admin/local-rag/query", methods=["POST"])
+def api_local_rag_query():
+    payload = request.get_json(silent=True) or {}
+    try:
+        result = query_local_rag(
+            payload.get("query"),
+            domain=payload.get("domain"),
+            top_k=payload.get("top_k", 3),
+        )
+        return jsonify(result)
+    except LocalRagApiError as exc:
+        return jsonify({"status": "error", "error": exc.message}), exc.status_code
 
 
 @app.route("/v1/chat/completions", methods=["post"])
