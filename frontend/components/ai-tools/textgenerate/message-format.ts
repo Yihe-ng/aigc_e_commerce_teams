@@ -96,9 +96,9 @@ export function removeSectionTitles(content: string): string {
     /^【文案主体】\s*/im,
     /^文案主体\s*/im,
     /^【标签】\s*/im,
-    /^【追问】\s*$/im,
+    /^【改进建议】\s*$/im,
     /^标签[：:]\s*$/im,
-    /^追问[：:]\s*$/im,
+    /^改进建议[：:]\s*$/im,
   ]
 
   let cleanedContent = content
