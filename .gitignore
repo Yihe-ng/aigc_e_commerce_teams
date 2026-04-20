@@ -221,3 +221,4 @@ avatar.db
 
 .worktrees/
 skills-lock.json
+data/chroma_db/
