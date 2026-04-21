@@ -1,4 +1,18 @@
-import MarketingAssetsContent from "@/components/products/marketing/marketing-assets-content"
+"use client"
+
+import dynamic from "next/dynamic"
+
+const MarketingAssetsContent = dynamic(
+  () => import("@/components/products/marketing/marketing-assets-content"),
+  {
+    loading: () => (
+      <div className="space-y-4 p-4 md:p-6">
+        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-64 animate-pulse rounded-xl bg-muted" />
+      </div>
+    )
+  }
+)
 
 export default function ProductMarketingAssetsPage() {
   return (

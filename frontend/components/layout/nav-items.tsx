@@ -4,7 +4,7 @@ import { Button, Dropdown, Label, Separator } from "@heroui/react"
 import { ChevronRight, Home } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 
 import { cn } from "@/lib/utils"
 
@@ -24,6 +24,24 @@ import {
   WORKSPACE_NAV,
 } from "./nav-config"
 
+// 所有需要预加载的路由
+const PREFETCH_ROUTES = [
+  "/home",
+  "/products/basic",
+  "/products/marketing",
+  "/workspace/copywriting",
+  "/workspace/marketing-images",
+  "/workspace/short-video",
+  "/ai-tools/textgenerate",
+  "/ai-tools/image",
+  "/ai-tools/video",
+  "/customers/marketing-notes",
+  "/customers/marketing-schedule",
+  "/dashboard/analytics/merchant-source",
+  "/dashboard/analytics/analyst",
+  "/dashboard/analytics/platform",
+]
+
 export function NavItems({
   onNavigate,
   pathname,
@@ -35,6 +53,35 @@ export function NavItems({
 }) {
   const path = pathname ?? ""
   const router = useRouter()
+  const prefetchTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const hasPrefetchedRef = useRef(false)
+
+  // 激进的预加载策略：页面加载后延迟预加载所有主要路由
+  useEffect(() => {
+    if (hasPrefetchedRef.current) return
+    
+    // 延迟 3 秒后开始预加载，避免影响当前页面渲染
+    prefetchTimerRef.current = setTimeout(() => {
+      hasPrefetchedRef.current = true
+      // 分批预加载，避免一次性加载过多
+      PREFETCH_ROUTES.forEach((route, index) => {
+        setTimeout(() => {
+          router.prefetch(route)
+        }, index * 100) // 每 100ms 预加载一个路由
+      })
+    }, 3000)
+
+    return () => {
+      if (prefetchTimerRef.current) {
+        clearTimeout(prefetchTimerRef.current)
+      }
+    }
+  }, [router])
+
+  // 鼠标悬停预加载（即时）
+  const handlePrefetch = useCallback((href: string) => {
+    router.prefetch(href)
+  }, [router])
   const ProductIcon = PRODUCT_NAV.icon
   const CustomersIcon = CUSTOMERS_NAV.icon
 
@@ -304,6 +351,7 @@ export function NavItems({
         className={linkClass("/home")}
         title={collapsed ? "首页" : undefined}
         onClick={onNavigate}
+        onMouseEnter={() => handlePrefetch("/home")}
       >
         <Home aria-hidden className="size-5 shrink-0 opacity-80" />
         <span className={cn(collapsed && "md:sr-only")}>首页</span>
@@ -343,6 +391,7 @@ export function NavItems({
                   className={productSubLinkClass(href)}
                   title={collapsed ? label : undefined}
                   onClick={onNavigate}
+                  onMouseEnter={() => handlePrefetch(href)}
                 >
                   <Icon aria-hidden className="size-4 shrink-0 opacity-80" />
                   <span className={cn(collapsed && "md:sr-only")}>{label}</span>
@@ -416,6 +465,7 @@ export function NavItems({
                   className={workspaceSubLinkClass(href)}
                   title={collapsed ? label : undefined}
                   onClick={onNavigate}
+                  onMouseEnter={() => handlePrefetch(href)}
                 >
                   <Icon aria-hidden className="size-4 shrink-0 opacity-80" />
                   <span className={cn(collapsed && "md:sr-only")}>{label}</span>
@@ -496,6 +546,7 @@ export function NavItems({
                   className={dashboardSubLinkClass(href)}
                   title={collapsed ? label : undefined}
                   onClick={onNavigate}
+                  onMouseEnter={() => handlePrefetch(href)}
                 >
                   <Icon aria-hidden className="size-4 shrink-0 opacity-80" />
                   <span className={cn(collapsed && "md:sr-only")}>{label}</span>
@@ -576,6 +627,7 @@ export function NavItems({
                   className={customersSubLinkClass(href)}
                   title={collapsed ? label : undefined}
                   onClick={onNavigate}
+                  onMouseEnter={() => handlePrefetch(href)}
                 >
                   <Icon aria-hidden className="size-4 shrink-0 opacity-80" />
                   <span className={cn(collapsed && "md:sr-only")}>{label}</span>
@@ -637,6 +689,7 @@ export function NavItems({
           className={linkClass(href)}
           title={collapsed ? label : undefined}
           onClick={onNavigate}
+          onMouseEnter={() => handlePrefetch(href)}
         >
           <Icon aria-hidden className="size-5 shrink-0 opacity-80" />
           <span className={cn(collapsed && "md:sr-only")}>{label}</span>

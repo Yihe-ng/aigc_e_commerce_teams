@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -20,6 +20,21 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const router = useRouter()
+
+  // 预加载主布局资源
+  useEffect(() => {
+    // 预加载主布局 chunk
+    const prefetchMainLayout = () => {
+      // 动态导入主布局以触发 webpack 预加载
+      import("@/components/layout/main-layout").catch(() => {
+        // 静默处理预加载错误
+      })
+    }
+
+    // 页面加载完成后延迟预加载（避免影响登录页面渲染）
+    const timer = setTimeout(prefetchMainLayout, 2000)
+    return () => clearTimeout(timer)
+  }, [])
   
   // 3D 倾斜卡片状态
   const cardRef = useRef<HTMLDivElement>(null)
@@ -65,7 +80,12 @@ export default function LoginPage() {
       const data = await response.json().catch(() => ({}))
 
       if (response.ok && (data?.status === 'success')) {
-        router.push("/home")
+        // 预加载首页资源
+        router.prefetch("/home")
+        // 延迟跳转以确保资源预加载完成
+        setTimeout(() => {
+          router.push("/home")
+        }, 100)
       } else {
         alert((data && data.message) ? data.message : `登录请求失败: ${response.status}`)
       }

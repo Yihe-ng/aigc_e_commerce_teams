@@ -1,8 +1,25 @@
-import VideoGenerator from '@/components/ai-tools/video'
+"use client"
+
+import dynamic from "next/dynamic"
+
+const VideoGenerator = dynamic(
+  () => import("@/components/ai-tools/video"),
+  {
+    loading: () => (
+      <div className="flex h-full items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">加载中...</p>
+        </div>
+      </div>
+    ),
+    ssr: false
+  }
+)
 
 export default function VideoGenerationPage() {
   return (
-    <div className='min-h-0 flex flex-col p-4 md:p-6'>
+    <div className="min-h-0 flex flex-col p-4 md:p-6">
       <VideoGenerator />
     </div>
   )

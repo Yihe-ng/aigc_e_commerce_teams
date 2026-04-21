@@ -58,15 +58,10 @@ export default function ProductManagementContent() {
     [],
   )
 
+  // 商品列表是主流程，OSS 配置失败不应阻塞页面可用性
   useEffect(() => {
     const controller = new AbortController()
     void fetchProducts(controller.signal)
-
-    return () => controller.abort()
-  }, [])
-
-  useEffect(() => {
-    const controller = new AbortController()
 
     fetchRuntimeOssDomain(controller.signal)
       .then((ossCustomDomain) => {
