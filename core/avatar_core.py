@@ -90,6 +90,14 @@ GUIDE_IDENTITY_QUERIES = (
     "你叫什么",
     "你是做什么的",
 )
+GUIDE_GREETING_QUERIES = (
+    "你好",
+    "您好",
+    "嗨",
+    "哈喽",
+    "hello",
+    "hi",
+)
 
 
 def get_guide_identity_reply(text: str) -> str:
@@ -98,7 +106,117 @@ def get_guide_identity_reply(text: str) -> str:
         return ""
     if any(query in content for query in GUIDE_IDENTITY_QUERIES):
         return GUIDE_IDENTITY_REPLY
+    normalized = content.lower().strip("！!。.?？~～")
+    if normalized in GUIDE_GREETING_QUERIES:
+        return GUIDE_IDENTITY_REPLY
     return ""
+
+
+ENABLE_RECENT_PRODUCT_CONTEXT = True
+_RECENT_PRODUCT_CONTEXT_TTL_SECONDS = 180
+_RECENT_PRODUCT_CONTEXT_BY_USER = {}
+_RECENT_PRODUCT_CONTEXT_LOCK = threading.RLock()
+_CANDIDATE_SELECTION_BYPASS_TERMS = (
+    "第一个",
+    "第1个",
+    "第一款",
+    "第一件",
+    "第二个",
+    "第2个",
+    "第二款",
+    "第二件",
+    "1",
+    "2",
+    "看第一款",
+    "看第二款",
+    "看看第一款",
+    "看看第二款",
+    "介绍第一款",
+    "介绍第二款",
+    "了解第一款",
+    "了解第二款",
+)
+
+
+def _build_user_context_key(username: str, uid: int | None) -> str:
+    if uid not in (None, "", 0):
+        return f"uid:{uid}"
+    return f"user:{str(username or '').strip()}"
+
+
+def _get_recent_product_context(user_key: str) -> dict | None:
+    if not ENABLE_RECENT_PRODUCT_CONTEXT or not user_key:
+        return None
+    with _RECENT_PRODUCT_CONTEXT_LOCK:
+        context = _RECENT_PRODUCT_CONTEXT_BY_USER.get(user_key)
+        if not context:
+            return None
+        if time.time() - float(context.get("updated_at") or 0.0) > _RECENT_PRODUCT_CONTEXT_TTL_SECONDS:
+            _RECENT_PRODUCT_CONTEXT_BY_USER.pop(user_key, None)
+            return None
+        return context.copy()
+
+
+def _set_recent_product_context(
+    user_key: str,
+    *,
+    matched_product: dict | None = None,
+    candidates: list[dict] | None = None,
+    response_mode: str | None = None,
+) -> None:
+    if not ENABLE_RECENT_PRODUCT_CONTEXT or not user_key:
+        return
+    with _RECENT_PRODUCT_CONTEXT_LOCK:
+        existing_context = _RECENT_PRODUCT_CONTEXT_BY_USER.get(user_key) or {}
+        _RECENT_PRODUCT_CONTEXT_BY_USER[user_key] = {
+            "last_matched_product": matched_product if matched_product else existing_context.get("last_matched_product"),
+            "last_candidates": (
+                list(candidates)
+                if candidates is not None
+                else list(existing_context.get("last_candidates") or [])
+            ),
+            "last_response_mode": response_mode,
+            "updated_at": time.time(),
+        }
+
+
+def _update_recent_product_context_from_resolution(user_key: str, intro_resolution: dict | None) -> None:
+    if not ENABLE_RECENT_PRODUCT_CONTEXT or not user_key or not isinstance(intro_resolution, dict):
+        return
+    response_mode = intro_resolution.get("response_mode")
+    matched_product = intro_resolution.get("matched_product")
+    candidate_products = intro_resolution.get("candidate_products") or []
+    if response_mode in ("product_intro", "product_qa") and matched_product:
+        _set_recent_product_context(
+            user_key,
+            matched_product=matched_product,
+            candidates=None,
+            response_mode=response_mode,
+        )
+    elif response_mode == "product_multiple" and candidate_products:
+        _set_recent_product_context(
+            user_key,
+            matched_product=None,
+            candidates=candidate_products[:2],
+            response_mode=response_mode,
+        )
+
+
+def _normalize_candidate_selection_text(text: str) -> str:
+    return "".join(str(text or "").strip().lower().split())
+
+
+def _should_bypass_input_audit_for_candidate_selection(text: str, recent_product_context: dict | None) -> bool:
+    if not ENABLE_RECENT_PRODUCT_CONTEXT:
+        return False
+    if not isinstance(recent_product_context, dict):
+        return False
+    if not recent_product_context.get("last_candidates"):
+        return False
+    normalized_text = _normalize_candidate_selection_text(text)
+    if not normalized_text:
+        return False
+    return normalized_text in {_normalize_candidate_selection_text(item) for item in _CANDIDATE_SELECTION_BYPASS_TERMS}
 
 
 # 大语言模型回复
@@ -249,35 +367,56 @@ class FeiFei:
                     textlist = []
                     original_msg = interact.data["msg"]
                     safe_reply = getattr(cfg, "audit_fallback_reply", '这个问题我不太方便回答，我们换个话题聊聊吧')
-                    intro_resolution = {"handled": False, "llm_input": None, "reply_text": None, "matched_product": None}
+                    intro_resolution = {
+                        "handled": False,
+                        "llm_input": None,
+                        "reply_text": None,
+                        "matched_product": None,
+                        "response_mode": None,
+                        "context_source": None,
+                        "candidate_products": [],
+                    }
                     answer = None
                     used_audit_fallback = False
                     record_generated_qa = False
+                    user_context_key = _build_user_context_key(username, uid)
+                    recent_product_context = _get_recent_product_context(user_context_key)
+                    bypass_input_audit = _should_bypass_input_audit_for_candidate_selection(original_msg, recent_product_context)
 
                     has_input_forbidden = False
                     input_forbidden_word = ""
                     if getattr(cfg, "audit_enabled", True) and getattr(cfg, "audit_input_enabled", True):
-                        try:
-                            has_input_forbidden, input_forbidden_word = check_forbidden_text(original_msg)
+                        if bypass_input_audit:
                             trace_log(
                                 module="avatar",
                                 stage="audit_input",
-                                status="blocked" if has_input_forbidden else "pass",
+                                status="skip",
                                 request_id=request_id,
                                 user=username,
-                                blocked_word=input_forbidden_word if has_input_forbidden else "",
+                                reason="candidate_selection_bypass",
                             )
-                        except Exception as e:
-                            trace_log(
-                                module="avatar",
-                                stage="audit_input",
-                                status="error",
-                                request_id=request_id,
-                                user=username,
-                                error=str(e),
-                            )
-                            has_input_forbidden = False
-                            input_forbidden_word = ""
+                        else:
+                            try:
+                                has_input_forbidden, input_forbidden_word = check_forbidden_text(original_msg)
+                                trace_log(
+                                    module="avatar",
+                                    stage="audit_input",
+                                    status="blocked" if has_input_forbidden else "pass",
+                                    request_id=request_id,
+                                    user=username,
+                                    blocked_word=input_forbidden_word if has_input_forbidden else "",
+                                )
+                            except Exception as e:
+                                trace_log(
+                                    module="avatar",
+                                    stage="audit_input",
+                                    status="error",
+                                    request_id=request_id,
+                                    user=username,
+                                    error=str(e),
+                                )
+                                has_input_forbidden = False
+                                input_forbidden_word = ""
                     else:
                         trace_log(
                             module="avatar",
@@ -297,7 +436,26 @@ class FeiFei:
                         if identity_reply:
                             answer = identity_reply
                         else:
-                            intro_resolution = resolve_product_intro(original_msg)
+                            intro_resolution = resolve_product_intro(
+                                original_msg,
+                                conversation_context=recent_product_context,
+                            )
+                            _update_recent_product_context_from_resolution(user_context_key, intro_resolution)
+                            trace_log(
+                                module="avatar",
+                                stage="product_route",
+                                status="handled" if intro_resolution.get("handled") else "skip",
+                                request_id=request_id,
+                                user=username,
+                                response_mode=str(intro_resolution.get("response_mode") or ""),
+                                context_source=str(intro_resolution.get("context_source") or ""),
+                                has_recent_context=bool(recent_product_context),
+                                recent_context_kind=(
+                                    "candidate_list"
+                                    if recent_product_context and recent_product_context.get("last_candidates")
+                                    else ("matched_product" if recent_product_context and recent_product_context.get("last_matched_product") else "")
+                                ),
+                            )
                             if intro_resolution.get("reply_text"):
                                 answer = intro_resolution.get("reply_text")
 

@@ -12,6 +12,10 @@ _GENERIC_INTRO_RE = re.compile(
 _FIRST_PRODUCT_RE = re.compile(
     "^(?:介绍一下|介绍下|介绍|讲讲|说说|看看)(?:第1个|第一个)商品[。！!？?]*$"
 )
+_CATALOG_QUERY_RE = re.compile(
+    r"^(?:(?:我想看|想看|看看|看下|给我看看|给我看下)?(?:我们(?:现在)?|店里|当前)?(?:有|有什么|有哪些)?(?:的)?"
+    r"(?:已有商品|现有商品|商品|衣服|款式)(?:列表)?|我们有什么商品|我们有哪些商品|我想看我们现在已有的商品)[。！!？?]*$"
+)
 _INTRO_PREFIX_RE = re.compile("^(?:介绍一下|介绍下|介绍|讲讲|说说|看看)")
 _NORMALIZE_RE = re.compile(r"[\s\-_.,，。！？、“”\"'（）()\[\]【】:：;；/]+")
 _KEYWORD_TOKEN_RE = re.compile(r"[a-z0-9]+(?:[\u4e00-\u9fff]{1,3})?|[\u4e00-\u9fff]+")
@@ -46,11 +50,111 @@ _CATEGORY_STYLE_TERMS = (
     "斜肩", "短袖", "短t", "t恤", "上衣", "衬衫", "针织", "针织衫", "开衫", "外套",
     "圆领", "方领", "v领", "吊带", "背心", "半裙", "连衣裙", "牛仔裤", "裤子"
 )
+_SINGLE_TERM_CATEGORY_TERM_NAMES = (
+    "斜肩", "短袖", "短t", "t恤", "衬衫", "针织衫", "开衫", "外套",
+    "吊带", "背心", "半裙", "连衣裙", "牛仔裤",
+)
+_SINGLE_TERM_CATEGORY_TERMS = set(_CATEGORY_STYLE_TERMS).intersection(_SINGLE_TERM_CATEGORY_TERM_NAMES)
 _CATEGORY_TERM_ALIASES = {
     "上衣": ("上衣", "t恤", "短t", "短袖", "衬衫", "针织衫", "针织", "开衫", "外套"),
     "短袖": ("短袖", "t恤", "短t"),
     "t恤": ("t恤", "短t", "短袖"),
 }
+_CONTEXT_PRONOUN_TOKENS = (
+    "这个",
+    "那个",
+    "这款",
+    "那款",
+    "这件",
+    "那件",
+    "这件衣服",
+    "那件衣服",
+    "这件上衣",
+    "那件上衣",
+    "这件t恤",
+    "那件t恤",
+    "这个t恤",
+    "那个t恤",
+    "这件短袖",
+    "那件短袖",
+    "这个短袖",
+    "那个短袖",
+    "这件衬衫",
+    "那件衬衫",
+    "这个衬衫",
+    "那个衬衫",
+    "这件外套",
+    "那件外套",
+    "这个外套",
+    "那个外套",
+    "这件开衫",
+    "那件开衫",
+    "这个开衫",
+    "那个开衫",
+    "这条",
+    "那条",
+    "这条裙子",
+    "那条裙子",
+    "这条裤子",
+    "那条裤子",
+    "这条牛仔裤",
+    "那条牛仔裤",
+    "这条半裙",
+    "那条半裙",
+    "这件裙子",
+    "那件裙子",
+    "这件连衣裙",
+    "那件连衣裙",
+    "这条连衣裙",
+    "那条连衣裙",
+    "这身",
+    "那身",
+    "它",
+)
+_FIRST_CHOICE_TERMS = (
+    "第一个",
+    "第1个",
+    "第一款",
+    "第一件",
+    "第一条",
+    "第一套",
+    "第1款",
+    "第1件",
+    "第1条",
+    "第1套",
+    "1号",
+    "1",
+)
+_SECOND_CHOICE_TERMS = (
+    "第二个",
+    "第2个",
+    "第二款",
+    "第二件",
+    "第二条",
+    "第二套",
+    "第2款",
+    "第2件",
+    "第2条",
+    "第2套",
+    "2号",
+    "2",
+)
+_SELECTION_INTRO_HINTS = (
+    "了解",
+    "介绍",
+    "介绍下",
+    "介绍一下",
+    "讲讲",
+    "说说",
+    "看看",
+    "看下",
+    "想看",
+)
+_CATALOG_INTRO_HINTS = ("介绍", "介绍下", "介绍一下", "讲讲", "说说", "看看", "看下", "我想看", "给我看看", "给我看下")
+_CATALOG_SCOPE_HINTS = ("我们", "现在", "已有", "现有", "店里", "当前")
+_CATALOG_INVENTORY_HINTS = ("现在", "已有", "现有", "店里", "当前")
+_CATALOG_TARGET_HINTS = ("商品", "衣服", "款式", "单品")
+_CATALOG_ASK_HINTS = ("有什么", "有哪些", "有啥", "有哪", "都有什么")
 
 
 def _normalize_text(value: str | None) -> str:
@@ -129,6 +233,29 @@ def _coerce_features(value: Any) -> list[str]:
     return []
 
 
+def _build_resolution(
+    *,
+    handled: bool,
+    llm_input: str | None,
+    reply_text: str | None,
+    matched_product: dict[str, Any] | None,
+    allow_knowledge_enhance: bool,
+    response_mode: str | None,
+    context_source: str | None = None,
+    candidate_products: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    return {
+        "handled": handled,
+        "llm_input": llm_input,
+        "reply_text": reply_text,
+        "matched_product": matched_product,
+        "allow_knowledge_enhance": allow_knowledge_enhance,
+        "response_mode": response_mode,
+        "context_source": context_source,
+        "candidate_products": candidate_products or [],
+    }
+
+
 def load_products_for_intro(bucket=None) -> list[dict[str, Any]]:
     local_bucket = bucket or get_bucket()
     products: list[dict[str, Any]] = []
@@ -164,10 +291,46 @@ def load_products_for_intro(bucket=None) -> list[dict[str, Any]]:
     return products
 
 
+def _is_catalog_query(text: str) -> bool:
+    raw_text = str(text or "").strip()
+    if not raw_text:
+        return False
+
+    normalized_text = _normalize_text(raw_text)
+    if not normalized_text:
+        return False
+
+    # Keep the existing regex as a compatibility fallback for older utterances.
+    if _CATALOG_QUERY_RE.match(raw_text):
+        return True
+
+    has_catalog_target = any(_normalize_text(token) in normalized_text for token in _CATALOG_TARGET_HINTS)
+    if not has_catalog_target:
+        return False
+
+    has_catalog_scope = any(_normalize_text(token) in normalized_text for token in _CATALOG_SCOPE_HINTS)
+    has_catalog_inventory = any(_normalize_text(token) in normalized_text for token in _CATALOG_INVENTORY_HINTS)
+    has_catalog_ask = any(_normalize_text(token) in normalized_text for token in _CATALOG_ASK_HINTS)
+    has_catalog_intro = any(_normalize_text(token) in normalized_text for token in _CATALOG_INTRO_HINTS)
+
+    # Stable combinations we want to support:
+    # 1. "介绍/看看 + 有什么/有哪些 + 商品"
+    # 2. "我们/现有/已有 + 商品"
+    # 3. "介绍/看看 + 现有/已有 + 商品"
+    return (
+        (has_catalog_intro and has_catalog_ask)
+        or (has_catalog_inventory and has_catalog_target)
+        or (has_catalog_intro and has_catalog_scope)
+    )
+
+
 def detect_intro_intent(text: str) -> dict[str, Any]:
     raw_text = str(text or "").strip()
     if not raw_text:
         return {"handled": False, "mode": None, "keyword": ""}
+
+    if _is_catalog_query(raw_text):
+        return {"handled": True, "mode": "catalog", "keyword": ""}
 
     if _GENERIC_INTRO_RE.match(raw_text):
         return {"handled": True, "mode": "generic", "keyword": ""}
@@ -361,7 +524,8 @@ def _match_category_candidates(text: str, products: list[dict[str, Any]]) -> dic
         return {"status": "not_found", "product": None, "matches": []}
 
     matched_terms = _extract_category_style_terms(text)
-    if len(matched_terms) < 2:
+    allow_single_term = len(matched_terms) == 1 and matched_terms[0] in _SINGLE_TERM_CATEGORY_TERMS
+    if len(matched_terms) < 2 and not allow_single_term:
         return {"status": "not_found", "product": None, "matches": []}
 
     candidates: list[dict[str, Any]] = []
@@ -381,7 +545,7 @@ def _match_category_candidates(text: str, products: list[dict[str, Any]]) -> dic
             if _product_matches_category_term(product_blob, term):
                 term_hits.append(term)
 
-        if len(term_hits) >= 2:
+        if len(term_hits) >= 2 or (allow_single_term and len(term_hits) >= 1):
             candidate = _score_product_candidate(text, product)
             candidate["category_term_hits"] = len(term_hits)
             candidate["matched_terms"] = term_hits
@@ -667,7 +831,111 @@ def build_no_products_prompt(original_text: str) -> str:
     )
 
 
-def resolve_product_intro(text: str, products: list[dict[str, Any]] | None = None, bucket=None) -> dict[str, Any]:
+def build_catalog_reply(products: list[dict[str, Any]]) -> str:
+    if not products:
+        return "当前商品库里还没有可介绍的商品，你可以先补充商品信息，我再继续帮你介绍。"
+
+    top_products = products[:3]
+    product_names = [str(product.get("name") or "").strip() for product in top_products if str(product.get("name") or "").strip()]
+    if not product_names:
+        return "当前已经有商品上架了，你可以告诉我想看的款式方向，我继续帮你推荐。"
+
+    return (
+        f"我们现在已有的商品里，先可以看这几款：{'、'.join(product_names)}。"
+        "你想先了解哪一款？我可以继续帮你介绍亮点、面料、场景或洗护建议。"
+    )
+
+
+def _extract_candidate_products(matches: list[dict[str, Any]] | list[dict]) -> list[dict[str, Any]]:
+    return [item["product"] for item in _limit_candidate_candidates(matches)]
+
+
+def _has_direct_product_name_in_text(text: str, products: list[dict[str, Any]]) -> bool:
+    normalized_text = _normalize_text(text)
+    if not normalized_text:
+        return False
+    for product in products:
+        normalized_name = _normalize_text(product.get("name"))
+        if normalized_name and normalized_name in normalized_text:
+            return True
+    return False
+
+
+def _is_context_pronoun_query(text: str, products: list[dict[str, Any]]) -> bool:
+    raw_text = str(text or "").strip()
+    if not raw_text:
+        return False
+    if _has_direct_product_name_in_text(raw_text, products):
+        return False
+    normalized_text = _normalize_text(raw_text)
+    return any(_normalize_text(token) in normalized_text for token in _CONTEXT_PRONOUN_TOKENS)
+
+
+def _resolve_candidate_selection_index(text: str) -> int | None:
+    normalized_text = _normalize_text(text)
+    if not normalized_text:
+        return None
+    for token in _FIRST_CHOICE_TERMS:
+        if _normalize_text(token) in normalized_text:
+            return 0
+    for token in _SECOND_CHOICE_TERMS:
+        if _normalize_text(token) in normalized_text:
+            return 1
+    return None
+
+
+def _strip_selection_tokens(text: str) -> str:
+    cleaned_text = str(text or "").strip()
+    for token in _FIRST_CHOICE_TERMS + _SECOND_CHOICE_TERMS:
+        cleaned_text = re.sub(re.escape(token), "", cleaned_text, flags=re.IGNORECASE)
+    cleaned_text = re.sub(r"^[，,。.!！？、\s]+", "", cleaned_text)
+    return cleaned_text.strip()
+
+
+def _is_selection_intro_request(text: str) -> bool:
+    normalized_text = _normalize_text(text)
+    if not normalized_text:
+        return True
+    return normalized_text in {_normalize_text(item) for item in _SELECTION_INTRO_HINTS}
+
+
+def resolve_contextual_product_reference(
+    text: str,
+    conversation_context: dict[str, Any] | None,
+    products: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if not conversation_context:
+        return {"status": "not_found", "product": None, "resolved_question": str(text or "").strip(), "source": None}
+
+    recent_candidates = conversation_context.get("last_candidates") or []
+    selection_index = _resolve_candidate_selection_index(text)
+    if selection_index is not None and selection_index < len(recent_candidates):
+        resolved_question = _strip_selection_tokens(text)
+        return {
+            "status": "matched",
+            "product": recent_candidates[selection_index],
+            "resolved_question": resolved_question,
+            "source": "context_candidate_selection",
+        }
+
+    recent_product = conversation_context.get("last_matched_product")
+    if recent_product and _is_context_pronoun_query(text, products):
+        return {
+            "status": "matched",
+            "product": recent_product,
+            "resolved_question": str(text or "").strip(),
+            "source": "context_pronoun",
+        }
+
+    return {"status": "not_found", "product": None, "resolved_question": str(text or "").strip(), "source": None}
+
+
+def resolve_product_intro(
+    text: str,
+    products: list[dict[str, Any]] | None = None,
+    bucket=None,
+    conversation_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     intent = detect_intro_intent(text)
     available_products = products if products is not None else load_products_for_intro(bucket=bucket)
 
@@ -675,117 +943,158 @@ def resolve_product_intro(text: str, products: list[dict[str, Any]] | None = Non
         query_match = match_product_from_query(text, available_products)
         if query_match["status"] == "matched":
             matched_product = query_match["product"]
-            return {
-                "handled": True,
-                "llm_input": build_product_question_prompt(matched_product, text),
-                "reply_text": None,
-                "matched_product": matched_product,
-                "allow_knowledge_enhance": True,
-                "response_mode": "product_qa",
-            }
+            return _build_resolution(
+                handled=True,
+                llm_input=build_product_question_prompt(matched_product, text),
+                reply_text=None,
+                matched_product=matched_product,
+                allow_knowledge_enhance=True,
+                response_mode="product_qa",
+            )
         if query_match["status"] == "multiple":
-            multiple_reply = build_multiple_matches_reply(text, query_match.get("candidates") or query_match["matches"])
-            return {
-                "handled": True,
-                "llm_input": build_multiple_matches_prompt(text, query_match.get("candidates") or query_match["matches"]),
-                "reply_text": multiple_reply,
-                "matched_product": None,
-                "allow_knowledge_enhance": False,
-                "response_mode": "product_multiple",
-            }
+            query_candidates = query_match.get("candidates") or query_match["matches"]
+            multiple_reply = build_multiple_matches_reply(text, query_candidates)
+            return _build_resolution(
+                handled=True,
+                llm_input=build_multiple_matches_prompt(text, query_candidates),
+                reply_text=multiple_reply,
+                matched_product=None,
+                allow_knowledge_enhance=False,
+                response_mode="product_multiple",
+                candidate_products=_extract_candidate_products(query_candidates),
+            )
+
+        contextual_resolution = resolve_contextual_product_reference(text, conversation_context, available_products)
+        if contextual_resolution["status"] == "matched":
+            matched_product = contextual_resolution["product"]
+            resolved_question = str(contextual_resolution.get("resolved_question") or "").strip()
+            context_source = contextual_resolution.get("source")
+            if context_source == "context_candidate_selection" and _is_selection_intro_request(resolved_question):
+                return _build_resolution(
+                    handled=True,
+                    llm_input=build_intro_prompt(matched_product),
+                    reply_text=None,
+                    matched_product=matched_product,
+                    allow_knowledge_enhance=False,
+                    response_mode="product_intro",
+                    context_source=context_source,
+                )
+            return _build_resolution(
+                handled=True,
+                llm_input=build_product_question_prompt(matched_product, resolved_question or text),
+                reply_text=None,
+                matched_product=matched_product,
+                allow_knowledge_enhance=True,
+                response_mode="product_qa",
+                context_source=context_source,
+            )
 
         direct_keyword = _extract_direct_product_keyword(text)
         if not direct_keyword:
-            return {
-                "handled": False,
-                "llm_input": None,
-                "reply_text": None,
-                "matched_product": None,
-                "allow_knowledge_enhance": False,
-                "response_mode": None,
-            }
+            return _build_resolution(
+                handled=False,
+                llm_input=None,
+                reply_text=None,
+                matched_product=None,
+                allow_knowledge_enhance=False,
+                response_mode=None,
+            )
         intent = {"handled": True, "mode": "named", "keyword": direct_keyword}
 
     if not available_products:
-        return {
-            "handled": True,
-            "llm_input": build_no_products_prompt(text),
-            "reply_text": None,
-            "matched_product": None,
-            "allow_knowledge_enhance": False,
-            "response_mode": "product_empty",
-        }
+        return _build_resolution(
+            handled=True,
+            llm_input=build_no_products_prompt(text),
+            reply_text=None,
+            matched_product=None,
+            allow_knowledge_enhance=False,
+            response_mode="product_empty",
+        )
+
+    if intent["mode"] == "catalog":
+        return _build_resolution(
+            handled=True,
+            llm_input=None,
+            reply_text=build_catalog_reply(available_products),
+            matched_product=None,
+            allow_knowledge_enhance=False,
+            response_mode="product_catalog",
+        )
 
     if intent["mode"] == "generic":
         matched_product = pick_default_product(available_products)
         if matched_product is None:
-            return {
-                "handled": True,
-                "llm_input": build_no_products_prompt(text),
-                "reply_text": None,
-                "matched_product": None,
-                "allow_knowledge_enhance": False,
-                "response_mode": "product_empty",
-            }
-        return {
-            "handled": True,
-            "llm_input": build_intro_prompt(matched_product),
-            "reply_text": None,
-            "matched_product": matched_product,
-            "allow_knowledge_enhance": False,
-            "response_mode": "product_intro",
-        }
+            return _build_resolution(
+                handled=True,
+                llm_input=build_no_products_prompt(text),
+                reply_text=None,
+                matched_product=None,
+                allow_knowledge_enhance=False,
+                response_mode="product_empty",
+            )
+        return _build_resolution(
+            handled=True,
+            llm_input=build_intro_prompt(matched_product),
+            reply_text=None,
+            matched_product=matched_product,
+            allow_knowledge_enhance=False,
+            response_mode="product_intro",
+        )
 
     match_result = match_product(intent["keyword"], available_products)
     if match_result["status"] == "matched":
         matched_product = match_result["product"]
-        return {
-            "handled": True,
-            "llm_input": build_intro_prompt(matched_product),
-            "reply_text": None,
-            "matched_product": matched_product,
-            "allow_knowledge_enhance": False,
-            "response_mode": "product_intro",
-        }
+        return _build_resolution(
+            handled=True,
+            llm_input=build_intro_prompt(matched_product),
+            reply_text=None,
+            matched_product=matched_product,
+            allow_knowledge_enhance=False,
+            response_mode="product_intro",
+        )
 
     if match_result["status"] == "multiple":
-        multiple_reply = build_multiple_matches_reply(text, match_result.get("candidates") or match_result["matches"])
-        return {
-            "handled": True,
-            "llm_input": build_multiple_matches_prompt(text, match_result.get("candidates") or match_result["matches"]),
-            "reply_text": multiple_reply,
-            "matched_product": None,
-            "allow_knowledge_enhance": False,
-            "response_mode": "product_multiple",
-        }
+        match_candidates = match_result.get("candidates") or match_result["matches"]
+        multiple_reply = build_multiple_matches_reply(text, match_candidates)
+        return _build_resolution(
+            handled=True,
+            llm_input=build_multiple_matches_prompt(text, match_candidates),
+            reply_text=multiple_reply,
+            matched_product=None,
+            allow_knowledge_enhance=False,
+            response_mode="product_multiple",
+            candidate_products=_extract_candidate_products(match_candidates),
+        )
 
     query_match = match_product_from_query(text, available_products)
     if query_match["status"] == "matched":
         matched_product = query_match["product"]
-        return {
-            "handled": True,
-            "llm_input": build_product_question_prompt(matched_product, text),
-            "reply_text": None,
-            "matched_product": matched_product,
-            "allow_knowledge_enhance": True,
-            "response_mode": "product_qa",
-        }
+        return _build_resolution(
+            handled=True,
+            llm_input=build_product_question_prompt(matched_product, text),
+            reply_text=None,
+            matched_product=matched_product,
+            allow_knowledge_enhance=True,
+            response_mode="product_qa",
+        )
     if query_match["status"] == "multiple":
-        multiple_reply = build_multiple_matches_reply(text, query_match.get("candidates") or query_match["matches"])
-        return {
-            "handled": True,
-            "llm_input": build_multiple_matches_prompt(text, query_match.get("candidates") or query_match["matches"]),
-            "reply_text": multiple_reply,
-            "matched_product": None,
-            "allow_knowledge_enhance": False,
-            "response_mode": "product_multiple",
-        }
+        query_candidates = query_match.get("candidates") or query_match["matches"]
+        multiple_reply = build_multiple_matches_reply(text, query_candidates)
+        return _build_resolution(
+            handled=True,
+            llm_input=build_multiple_matches_prompt(text, query_candidates),
+            reply_text=multiple_reply,
+            matched_product=None,
+            allow_knowledge_enhance=False,
+            response_mode="product_multiple",
+            candidate_products=_extract_candidate_products(query_candidates),
+        )
 
-    return {
-        "handled": True,
-        "llm_input": build_not_found_prompt(text, intent["keyword"]),
-        "reply_text": None,
-        "matched_product": None,
-        "allow_knowledge_enhance": False,
-        "response_mode": "product_not_found",
-    }
+    return _build_resolution(
+        handled=True,
+        llm_input=build_not_found_prompt(text, intent["keyword"]),
+        reply_text=None,
+        matched_product=None,
+        allow_knowledge_enhance=False,
+        response_mode="product_not_found",
+    )

@@ -131,7 +131,7 @@ type ProductGroup = {
 
 const DEFAULT_USER = 'User'
 const MAX_CHAT_MESSAGES = 80
-const AUDIO_READY_TIMEOUT_MS = 30000
+const AUDIO_READY_TIMEOUT_MS = 60000
 const LEGACY_AVATAR_MESSAGE_TYPES = new Set(['avatar', 'assistant', 'fay'])
 
 const SPEAKER_STYLES: Record<string, { level: string; color: string }> = {
