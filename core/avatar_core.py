@@ -366,6 +366,12 @@ class FeiFei:
                     text = ''
                     textlist = []
                     original_msg = interact.data["msg"]
+                    # 固定问答优先匹配（只读，不写入，避免持续污染）
+                    try:
+                        csv_answer = qa_service.QAService().question('qa', original_msg)
+                    except Exception as e:
+                        util.log(1, f'问答服务读取失败: {e}')
+                        csv_answer = None
                     safe_reply = getattr(cfg, "audit_fallback_reply", '这个问题我不太方便回答，我们换个话题聊聊吧')
                     intro_resolution = {
                         "handled": False,
@@ -376,7 +382,7 @@ class FeiFei:
                         "context_source": None,
                         "candidate_products": [],
                     }
-                    answer = None
+                    answer = csv_answer
                     used_audit_fallback = False
                     record_generated_qa = False
                     user_context_key = _build_user_context_key(username, uid)
@@ -431,7 +437,7 @@ class FeiFei:
                         text = safe_reply
                         used_audit_fallback = True
                         util.printInfo(1, username, f'[Audit] User input blocked: {input_forbidden_word}')
-                    else:
+                    elif answer is None:
                         identity_reply = get_guide_identity_reply(original_msg)
                         if identity_reply:
                             answer = identity_reply
@@ -553,8 +559,8 @@ class FeiFei:
                             reason="audit_disabled_or_empty_reply",
                         )
 
-                    if record_generated_qa and text and not used_audit_fallback:
-                        qa_service.QAService().record_qapair(original_msg, text)  # 沟通记录缓存到qa文件
+                    # if record_generated_qa and text and not used_audit_fallback:
+                    #     qa_service.QAService().record_qapair(original_msg, text)  # 沟通记录缓存到qa文件
 
                     # 记录回复
                     self.write_to_file("./logs", "answer_result.txt", text)
