@@ -1231,7 +1231,7 @@ class Img2imgHandler:
             "templateUuid": "4df2efa0f18d46dc9758803e478eb51c",
             "generateParams": {
                 "11": {"class_type": "LoadImage", "inputs": {"image": image_url}},
-                "workflowUuid": "af405f45d61e4737ac3c4a6449d053be",
+                "workflowUuid": "aa541154a3824f849d6f176ed4f3db02",
             },
         }
 
