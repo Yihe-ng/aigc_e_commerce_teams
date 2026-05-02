@@ -88,6 +88,7 @@ def should_enhance(text: str | None) -> bool:
 
 
 def detect_domain(text: str | None) -> str | None:
+    """[Legacy] 关键词匹配领域检测。新代码优先使用 semantic_router.classify_intent()。"""
     normalized_text = _normalize_text(text)
     if not normalized_text:
         return None

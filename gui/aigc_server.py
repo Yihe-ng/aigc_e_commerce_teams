@@ -1746,6 +1746,11 @@ def save_product(product_id=None):
             "description": data.get("description", ""),
             "images": final_images,
             "updated_at": datetime.now().isoformat(),
+            "sizes": data.get("sizes", []),
+            "size_chart": data.get("size_chart", {}),
+            "colors": data.get("colors", []),
+            "fit": data.get("fit", ""),
+            "fabric": data.get("fabric", ""),
         }
 
         write_json_object(bucket, info_path, product_info, ensure_ascii=False)

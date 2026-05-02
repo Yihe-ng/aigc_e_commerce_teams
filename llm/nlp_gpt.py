@@ -204,6 +204,16 @@ def question(cont, uid=0, chat_context=None, has_product_context=None):
     if has_product_context:
         product_style_instruction = _build_product_style_instruction(product_mode)
         prompt = _build_product_context_system_prompt(person_info, product_style_instruction)
+        try:
+            from backend.services.sales_strategy import build_cta_prompt, SalesStage
+            stage_str = str((chat_context or {}).get("sales_stage") or "BROWSING")
+            stage = getattr(SalesStage, stage_str, SalesStage.BROWSING)
+            product_name = str((chat_context or {}).get("product_name") or "")
+            inventory_count = (chat_context or {}).get("inventory_count")
+            cta_prompt = build_cta_prompt(stage, product_name=product_name, inventory_count=inventory_count)
+            prompt = prompt + "\n\n" + cta_prompt
+        except Exception:
+            pass
         user_prompt = _build_product_user_prompt(cont, knowledge_context)
     else:
         prompt = _build_fallback_clarify_system_prompt()
@@ -258,7 +268,7 @@ def question(cont, uid=0, chat_context=None, has_product_context=None):
     starttime = time.time()
 
     try:
-        response = session.post(url, json=data, headers=headers, verify=False)
+        response = session.post(url, json=data, headers=headers, verify=False, timeout=60)
         response.raise_for_status()
         result = json.loads(response.text)
         response_text = result["choices"][0]["message"]["content"]
