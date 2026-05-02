@@ -268,7 +268,7 @@ def question(cont, uid=0, chat_context=None, has_product_context=None):
     starttime = time.time()
 
     try:
-        response = session.post(url, json=data, headers=headers, verify=False, timeout=60)
+        response = session.post(url, json=data, headers=headers, verify=False, timeout=(5, 60))
         response.raise_for_status()
         result = json.loads(response.text)
         response_text = result["choices"][0]["message"]["content"]
