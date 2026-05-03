@@ -22,7 +22,7 @@ _DEFAULT_MARKETING_RULES = {
 def infer_stage_from_text(text: str) -> SalesStage:
     content = (text or "").strip()
     if not content:
-        return SalesStage.BROWSING
+        return SalesStage.ENTER
 
     purchase_signals = (
         "怎么买", "下单", "哪里买", "购买", "多少钱",
@@ -39,6 +39,13 @@ def infer_stage_from_text(text: str) -> SalesStage:
     if "和" in content and "比" in content:
         return SalesStage.COMPARING
 
+    enter_signals = (
+        "推荐", "有什么", "看看", "新款", "上新",
+        "介绍一下", "有推荐", "随便看看",
+    )
+    if any(sig in content for sig in enter_signals):
+        return SalesStage.ENTER
+
     detail_signals = (
         "面料", "材质", "怎么洗", "尺码", "码数",
         "颜色", "适合", "搭配", "透气", "舒服",
@@ -46,7 +53,7 @@ def infer_stage_from_text(text: str) -> SalesStage:
     if any(sig in content for sig in detail_signals):
         return SalesStage.BROWSING
 
-    return SalesStage.BROWSING
+    return SalesStage.ENTER
 
 
 def get_inventory_urgency(inventory_count: Optional[int]) -> tuple:
