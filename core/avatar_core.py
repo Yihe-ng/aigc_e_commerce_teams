@@ -488,6 +488,15 @@ class FeiFei:
                     if should_call_llm:
                         llm_input = intro_resolution.get("llm_input") or original_msg
                         knowledge_reason = "not_attempted"
+                        if not has_product_context:
+                            try:
+                                from backend.services.size_recommendation import find_recommendations_by_body
+                                body_recs = find_recommendations_by_body(original_msg)
+                                if body_recs:
+                                    knowledge_context = body_recs
+                                    knowledge_reason = "body_recommendation"
+                            except Exception:
+                                pass
                         if intro_resolution.get("handled") and not intro_resolution.get("allow_knowledge_enhance", False):
                             knowledge_reason = "product_intro_handled"
                         elif not getattr(cfg, "knowledge_enabled", False):

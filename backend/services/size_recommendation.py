@@ -80,3 +80,83 @@ def generate_size_advice(text: str, product: dict) -> Optional[str]:
         parts.append("面料含弹性纤维，对身材包容度较高。")
 
     return "【系统尺码推荐】" + "".join(parts)
+
+
+def parse_body_type(text: str) -> Optional[str]:
+    content = str(text or "").strip()
+    if not content:
+        return None
+    body_specific = {
+        "梨形": ["梨形", "梨型", "胯宽"],
+        "苹果型": ["苹果型", "苹果形", "肚子大", "腰粗"],
+        "肩宽": ["肩宽", "宽肩"],
+        "小个子": ["小个子", "矮个子", "个子小", "个矮"],
+        "大码": ["大码", "微胖", "丰满"],
+    }
+    for body_type, keywords in body_specific.items():
+        if any(kw in content for kw in keywords):
+            return body_type
+    return None
+
+
+def find_recommendations_by_body(text: str) -> Optional[str]:
+    user_info = parse_user_body_info(text)
+    if not user_info or "weight" not in user_info:
+        body_type = parse_body_type(text)
+        if body_type:
+            from backend.services.product_intro_service import load_products_for_intro
+            products = load_products_for_intro()
+            matches = []
+            for product in products:
+                raw_info = product.get("raw_info") if isinstance(product.get("raw_info"), dict) else {}
+                fit = str(raw_info.get("fit") or "").strip()
+                if body_type == "大码" and fit in ("宽松", "oversized"):
+                    matches.append(product)
+                elif body_type == "肩宽" and raw_info.get("size_chart"):
+                    matches.append(product)
+                elif body_type == "小个子":
+                    size_chart = raw_info.get("size_chart") if isinstance(raw_info.get("size_chart"), dict) else {}
+                    for dims in size_chart.values():
+                        if isinstance(dims, dict) and dims.get("衣长", 0):
+                            length = int(str(dims.get("衣长", "0")).replace("cm", "").strip() or "0")
+                            if length and length <= 70:
+                                matches.append(product)
+                                break
+            if matches:
+                parts = ["根据您的体型，以下商品可能有合适的尺码："]
+                for product in matches[:3]:
+                    name = product.get("name", "未知")
+                    parts.append(f"- {name}")
+                return " | ".join(parts)
+        return None
+
+    from backend.services.product_intro_service import load_products_for_intro
+    products = load_products_for_intro()
+    matches = []
+    for product in products:
+        raw_info = product.get("raw_info") if isinstance(product.get("raw_info"), dict) else {}
+        size_chart = raw_info.get("size_chart") if isinstance(raw_info.get("size_chart"), dict) else {}
+        if not size_chart:
+            continue
+        for size_code, dims in size_chart.items():
+            if not isinstance(dims, dict):
+                continue
+            weight_str = str(dims.get("建议体重") or "")
+            nums = re.findall(r"(\d+)", weight_str)
+            if len(nums) >= 2:
+                w_min, w_max = int(nums[0]), int(nums[1])
+                if w_min <= user_info["weight"] <= w_max:
+                    matches.append((product, size_code))
+                    break
+    if matches:
+        parts = [f"根据您的体重（约{user_info['weight']}斤），以下商品有合适尺码："]
+        for product, size_code in matches[:3]:
+            name = product.get("name", "未知")
+            parts.append(f"- {name}（推荐{size_code}码）")
+        body_type = parse_body_type(text)
+        if body_type:
+            body_advice = {"梨形": "优先关注臀围和腰围数据", "肩宽": "优先关注肩宽数据", "小个子": "优先关注衣长数据"}.get(body_type, "")
+            if body_advice:
+                parts.append(f"体型建议：{body_advice}")
+        return " | ".join(parts)
+    return None

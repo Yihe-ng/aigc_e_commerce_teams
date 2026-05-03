@@ -1776,27 +1776,31 @@ def generate_product_description():
     try:
         data = request.get_json()
         name = str(data.get("name") or "").strip()
-        features = str(data.get("features") or "").strip()
+        features = data.get("features") or ""
+        if isinstance(features, list):
+            features = "、".join(str(f) for f in features if f)
+        else:
+            features = str(features).strip()
         category = str(data.get("category") or "").strip()
         if not name:
             return jsonify({"status": "error", "error": "缺少商品名称"}), 400
 
         prompt = (
-            f"请根据以下商品信息生成一段100-200字的电商商品描述，突出卖点和适合人群，语气自然亲切。\n"
+            f"请根据以下商品信息生成一段100-200字的电商商品描述，突出商品特点、属性和卖点和适合人群，语气自然亲切。\n"
             f"商品名称：{name}\n"
             f"商品类别：{category}\n"
             f"商品特点：{features or '暂无'}\n"
             "请直接输出描述文本，不要加标题或前缀。"
         )
 
-        url = cfg.gpt_base_url + "/chat/completions"
+        url = config_util.gpt_base_url + "/chat/completions"
         payload = {
-            "model": cfg.gpt_model_engine,
+            "model": config_util.gpt_model_engine,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": 300,
         }
         headers = {
-            "Authorization": f"Bearer {cfg.key_gpt_api_key}",
+            "Authorization": f"Bearer {config_util.key_gpt_api_key}",
             "Content-Type": "application/json",
         }
         resp = requests.post(url, json=payload, headers=headers, timeout=(5, 30))

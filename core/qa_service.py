@@ -93,7 +93,7 @@ class QAService:
                     last_answer = qa[1]
                     if query_type == "qa":
                         last_action = qa[2]
-        if last_similar >= 0.6:
+        if last_similar > 0.6:
             return last_answer, last_action
         return None, None
 
