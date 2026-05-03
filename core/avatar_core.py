@@ -517,6 +517,14 @@ class FeiFei:
                                         knowledge_reason = "local_rag_fallback"
                             except Exception:
                                 pass
+                        if has_product_context and intro_resolution.get("matched_product"):
+                            try:
+                                from backend.services.size_recommendation import generate_size_advice
+                                size_advice = generate_size_advice(original_msg, intro_resolution["matched_product"])
+                                if size_advice:
+                                    knowledge_context = size_advice + "\n\n" + (knowledge_context or "")
+                            except Exception:
+                                pass
                         trace_log(
                             module="avatar",
                             stage="knowledge",
