@@ -729,6 +729,20 @@ def _collect_product_context_lines(product: dict[str, Any]) -> list[str]:
             values = [str(item).strip() for item in value if str(item).strip()]
             if values:
                 lines.append(f"{key}：{'、'.join(values[:6])}")
+        elif isinstance(value, dict) and value:
+            if key == "size_chart":
+                parts = []
+                for size_code, dims in value.items():
+                    if isinstance(dims, dict):
+                        size_parts = [f"{size_code}码"]
+                        for dim_key, dim_val in dims.items():
+                            if dim_val:
+                                size_parts.append(f"{dim_key}{dim_val}")
+                        parts.append("(" + ",".join(size_parts) + ")")
+                if parts:
+                    lines.append("尺码表：" + " | ".join(parts))
+            else:
+                lines.append(f"{key}：{str(value)}")
     return lines
 
 

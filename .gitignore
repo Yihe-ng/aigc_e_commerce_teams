@@ -222,3 +222,4 @@ user_profiles.db
 .worktrees/
 skills-lock.json
 data/chroma_db/
+.sisyphus

@@ -37,6 +37,7 @@ from backend.services.knowledge_service import should_enhance as should_knowledg
 from backend.services.product_intro_service import resolve_product_intro
 from backend.lipsync.manager import lip_sync_manager
 from utils.trace_utils import summarize_text, trace_log
+from backend.services.semantic_router import classify_intent
 import threading
 import functools
 import traceback  # 确保导入
@@ -469,17 +470,41 @@ class FeiFei:
                     should_call_llm = (not has_input_forbidden) and answer is None
                     has_product_context = intro_resolution.get("response_mode") in ("product_intro", "product_qa") if intro_resolution else False
                     knowledge_context = None
-                    knowledge_domain = detect_knowledge_domain(original_msg)
+                    try:
+                        intent_result = classify_intent(original_msg)
+                        if intent_result.get("method") in ("fallback", "low_confidence_fallback", "error_fallback"):
+                            knowledge_domain = detect_knowledge_domain(original_msg)
+                            semantic_bypass = False
+                        else:
+                            semantic_bypass = True
+                            if intent_result.get("domain") == "knowledge":
+                                knowledge_domain = detect_knowledge_domain(original_msg) or "fabric"
+                            else:
+                                knowledge_domain = None
+                    except Exception:
+                        knowledge_domain = detect_knowledge_domain(original_msg)
+                        semantic_bypass = False
                     knowledge_dataset_name = ""
                     if should_call_llm:
                         llm_input = intro_resolution.get("llm_input") or original_msg
                         knowledge_reason = "not_attempted"
+                        if not has_product_context:
+                            try:
+                                from backend.services.size_recommendation import find_recommendations_by_body
+                                body_recs = find_recommendations_by_body(original_msg)
+                                if body_recs:
+                                    knowledge_context = body_recs
+                                    knowledge_reason = "body_recommendation"
+                            except Exception:
+                                pass
                         if intro_resolution.get("handled") and not intro_resolution.get("allow_knowledge_enhance", False):
                             knowledge_reason = "product_intro_handled"
                         elif not getattr(cfg, "knowledge_enabled", False):
                             knowledge_reason = "knowledge_disabled"
-                        elif not should_knowledge_enhance(original_msg):
+                        elif not should_knowledge_enhance(original_msg) and not semantic_bypass:
                             knowledge_reason = "no_keyword_match"
+                        elif semantic_bypass and knowledge_domain is None:
+                            knowledge_reason = "semantic_skip_non_knowledge"
                         elif cfg.key_chat_module != 'gpt':
                             knowledge_reason = "provider_not_supported"
                         else:
@@ -488,6 +513,27 @@ class FeiFei:
                             knowledge_domain = knowledge_result.get("domain") or knowledge_domain
                             knowledge_dataset_name = str(knowledge_result.get("dataset_name") or "")
                             knowledge_reason = knowledge_result.get("reason") or ("context_loaded" if knowledge_context else "context_unavailable")
+                        if not knowledge_context:
+                            try:
+                                from backend.services.local_rag_api_service import query_local_rag, _has_api_key
+                                if _has_api_key():
+                                    local_result = query_local_rag(original_msg, domain=knowledge_domain)
+                                    local_context = (local_result or {}).get("context") or ""
+                                    if local_context:
+                                        knowledge_context = local_context
+                                        knowledge_domain = (local_result or {}).get("resolved_domain") or knowledge_domain
+                                        knowledge_dataset_name = "local_chromadb"
+                                        knowledge_reason = "local_rag_fallback"
+                            except Exception:
+                                pass
+                        if has_product_context and intro_resolution.get("matched_product"):
+                            try:
+                                from backend.services.size_recommendation import generate_size_advice
+                                size_advice = generate_size_advice(original_msg, intro_resolution["matched_product"])
+                                if size_advice:
+                                    knowledge_context = size_advice + "\n\n" + (knowledge_context or "")
+                            except Exception:
+                                pass
                         trace_log(
                             module="avatar",
                             stage="knowledge",
@@ -499,6 +545,7 @@ class FeiFei:
                             dataset_name=knowledge_dataset_name,
                             reason=knowledge_reason,
                             context_len=len(knowledge_context or ""),
+                            knowledge_source="local_rag" if knowledge_reason == "local_rag_fallback" else "dify",
                         )
                         if should_call_llm and wsa_server.get_web_instance().is_connected(username):
                             wsa_server.get_web_instance().add_cmd({"panelMsg": "思考中...", "Username": username,
@@ -508,7 +555,23 @@ class FeiFei:
                                        'Username': username, 'robot': f'http://{cfg.backend_api_url}/robot/Thinking.jpg'}
                             wsa_server.get_instance().add_cmd(content)
                         if should_call_llm:
-                            chat_context = {"knowledge_context": knowledge_context} if knowledge_context else None
+                            chat_context = {"knowledge_context": knowledge_context} if knowledge_context else {}
+                            if has_product_context and intro_resolution.get("matched_product"):
+                                matched = intro_resolution["matched_product"]
+                                chat_context["product_name"] = str(matched.get("name") or "")
+                                try:
+                                    from backend.services.sales_strategy import infer_stage_from_text
+                                    chat_context["sales_stage"] = infer_stage_from_text(original_msg).name
+                                except Exception:
+                                    chat_context["sales_stage"] = "BROWSING"
+                                try:
+                                    raw_info = matched.get("raw_info") if isinstance(matched.get("raw_info"), dict) else {}
+                                    inv = raw_info.get("inventory") or raw_info.get("stock") or raw_info.get("库存")
+                                    if inv is not None:
+                                        chat_context["inventory_count"] = int(inv)
+                                except (ValueError, TypeError):
+                                    pass
+                            chat_context = chat_context if chat_context else None
                             text, textlist = handle_chat_message(
                                 llm_input,
                                 username,

@@ -14,7 +14,7 @@ import {
   uploadProductImage,
 } from "@/lib/oss/api"
 import { buildOssAssetUrl, fetchRuntimeOssDomain, resolveOssCustomDomain } from "@/lib/oss/shared"
-import type { Category, Product, ProductFormValue } from "@/lib/types/product"
+import type { Category, Product, ProductFormValue, SizeChartRow } from "@/lib/types/product"
 
 const EMPTY_FORM: ProductFormValue = {
   name: "",
@@ -22,6 +22,11 @@ const EMPTY_FORM: ProductFormValue = {
   price: "",
   features: "",
   description: "",
+  sizes: [],
+  size_chart: [],
+  colors: [],
+  fit: "",
+  fabric: "",
 }
 
 interface NoticeState {
@@ -45,6 +50,7 @@ export default function ProductManagementContent() {
   const [autoSaveMsg, setAutoSaveMsg] = useState("")
   const [notice, setNotice] = useState<NoticeState | null>(null)
   const [runtimeOssDomain, setRuntimeOssDomain] = useState<string | null>(null)
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const categories: Category[] = useMemo(
@@ -191,12 +197,20 @@ export default function ProductManagementContent() {
       window.scrollTo({ top: 0, behavior: "smooth" })
       const product = await fetchProductDetail(id)
 
+      const sizeChartRecord = product.size_chart || {}
+      const sizeChartArray: SizeChartRow[] = Object.values(sizeChartRecord)
+
       setFormData({
         name: product.name || "",
         category: product.category || "",
         price: product.price ? String(product.price) : "",
         features: Array.isArray(product.features) ? product.features.join("\n") : product.features || "",
         description: product.description || "",
+        sizes: product.sizes || [],
+        size_chart: sizeChartArray,
+        colors: product.colors || [],
+        fit: product.fit || "",
+        fabric: product.fabric || "",
       })
       setUploadedUrls(product.images || [])
       setPreviewImages([])
@@ -236,6 +250,65 @@ export default function ProductManagementContent() {
     setNotice(null)
   }
 
+  function handleSizeToggle(size: string) {
+    setFormData((current) => {
+      const sizes = current.sizes || []
+      const exists = sizes.includes(size)
+      return {
+        ...current,
+        sizes: exists ? sizes.filter((s) => s !== size) : [...sizes, size],
+      }
+    })
+  }
+
+  function handleColorToggle(color: string) {
+    setFormData((current) => {
+      const colors = current.colors || []
+      const exists = colors.includes(color)
+      return {
+        ...current,
+        colors: exists ? colors.filter((c) => c !== color) : [...colors, color],
+      }
+    })
+  }
+
+  function handleFitChange(fit: string) {
+    setFormData((current) => ({ ...current, fit }))
+  }
+
+  function handleFabricChange(fabric: string) {
+    setFormData((current) => ({ ...current, fabric }))
+  }
+
+  function handleSizeChartChange(chart: SizeChartRow[]) {
+    setFormData((current) => ({ ...current, size_chart: chart }))
+  }
+
+  async function handleGenerateDescription() {
+    if (!formData.name.trim() || !formData.category || !formData.features.trim()) return
+
+    setIsGeneratingDescription(true)
+    try {
+      const response = await fetch("/api/products/generate-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          category: formData.category,
+          features: formData.features.split("\n").filter((f) => f.trim()),
+        }),
+      })
+      if (!response.ok) throw new Error("生成失败")
+      const data = await response.json()
+      setFormData((current) => ({ ...current, description: data.description || current.description }))
+    } catch (error) {
+      console.error("生成描述失败:", error)
+      setNotice({ tone: "error", message: "AI 生成详细描述失败，请稍后重试。" })
+    } finally {
+      setIsGeneratingDescription(false)
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setIsSubmitting(true)
@@ -255,6 +328,13 @@ export default function ProductManagementContent() {
         }
       }
 
+      const sizeChartRecord: Record<string, SizeChartRow> = {}
+      for (const row of formData.size_chart) {
+        if (row.尺码) {
+          sizeChartRecord[row.尺码] = row
+        }
+      }
+
       const payload = {
         name: formData.name,
         category: formData.category,
@@ -262,6 +342,11 @@ export default function ProductManagementContent() {
         features: formData.features.split("\n").filter((feature) => feature.trim() !== ""),
         description: formData.description,
         images: [...uploadedUrls, ...newUploadedUrls],
+        sizes: formData.sizes,
+        size_chart: sizeChartRecord,
+        colors: formData.colors,
+        fit: formData.fit,
+        fabric: formData.fabric,
       }
 
       await saveLibraryProduct(payload, editingId)
@@ -325,6 +410,13 @@ export default function ProductManagementContent() {
         onReset={handleReset}
         onSubmit={handleSubmit}
         getImageUrl={getImageUrl}
+        onSizeToggle={handleSizeToggle}
+        onColorToggle={handleColorToggle}
+        onFitChange={handleFitChange}
+        onFabricChange={handleFabricChange}
+        onSizeChartChange={handleSizeChartChange}
+        onGenerateDescription={handleGenerateDescription}
+        isGeneratingDescription={isGeneratingDescription}
       />
 
       <ProductTable products={products} onEdit={handleEdit} onDelete={handleDelete} getImageUrl={getImageUrl} />

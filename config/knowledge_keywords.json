@@ -6,6 +6,8 @@
       "material",
       "面料",
       "材质",
+      "料子",
+      "布料",
       "透气",
       "柔软",
       "亲肤",
@@ -14,7 +16,15 @@
       "羊毛",
       "针织",
       "手感",
-      "质感"
+      "质感",
+      "桑蚕丝",
+      "丝",
+      "真丝",
+      "羊绒",
+      "起球",
+      "化纤",
+      "涤纶",
+      "锦纶"
     ],
     "dataset_aliases": [
       "fabric",
@@ -67,7 +77,15 @@
       "休闲",
       "正式",
       "显瘦",
-      "修身"
+      "修身",
+      "微胖",
+      "胖",
+      "丰满",
+      "小个子",
+      "个子",
+      "上班",
+      "职场",
+      "工作"
     ],
     "dataset_aliases": [
       "style",
@@ -77,6 +95,63 @@
       "搭配",
       "场景",
       "场合"
+    ]
+  },
+  "compliance": {
+    "description": "Content compliance, forbidden words, and platform regulations.",
+    "keywords": [
+      "compliance",
+      "forbidden",
+      "regulation",
+      "违禁",
+      "违规",
+      "合规",
+      "广告法",
+      "平台规则",
+      "审核",
+      "封号",
+      "限流",
+      "能说吗",
+      "违法"
+    ],
+    "dataset_aliases": [
+      "违禁词",
+      "合规",
+      "compliance",
+      "合规审查",
+      "违禁词与合规审查"
+    ]
+  },
+  "size": {
+    "description": "Size, fit, color and product specification related questions.",
+    "keywords": [
+      "size",
+      "color",
+      "fit",
+      "尺码",
+      "码数",
+      "S码",
+      "M码",
+      "L码",
+      "XL码",
+      "颜色",
+      "白色",
+      "黑色",
+      "红色",
+      "蓝色",
+      "偏大",
+      "偏小",
+      "标准码",
+      "红色",
+      "便宜",
+      "打折",
+      "大码"
+    ],
+    "dataset_aliases": [
+      "size",
+      "尺码",
+      "颜色",
+      "color"
     ]
   }
 }

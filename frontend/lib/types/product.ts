@@ -1,3 +1,14 @@
+export interface SizeChartRow {
+  尺码: string
+  胸围: number | ""
+  腰围: number | ""
+  臀围: number | ""
+  肩宽: number | ""
+  袖长: number | ""
+  衣长: number | ""
+  建议体重: string
+}
+
 export interface Product {
   id: string | number
   name: string
@@ -7,6 +18,11 @@ export interface Product {
   description?: string
   images?: string[]
   main_image?: string
+  sizes?: string[]
+  size_chart?: Record<string, SizeChartRow>
+  colors?: string[]
+  fit?: string
+  fabric?: string
 }
 
 export interface Category {
@@ -20,4 +36,9 @@ export interface ProductFormValue {
   price: string
   features: string
   description: string
+  sizes: string[]
+  size_chart: SizeChartRow[]
+  colors: string[]
+  fit: string
+  fabric: string
 }

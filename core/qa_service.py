@@ -85,13 +85,15 @@ class QAService:
             for quest in qa[0]:
                 similar = self.__string_similar(text, quest)
                 if quest in text:
-                    similar += 0.3
+                    ratio = len(quest) / max(len(text), 1)
+                    if ratio >= 0.4:
+                        similar += 0.3
                 if similar > last_similar:
                     last_similar = similar
                     last_answer = qa[1]
                     if query_type == "qa":
                         last_action = qa[2]
-        if last_similar >= 0.6:
+        if last_similar > 0.6:
             return last_answer, last_action
         return None, None
 
