@@ -8,7 +8,6 @@ import time
 
 import requests
 
-from core import content_db
 from utils import config_util as cfg
 from utils import util
 from utils.trace_utils import trace_log
@@ -262,27 +261,6 @@ def question(cont, uid=0, chat_context=None, has_product_context=None):
         has_knowledge_context=bool(knowledge_context),
         knowledge_context_len=len(knowledge_context),
     )
-
-    if has_product_context:
-        contentdb = content_db.new_instance()
-        if uid == 0:
-            communication_history = contentdb.get_list("all", "desc", 11)
-        else:
-            communication_history = contentdb.get_list("all", "desc", 11, uid)
-
-        i = len(communication_history) - 1
-        if len(communication_history) > 1:
-            while i >= 0:
-                answer_info = {}
-                if communication_history[i][0] == "member":
-                    answer_info["role"] = "user"
-                    answer_info["content"] = communication_history[i][2]
-                elif communication_history[i][0] in ("avatar", "assistant", "fay"):
-                    answer_info["role"] = "assistant"
-                    answer_info["content"] = communication_history[i][2]
-                if answer_info:
-                    message.append(answer_info)
-                i -= 1
 
     message.append({"role": "user", "content": user_prompt})
 

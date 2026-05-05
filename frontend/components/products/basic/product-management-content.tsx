@@ -27,6 +27,9 @@ const EMPTY_FORM: ProductFormValue = {
   colors: [],
   fit: "",
   fabric: "",
+  style: "",
+  scene: [],
+  tags: [],
 }
 
 interface NoticeState {
@@ -199,6 +202,8 @@ export default function ProductManagementContent() {
 
       const sizeChartRecord = product.size_chart || {}
       const sizeChartArray: SizeChartRow[] = Object.values(sizeChartRecord)
+      const storedSizes = product.sizes || []
+      const sizes = storedSizes.length > 0 ? storedSizes : Object.keys(sizeChartRecord)
 
       setFormData({
         name: product.name || "",
@@ -206,11 +211,14 @@ export default function ProductManagementContent() {
         price: product.price ? String(product.price) : "",
         features: Array.isArray(product.features) ? product.features.join("\n") : product.features || "",
         description: product.description || "",
-        sizes: product.sizes || [],
+        sizes,
         size_chart: sizeChartArray,
         colors: product.colors || [],
         fit: product.fit || "",
         fabric: product.fabric || "",
+        style: product.style || "",
+        scene: product.scene || [],
+        tags: product.tags || [],
       })
       setUploadedUrls(product.images || [])
       setPreviewImages([])
@@ -280,6 +288,28 @@ export default function ProductManagementContent() {
     setFormData((current) => ({ ...current, fabric }))
   }
 
+  function handleStyleChange(style: string) {
+    setFormData((current) => ({ ...current, style }))
+  }
+
+  function handleSceneToggle(scene: string) {
+    setFormData((current) => {
+      const scenes = current.scene.includes(scene)
+        ? current.scene.filter((s) => s !== scene)
+        : [...current.scene, scene]
+      return { ...current, scene: scenes }
+    })
+  }
+
+  function handleTagToggle(tag: string) {
+    setFormData((current) => {
+      const tags = current.tags.includes(tag)
+        ? current.tags.filter((t) => t !== tag)
+        : [...current.tags, tag]
+      return { ...current, tags }
+    })
+  }
+
   function handleSizeChartChange(chart: SizeChartRow[]) {
     setFormData((current) => ({ ...current, size_chart: chart }))
   }
@@ -300,7 +330,13 @@ export default function ProductManagementContent() {
       })
       if (!response.ok) throw new Error("生成失败")
       const data = await response.json()
-      setFormData((current) => ({ ...current, description: data.description || current.description }))
+      setFormData((current) => ({
+        ...current,
+        description: data.description || current.description,
+        style: data.style || current.style,
+        scene: Array.isArray(data.scene) ? data.scene : current.scene,
+        tags: Array.isArray(data.tags) ? data.tags : current.tags,
+      }))
     } catch (error) {
       console.error("生成描述失败:", error)
       setNotice({ tone: "error", message: "AI 生成详细描述失败，请稍后重试。" })
@@ -335,6 +371,10 @@ export default function ProductManagementContent() {
         }
       }
 
+      const finalSizes = formData.sizes.length > 0
+        ? formData.sizes
+        : formData.size_chart.filter((r) => r.尺码).map((r) => r.尺码)
+
       const payload = {
         name: formData.name,
         category: formData.category,
@@ -342,11 +382,14 @@ export default function ProductManagementContent() {
         features: formData.features.split("\n").filter((feature) => feature.trim() !== ""),
         description: formData.description,
         images: [...uploadedUrls, ...newUploadedUrls],
-        sizes: formData.sizes,
+        sizes: finalSizes,
         size_chart: sizeChartRecord,
         colors: formData.colors,
         fit: formData.fit,
         fabric: formData.fabric,
+        style: formData.style,
+        scene: formData.scene,
+        tags: formData.tags,
       }
 
       await saveLibraryProduct(payload, editingId)
@@ -414,6 +457,9 @@ export default function ProductManagementContent() {
         onColorToggle={handleColorToggle}
         onFitChange={handleFitChange}
         onFabricChange={handleFabricChange}
+        onStyleChange={handleStyleChange}
+        onSceneToggle={handleSceneToggle}
+        onTagToggle={handleTagToggle}
         onSizeChartChange={handleSizeChartChange}
         onGenerateDescription={handleGenerateDescription}
         isGeneratingDescription={isGeneratingDescription}

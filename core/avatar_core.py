@@ -534,6 +534,17 @@ class FeiFei:
                                     knowledge_context = size_advice + "\n\n" + (knowledge_context or "")
                             except Exception:
                                 pass
+                        _outfit_triggers = ("搭配", "怎么搭", "配什么", "怎么配", "怎么穿", "好搭")
+                        if has_product_context and intro_resolution.get("matched_product") and any(kw in original_msg for kw in _outfit_triggers):
+                            try:
+                                from backend.services.outfit_rules import build_full_outfit_context
+                                from backend.services.product_intro_service import load_products_for_intro
+                                all_prods = load_products_for_intro()
+                                outfit_text = build_full_outfit_context(intro_resolution["matched_product"], all_prods)
+                                if outfit_text:
+                                    knowledge_context = outfit_text + "\n\n" + (knowledge_context or "")
+                            except Exception:
+                                pass
                         trace_log(
                             module="avatar",
                             stage="knowledge",

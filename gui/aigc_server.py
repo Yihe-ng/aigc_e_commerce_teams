@@ -1790,18 +1790,23 @@ def generate_product_description():
             return jsonify({"status": "error", "error": "缺少商品名称"}), 400
 
         prompt = (
-            f"请根据以下商品信息生成一段100-200字的电商商品描述，突出商品特点、属性和卖点和适合人群，语气自然亲切。\n"
+            "请根据以下商品信息完成以下任务，并严格按JSON格式输出：\n\n"
+            "1. 生成一段100-200字的电商商品描述\n"
+            "2. 判断商品风格（从以下选1个）：甜辣、法式、美式复古、通勤、休闲、简约、新中式、山系、Y2K、其他\n"
+            "3. 判断适用场景（可多选）：约会、通勤、日常、度假、运动、派对\n"
+            "4. 提取营销标签（3-5个，如：显瘦、百搭、气质、少女感、高级感）\n\n"
             f"商品名称：{name}\n"
             f"商品类别：{category}\n"
-            f"商品特点：{features or '暂无'}\n"
-            "请直接输出描述文本，不要加标题或前缀。"
+            f"商品特点：{features or '暂无'}\n\n"
+            '请直接输出JSON，不要加markdown代码块：\n'
+            '{"description":"...", "style":"...", "scene":["...","..."], "tags":["...","..."]}'
         )
 
         url = config_util.gpt_base_url + "/chat/completions"
         payload = {
             "model": config_util.gpt_model_engine,
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 300,
+            "max_tokens": 500,
         }
         headers = {
             "Authorization": f"Bearer {config_util.key_gpt_api_key}",
@@ -1810,8 +1815,54 @@ def generate_product_description():
         resp = requests.post(url, json=payload, headers=headers, timeout=(5, 30))
         resp.raise_for_status()
         result = resp.json()
-        description = result["choices"][0]["message"]["content"]
-        return jsonify({"status": "success", "description": description})
+        content = result["choices"][0]["message"]["content"]
+
+        import re as _re
+        text = content.strip()
+        if text.startswith("```"):
+            text = _re.sub(r"^```(?:json)?\s*", "", text)
+            text = _re.sub(r"\s*```$", "", text)
+            text = text.strip()
+
+        description = text
+        style = ""
+        scene = []
+        tags = []
+
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                description = parsed.get("description", description)
+                style = parsed.get("style", "")
+                scene = parsed.get("scene", [])
+                tags = parsed.get("tags", [])
+        except json.JSONDecodeError:
+            json_match = _re.search(r"\{[^{}]*\"description\"[^{}]*\}", text, _re.DOTALL)
+            if json_match:
+                try:
+                    parsed = json.loads(json_match.group())
+                    if isinstance(parsed, dict):
+                        description = parsed.get("description", description)
+                        style = parsed.get("style", "")
+                        scene = parsed.get("scene", [])
+                        tags = parsed.get("tags", [])
+                except json.JSONDecodeError:
+                    pass
+
+        if not isinstance(scene, list):
+            scene = []
+        if not isinstance(tags, list):
+            tags = []
+        if not isinstance(style, str):
+            style = ""
+
+        return jsonify({
+            "status": "success",
+            "description": description,
+            "style": style,
+            "scene": scene,
+            "tags": tags,
+        })
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
 
