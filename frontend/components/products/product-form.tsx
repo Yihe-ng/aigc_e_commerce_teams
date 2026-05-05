@@ -126,7 +126,6 @@ export default function ProductForm(props: ProductFormProps) {
           {editingId ? (
             <Button
               variant="ghost"
-              size="sm"
               onPress={onReset}
               className="font-medium text-red-500 hover:bg-red-50"
             >
@@ -280,7 +279,6 @@ export default function ProductForm(props: ProductFormProps) {
                   详细描述 <span className="text-red-500">*</span>
                 </span>
                 <Button
-                  size="sm"
                   variant="ghost"
                   isDisabled={!formData.name.trim() || !formData.category || !formData.features.trim() || isGeneratingDescription}
                   onPress={onGenerateDescription}
@@ -318,36 +316,38 @@ export default function ProductForm(props: ProductFormProps) {
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">可选尺码</span>
                 <div className="flex flex-wrap gap-2">
-                  {["S", "M", "L", "XL", "XXL", "均码"].map((size) => (
-                    <Chip
-                      key={size}
-                      size="sm"
-                      variant={(formData.sizes || []).includes(size) ? "solid" : "flat"}
-                      color={(formData.sizes || []).includes(size) ? "primary" : "default"}
-                      className="cursor-pointer select-none"
-                      onClick={() => onSizeToggle(size)}
-                    >
-                      {size}
-                    </Chip>
-                  ))}
+                  {["S", "M", "L", "XL", "XXL", "均码"].map((size) => {
+                    const selected = (formData.sizes || []).includes(size)
+                    return (
+                      <Chip
+                        key={size}
+                        variant={selected ? "primary" : "secondary"}
+                        className="cursor-pointer select-none"
+                        onClick={() => onSizeToggle(size)}
+                      >
+                        {size}
+                      </Chip>
+                    )
+                  })}
                 </div>
               </div>
 
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">颜色选项</span>
                 <div className="flex flex-wrap gap-2">
-                  {["白色", "黑色", "红色", "蓝色", "灰色", "米色"].map((color) => (
-                    <Chip
-                      key={color}
-                      size="sm"
-                      variant={(formData.colors || []).includes(color) ? "solid" : "flat"}
-                      color={(formData.colors || []).includes(color) ? "primary" : "default"}
-                      className="cursor-pointer select-none"
-                      onClick={() => onColorToggle(color)}
-                    >
-                      {color}
-                    </Chip>
-                  ))}
+                  {["白色", "黑色", "红色", "蓝色", "灰色", "米色"].map((color) => {
+                    const selected = (formData.colors || []).includes(color)
+                    return (
+                      <Chip
+                        key={color}
+                        variant={selected ? "primary" : "secondary"}
+                        className="cursor-pointer select-none"
+                        onClick={() => onColorToggle(color)}
+                      >
+                        {color}
+                      </Chip>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -370,8 +370,6 @@ export default function ProductForm(props: ProductFormProps) {
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">面料</span>
                 <Input
-                  size="sm"
-                  variant="bordered"
                   placeholder="如：100%棉、雪纺、牛仔布"
                   value={formData.fabric || ""}
                   className="text-sm"
@@ -404,8 +402,6 @@ export default function ProductForm(props: ProductFormProps) {
                       >
                         <td className="px-2 py-1">
                             <Input
-                              size="sm"
-                              variant="flat"
                               value={row.尺码}
                               placeholder="如：M"
                               className="text-xs h-7"
@@ -428,8 +424,6 @@ export default function ProductForm(props: ProductFormProps) {
                         {(["胸围", "腰围", "臀围", "肩宽", "袖长", "衣长"] as const).map((field) => (
                           <td key={field} className="px-2 py-1">
                               <Input
-                                size="sm"
-                                variant="flat"
                                 type="number"
                                 value={row[field] === "" ? "" : String(row[field])}
                                 placeholder="-"
@@ -445,8 +439,6 @@ export default function ProductForm(props: ProductFormProps) {
                         ))}
                         <td className="px-2 py-1">
                             <Input
-                              size="sm"
-                              variant="flat"
                               value={row.建议体重}
                               placeholder="如：50-60kg"
                               className="text-xs h-7"
@@ -459,11 +451,8 @@ export default function ProductForm(props: ProductFormProps) {
                         </td>
                         <td className="px-1 py-1 text-center">
                           <Button
-                            isIconOnly
-                            size="sm"
-                            variant="light"
-                            color="danger"
-                            className="h-6 w-6 min-w-6"
+                            variant="ghost"
+                            className="h-6 w-6 min-w-6 text-red-500"
                             onPress={() => {
                               const updated = (formData.size_chart || []).filter((_, i) => i !== index)
                               onSizeChartChange(updated)
@@ -478,9 +467,7 @@ export default function ProductForm(props: ProductFormProps) {
                 </table>
               </div>
               <Button
-                size="sm"
-                variant="bordered"
-                color="primary"
+                variant="outline"
                 onPress={() => {
                   const newRow: SizeChartRow = {
                     尺码: "",

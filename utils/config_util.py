@@ -3,8 +3,8 @@ import json
 import codecs
 from configparser import ConfigParser
 
-config: json = None
-system_config: ConfigParser = None
+config: dict | None = None
+system_config: ConfigParser | None = None
 system_chrome_driver = None
 key_ali_nls_key_id = None
 key_ali_nls_key_secret = None

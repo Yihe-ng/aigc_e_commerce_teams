@@ -1,11 +1,11 @@
 import os
 import sys
-from dotenv import load_dotenv
-from flask import redirect, url_for
-import numpy as np
-import pandas as pd
+from dotenv import load_dotenv  # type: ignore[import-untyped]
+from flask import redirect, url_for  # type: ignore[import-untyped]
+import numpy as np  # type: ignore[import-untyped]
+import pandas as pd  # type: ignore[import-untyped]
 from datetime import datetime
-from flask_caching import Cache
+from flask_caching import Cache  # type: ignore[import-untyped]
 import zlib
 import io
 from collections import defaultdict
@@ -27,7 +27,7 @@ if project_root not in sys.path:
 from utils import config_util
 
 #  导入标准库和第三方库 ---
-from flask import (
+from flask import (  # type: ignore[import-untyped]
     Flask,
     request,
     jsonify,
@@ -49,7 +49,7 @@ from http import HTTPStatus
 from urllib.parse import urlparse, unquote, urlencode
 from pathlib import PurePosixPath, Path
 import requests
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException  # type: ignore[import-untyped]
 import hmac
 from hashlib import sha1
 import base64
@@ -61,7 +61,7 @@ import traceback
 from email.utils import parsedate_to_datetime
 from threading import Lock, Thread
 from datetime import datetime
-import oss2
+import oss2  # type: ignore[import-untyped]
 from gui.platforms import PLATFORM_CONFIG, COST_CONFIG
 from gui.ai_tools_task_result_utils import (
     build_image_task_result,
@@ -305,7 +305,7 @@ def analyze_customer():
 
         # 尝试调用大模型 (这里优先尝试 DashScope，如果失败则返回模拟数据)
         try:
-            import dashscope
+            import dashscope  # type: ignore[import-untyped]
 
             # 检查是否有 API KEY，如果没有则使用模拟数据
             api_key = os.getenv("DASHSCOPE_API_KEY")
@@ -1275,6 +1275,10 @@ def get_img2img_handler():
 # -------------------------------------------------------------------------------------------
 def image_generation_worker(task_id, generate_uuid, product_id=None):
     db = Task_Db()
+    handler = get_img2img_handler()
+    if handler is None:
+        db.update_task_status(task_id, "failed", error="Img2img handler not initialized")
+        return
     try:
         print(f"Task {task_id}: Starting image generation wait for {generate_uuid}")
         db.update_task_status(task_id, "processing")
@@ -1284,7 +1288,7 @@ def image_generation_worker(task_id, generate_uuid, product_id=None):
         retry_count = 0
 
         while retry_count < max_retries:
-            status_response = img2img_handler.check_status(generate_uuid)
+            status_response = handler.check_status(generate_uuid)
 
             if status_response.get("code") != 0:
                 print(
@@ -1850,6 +1854,7 @@ def generate_marketing():
         }
 
         # 保存到OSS
+        bucket = get_storage_bucket()
         content_path = f"products/{product_id}/generated_content/marketing.json"
         bucket.put_object(
             content_path, json.dumps(marketing_content, ensure_ascii=False)
@@ -2604,7 +2609,7 @@ def handle_xiaohongshu_stream_post():
                 dynamic_qs = generate_follow_up_questions(full_content)
                 if dynamic_qs:
                     try:
-                        parsed_questions = json.loads(dynamic_qs)
+                        parsed_questions = json.loads(str(dynamic_qs))
                         if isinstance(parsed_questions, list):
                             questions = [
                                 str(item).strip()
@@ -2653,7 +2658,7 @@ def stream_generate():
     @stream_with_context
     def generate():
         try:
-            init_response = generate_img2img(image_url)
+            init_response = _generate_img2img_internal(image_url)
             yield f"data: {json.dumps(init_response)}\n\n"
 
             if init_response.get("status") != "success":
@@ -2677,7 +2682,7 @@ def stream_generate():
 
 
 # 原有生成函数改为内部调用
-def generate_img2img(image_url):
+def _generate_img2img_internal(image_url):
     try:
         handler = get_img2img_handler()
         submit_response = handler.submit_task(image_url)
@@ -3440,12 +3445,13 @@ def get_oss_categories():
 def get_oss_products_by_category():
     """获取指定分类下的所有商品"""
     category = request.args.get("category", "")
+    decoded_category = ""
+    oss_path = ""
     if not category:
         return jsonify({"status": "error", "error": "缺少分类参数"}), 400
 
     try:
         # 双重解码URL编码
-        # local_bucket: 局部作用域的OSS桶对象，用于当前请求的OSS操作
         local_bucket = get_storage_bucket()
         info_cache = {}
         decoded_category = unquote(unquote(category))
@@ -3488,6 +3494,111 @@ def get_oss_products_by_category():
                 },
             }
         ), 500
+
+
+@app.route("/api/runtime-config/digital-human", methods=["GET"])
+def api_get_digital_human_config():
+    try:
+        cfg_data = config_util.config
+        if cfg_data is None:
+            config_util.load_config()
+            cfg_data = config_util.config
+        if cfg_data is None:
+            return jsonify({"status": "error", "error": "配置加载失败"}), 500
+        return jsonify({
+            "status": "success",
+            "data": {
+                "attribute": cfg_data["attribute"],
+                "interact": cfg_data["interact"],
+            },
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/runtime-config/digital-human", methods=["POST"])
+def api_set_digital_human_config():
+    try:
+        body = request.get_json()
+        if body is None:
+            return jsonify({"status": "error", "error": "无效的JSON格式"}), 400
+
+        allowed_attribute_fields = {
+            "name", "gender", "age", "job", "hobby", "voice",
+            "zodiac", "constellation", "birth", "contact", "persona_style",
+        }
+        allowed_interact_fields = {"maxInteractTime", "playSound"}
+        allowed_perception_fields = {"chat", "follow", "gift", "indifferent", "join"}
+
+        unknown_fields = []
+
+        if "attribute" in body:
+            if isinstance(body["attribute"], dict):
+                for k in body["attribute"]:
+                    if k not in allowed_attribute_fields:
+                        unknown_fields.append(f"attribute.{k}")
+            else:
+                unknown_fields.append("attribute")
+
+        if "interact" in body:
+            if isinstance(body["interact"], dict):
+                for k in body["interact"]:
+                    if k in allowed_interact_fields:
+                        continue
+                    elif k == "perception":
+                        if isinstance(body["interact"]["perception"], dict):
+                            for pk in body["interact"]["perception"]:
+                                if pk not in allowed_perception_fields:
+                                    unknown_fields.append(f"interact.perception.{pk}")
+                        else:
+                            unknown_fields.append("interact.perception")
+                    else:
+                        unknown_fields.append(f"interact.{k}")
+            else:
+                unknown_fields.append("interact")
+
+        for k in body:
+            if k not in {"attribute", "interact"}:
+                unknown_fields.append(k)
+
+        if unknown_fields:
+            return jsonify({
+                "status": "error",
+                "error": f"包含非白名单字段: {', '.join(unknown_fields)}",
+            }), 400
+
+        cfg_data = config_util.config
+        if cfg_data is None:
+            config_util.load_config()
+            cfg_data = config_util.config
+        if cfg_data is None:
+            return jsonify({"status": "error", "error": "配置加载失败"}), 500
+
+        if "attribute" in body:
+            for k, v in body["attribute"].items():
+                cfg_data["attribute"][k] = v
+
+        if "interact" in body:
+            for k, v in body["interact"].items():
+                if k == "perception" and isinstance(v, dict):
+                    for pk, pv in v.items():
+                        cfg_data["interact"]["perception"][pk] = pv
+                elif k != "perception":
+                    cfg_data["interact"][k] = v
+
+        config_util.save_config(cfg_data)
+        config_util.load_config()
+
+        return jsonify({
+            "status": "success",
+            "data": {
+                "attribute": cfg_data["attribute"],
+                "interact": cfg_data["interact"],
+            },
+        })
+
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 
 if __name__ == "__main__":

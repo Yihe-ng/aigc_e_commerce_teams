@@ -556,6 +556,7 @@ class FeiFei:
                             wsa_server.get_instance().add_cmd(content)
                         if should_call_llm:
                             chat_context = {"knowledge_context": knowledge_context} if knowledge_context else {}
+                            chat_context["persona_style"] = (cfg.config or {}).get("attribute", {}).get("persona_style", "vtuber_light")
                             if has_product_context and intro_resolution.get("matched_product"):
                                 matched = intro_resolution["matched_product"]
                                 chat_context["product_name"] = str(matched.get("name") or "")
