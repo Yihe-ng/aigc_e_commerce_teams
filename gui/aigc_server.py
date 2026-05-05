@@ -1755,6 +1755,9 @@ def save_product(product_id=None):
             "colors": data.get("colors", []),
             "fit": data.get("fit", ""),
             "fabric": data.get("fabric", ""),
+            "style": data.get("style", ""),
+            "scene": data.get("scene", []),
+            "tags": data.get("tags", []),
         }
 
         write_json_object(bucket, info_path, product_info, ensure_ascii=False)
