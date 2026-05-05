@@ -545,6 +545,18 @@ class FeiFei:
                                     knowledge_context = outfit_text + "\n\n" + (knowledge_context or "")
                             except Exception:
                                 pass
+                        if has_product_context and intro_resolution.get("matched_product"):
+                            _sim_triggers = ("相似", "类似", "推荐", "还有", "同款", "看看别的")
+                            if any(kw in original_msg for kw in _sim_triggers):
+                                try:
+                                    from backend.services.similarity import build_similarity_context
+                                    from backend.services.product_intro_service import load_products_for_intro
+                                    all_prods = load_products_for_intro()
+                                    similar_text = build_similarity_context(intro_resolution["matched_product"], all_prods)
+                                    if similar_text:
+                                        knowledge_context = similar_text + "\n\n" + (knowledge_context or "")
+                                except Exception:
+                                    pass
                         trace_log(
                             module="avatar",
                             stage="knowledge",
