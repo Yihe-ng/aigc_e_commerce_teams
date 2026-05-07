@@ -4,6 +4,16 @@ import re
 from typing import Optional
 
 
+def _get_raw_info(product: dict) -> dict:
+    raw = product.get("raw_info")
+    return raw if isinstance(raw, dict) else {}
+
+
+def _get_size_chart_from_raw(raw_info: dict) -> dict:
+    chart = raw_info.get("size_chart")
+    return chart if isinstance(chart, dict) else {}
+
+
 def parse_user_body_info(text: str) -> Optional[dict]:
     content = str(text or "").strip()
     if not content:
@@ -46,8 +56,8 @@ def generate_size_advice(text: str, product: dict) -> Optional[str]:
     if not user_info or "weight" not in user_info:
         return None
 
-    raw_info = product.get("raw_info") if isinstance(product.get("raw_info"), dict) else {}
-    size_chart = raw_info.get("size_chart") if isinstance(raw_info.get("size_chart"), dict) else {}
+    raw_info = _get_raw_info(product)
+    size_chart = _get_size_chart_from_raw(raw_info)
     fit = str(raw_info.get("fit") or "").strip()
     fabric = str(raw_info.get("fabric") or "").strip()
 
@@ -108,14 +118,14 @@ def find_recommendations_by_body(text: str) -> Optional[str]:
             products = load_products_for_intro()
             matches = []
             for product in products:
-                raw_info = product.get("raw_info") if isinstance(product.get("raw_info"), dict) else {}
+                raw_info = _get_raw_info(product)
                 fit = str(raw_info.get("fit") or "").strip()
                 if body_type == "大码" and fit in ("宽松", "oversized"):
                     matches.append(product)
                 elif body_type == "肩宽" and raw_info.get("size_chart"):
                     matches.append(product)
                 elif body_type == "小个子":
-                    size_chart = raw_info.get("size_chart") if isinstance(raw_info.get("size_chart"), dict) else {}
+                    size_chart = _get_size_chart_from_raw(raw_info)
                     for dims in size_chart.values():
                         if isinstance(dims, dict) and dims.get("衣长", 0):
                             length = int(str(dims.get("衣长", "0")).replace("cm", "").strip() or "0")
@@ -124,9 +134,20 @@ def find_recommendations_by_body(text: str) -> Optional[str]:
                                 break
             if matches:
                 parts = ["根据您的体型，以下商品可能有合适的尺码："]
-                for product in matches[:3]:
+                for product in matches[:2]:
                     name = product.get("name", "未知")
-                    parts.append(f"- {name}")
+                    raw_info = _get_raw_info(product)
+                    price = product.get("price") or raw_info.get("price") or "价格待确认"
+                    size_chart = _get_size_chart_from_raw(raw_info)
+                    size_code = next(iter(size_chart.keys()), "合适")
+                    weight_range = ""
+                    if size_code != "合适":
+                        dims = size_chart.get(size_code, {})
+                        if isinstance(dims, dict):
+                            weight_range = str(dims.get("建议体重", ""))
+                    weight_part = f" | 建议体重{weight_range}" if weight_range else ""
+                    parts.append(f"- {name} | 推荐{size_code}码 | 价格{price}{weight_part}")
+                parts.append("请优先基于以上商品与尺码回答，不要编造额外尺码信息。")
                 return " | ".join(parts)
         return None
 
@@ -134,8 +155,8 @@ def find_recommendations_by_body(text: str) -> Optional[str]:
     products = load_products_for_intro()
     matches = []
     for product in products:
-        raw_info = product.get("raw_info") if isinstance(product.get("raw_info"), dict) else {}
-        size_chart = raw_info.get("size_chart") if isinstance(raw_info.get("size_chart"), dict) else {}
+        raw_info = _get_raw_info(product)
+        size_chart = _get_size_chart_from_raw(raw_info)
         if not size_chart:
             continue
         for size_code, dims in size_chart.items():
@@ -150,13 +171,20 @@ def find_recommendations_by_body(text: str) -> Optional[str]:
                     break
     if matches:
         parts = [f"根据您的体重（约{user_info['weight']}斤），以下商品有合适尺码："]
-        for product, size_code in matches[:3]:
+        for product, size_code in matches[:2]:
             name = product.get("name", "未知")
-            parts.append(f"- {name}（推荐{size_code}码）")
+            raw_info = _get_raw_info(product)
+            price = product.get("price") or raw_info.get("price") or "价格待确认"
+            size_chart = _get_size_chart_from_raw(raw_info)
+            dims = size_chart.get(size_code, {}) if isinstance(size_chart, dict) else {}
+            weight_range = str(dims.get("建议体重", "")) if isinstance(dims, dict) else ""
+            weight_part = f" | 建议体重{weight_range}" if weight_range else ""
+            parts.append(f"- {name} | 推荐{size_code}码 | 价格{price}{weight_part}")
         body_type = parse_body_type(text)
         if body_type:
             body_advice = {"梨形": "优先关注臀围和腰围数据", "肩宽": "优先关注肩宽数据", "小个子": "优先关注衣长数据"}.get(body_type, "")
             if body_advice:
                 parts.append(f"体型建议：{body_advice}")
+        parts.append("请优先基于以上商品与尺码回答，不要编造额外尺码信息。")
         return " | ".join(parts)
     return None

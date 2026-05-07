@@ -23,6 +23,9 @@ export interface Product {
   colors?: string[]
   fit?: string
   fabric?: string
+  style?: string
+  scene?: string[]
+  tags?: string[]
 }
 
 export interface Category {
@@ -41,4 +44,7 @@ export interface ProductFormValue {
   colors: string[]
   fit: string
   fabric: string
+  style: string
+  scene: string[]
+  tags: string[]
 }

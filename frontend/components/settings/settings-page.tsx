@@ -10,6 +10,7 @@ import {
   panelHoverClass,
   panelOnMutedBgClass,
 } from "@/components/dashboard/dashboard-shared"
+import { DigitalHumanSettings } from "./digital-human-settings"
 import { cn } from "@/lib/utils"
 
 const LANG_ITEMS = [
@@ -71,6 +72,7 @@ export function SettingsPage() {
                 <Tabs.Tab id="general">通用偏好</Tabs.Tab>
                 <Tabs.Tab id="notifications">通知与提醒</Tabs.Tab>
                 <Tabs.Tab id="security">安全与账号</Tabs.Tab>
+                <Tabs.Tab id="digital-human">数字人设置</Tabs.Tab>
                 <Tabs.Tab id="integration">接口与集成</Tabs.Tab>
               </Tabs.List>
             </Tabs.ListContainer>
@@ -144,6 +146,10 @@ export function SettingsPage() {
                   </Button>
                 </div>
               </Panel>
+            </Tabs.Panel>
+
+            <Tabs.Panel id="digital-human" className="mt-6 outline-none">
+              <DigitalHumanSettings />
             </Tabs.Panel>
 
             <Tabs.Panel id="integration" className="mt-6 outline-none">

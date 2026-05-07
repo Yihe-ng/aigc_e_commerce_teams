@@ -1,7 +1,7 @@
 "use client"
 
 import type { ChangeEvent, DragEvent, FormEvent, RefObject } from "react"
-import { Button, Card, Chip, Input, Spinner } from "@heroui/react"
+import { Button, Card, Input, Spinner } from "@heroui/react"
 import { Edit, PlusCircle, RotateCcw, Save, Sparkles, Trash2, UploadCloud, X } from "lucide-react"
 
 import type { Category, ProductFormValue, SizeChartRow } from "@/lib/types/product"
@@ -33,6 +33,9 @@ interface ProductFormProps {
   onColorToggle: (color: string) => void
   onFitChange: (fit: string) => void
   onFabricChange: (fabric: string) => void
+  onStyleChange: (style: string) => void
+  onSceneToggle: (scene: string) => void
+  onTagToggle: (tag: string) => void
   onSizeChartChange: (chart: SizeChartRow[]) => void
   onGenerateDescription: () => void
   isGeneratingDescription: boolean
@@ -62,6 +65,9 @@ export default function ProductForm(props: ProductFormProps) {
     onColorToggle,
     onFitChange,
     onFabricChange,
+    onStyleChange,
+    onSceneToggle,
+    onTagToggle,
     onSizeChartChange,
     onGenerateDescription,
     isGeneratingDescription,
@@ -126,7 +132,6 @@ export default function ProductForm(props: ProductFormProps) {
           {editingId ? (
             <Button
               variant="ghost"
-              size="sm"
               onPress={onReset}
               className="font-medium text-red-500 hover:bg-red-50"
             >
@@ -280,7 +285,6 @@ export default function ProductForm(props: ProductFormProps) {
                   详细描述 <span className="text-red-500">*</span>
                 </span>
                 <Button
-                  size="sm"
                   variant="ghost"
                   isDisabled={!formData.name.trim() || !formData.category || !formData.features.trim() || isGeneratingDescription}
                   onPress={onGenerateDescription}
@@ -318,36 +322,46 @@ export default function ProductForm(props: ProductFormProps) {
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">可选尺码</span>
                 <div className="flex flex-wrap gap-2">
-                  {["S", "M", "L", "XL", "XXL", "均码"].map((size) => (
-                    <Chip
-                      key={size}
-                      size="sm"
-                      variant={(formData.sizes || []).includes(size) ? "solid" : "flat"}
-                      color={(formData.sizes || []).includes(size) ? "primary" : "default"}
-                      className="cursor-pointer select-none"
-                      onClick={() => onSizeToggle(size)}
-                    >
-                      {size}
-                    </Chip>
-                  ))}
+                  {["S", "M", "L", "XL", "XXL", "均码"].map((size) => {
+                    const selected = (formData.sizes || []).includes(size)
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => onSizeToggle(size)}
+                        className={`inline-flex cursor-pointer select-none items-center rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          selected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">颜色选项</span>
                 <div className="flex flex-wrap gap-2">
-                  {["白色", "黑色", "红色", "蓝色", "灰色", "米色"].map((color) => (
-                    <Chip
-                      key={color}
-                      size="sm"
-                      variant={(formData.colors || []).includes(color) ? "solid" : "flat"}
-                      color={(formData.colors || []).includes(color) ? "primary" : "default"}
-                      className="cursor-pointer select-none"
-                      onClick={() => onColorToggle(color)}
-                    >
-                      {color}
-                    </Chip>
-                  ))}
+                  {["白色", "黑色", "红色", "蓝色", "灰色", "米色"].map((color) => {
+                    const selected = (formData.colors || []).includes(color)
+                    return (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => onColorToggle(color)}
+                        className={`inline-flex cursor-pointer select-none items-center rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          selected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                        }`}
+                      >
+                        {color}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -370,13 +384,74 @@ export default function ProductForm(props: ProductFormProps) {
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">面料</span>
                 <Input
-                  size="sm"
-                  variant="bordered"
                   placeholder="如：100%棉、雪纺、牛仔布"
                   value={formData.fabric || ""}
                   className="text-sm"
                   onChange={(e) => onFabricChange(e.target.value)}
                 />
+              </div>
+            </div>
+
+            {/* 风格、场景、标签 */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">风格</span>
+                <select
+                  value={formData.style}
+                  onChange={(e) => onStyleChange(e.target.value)}
+                  className="h-8 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none transition-all hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100"
+                >
+                  <option value="">选择风格</option>
+                  {["甜辣", "法式", "美式复古", "通勤", "休闲", "简约", "新中式", "山系", "Y2K", "其他"].map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">场景标签</span>
+                <div className="flex flex-wrap gap-2">
+                  {["约会", "通勤", "日常", "度假", "运动", "派对"].map((scene) => {
+                    const selected = (formData.scene || []).includes(scene)
+                    return (
+                      <button
+                        key={scene}
+                        type="button"
+                        onClick={() => onSceneToggle(scene)}
+                        className={`inline-flex cursor-pointer select-none items-center rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          selected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                        }`}
+                      >
+                        {scene}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 md:col-span-2">
+                <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">营销标签</span>
+                <div className="flex flex-wrap gap-2">
+                  {["显瘦", "百搭", "气质", "少女感", "高级感", "爆款", "性价比", "限量"].map((tag) => {
+                    const selected = (formData.tags || []).includes(tag)
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => onTagToggle(tag)}
+                        className={`inline-flex cursor-pointer select-none items-center rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          selected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
 
@@ -404,8 +479,6 @@ export default function ProductForm(props: ProductFormProps) {
                       >
                         <td className="px-2 py-1">
                             <Input
-                              size="sm"
-                              variant="flat"
                               value={row.尺码}
                               placeholder="如：M"
                               className="text-xs h-7"
@@ -428,8 +501,6 @@ export default function ProductForm(props: ProductFormProps) {
                         {(["胸围", "腰围", "臀围", "肩宽", "袖长", "衣长"] as const).map((field) => (
                           <td key={field} className="px-2 py-1">
                               <Input
-                                size="sm"
-                                variant="flat"
                                 type="number"
                                 value={row[field] === "" ? "" : String(row[field])}
                                 placeholder="-"
@@ -445,8 +516,6 @@ export default function ProductForm(props: ProductFormProps) {
                         ))}
                         <td className="px-2 py-1">
                             <Input
-                              size="sm"
-                              variant="flat"
                               value={row.建议体重}
                               placeholder="如：50-60kg"
                               className="text-xs h-7"
@@ -459,11 +528,8 @@ export default function ProductForm(props: ProductFormProps) {
                         </td>
                         <td className="px-1 py-1 text-center">
                           <Button
-                            isIconOnly
-                            size="sm"
-                            variant="light"
-                            color="danger"
-                            className="h-6 w-6 min-w-6"
+                            variant="ghost"
+                            className="h-6 w-6 min-w-6 text-red-500"
                             onPress={() => {
                               const updated = (formData.size_chart || []).filter((_, i) => i !== index)
                               onSizeChartChange(updated)
@@ -478,9 +544,7 @@ export default function ProductForm(props: ProductFormProps) {
                 </table>
               </div>
               <Button
-                size="sm"
-                variant="bordered"
-                color="primary"
+                variant="outline"
                 onPress={() => {
                   const newRow: SizeChartRow = {
                     尺码: "",

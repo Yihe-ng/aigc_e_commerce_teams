@@ -534,6 +534,29 @@ class FeiFei:
                                     knowledge_context = size_advice + "\n\n" + (knowledge_context or "")
                             except Exception:
                                 pass
+                        _outfit_triggers = ("搭配", "怎么搭", "配什么", "怎么配", "怎么穿", "好搭")
+                        if has_product_context and intro_resolution.get("matched_product") and any(kw in original_msg for kw in _outfit_triggers):
+                            try:
+                                from backend.services.outfit_rules import build_full_outfit_context
+                                from backend.services.product_intro_service import load_products_for_intro
+                                all_prods = load_products_for_intro()
+                                outfit_text = build_full_outfit_context(intro_resolution["matched_product"], all_prods)
+                                if outfit_text:
+                                    knowledge_context = outfit_text + "\n\n" + (knowledge_context or "")
+                            except Exception:
+                                pass
+                        if has_product_context and intro_resolution.get("matched_product"):
+                            _sim_triggers = ("相似", "类似", "推荐", "还有", "同款", "看看别的")
+                            if any(kw in original_msg for kw in _sim_triggers):
+                                try:
+                                    from backend.services.similarity import build_similarity_context
+                                    from backend.services.product_intro_service import load_products_for_intro
+                                    all_prods = load_products_for_intro()
+                                    similar_text = build_similarity_context(intro_resolution["matched_product"], all_prods)
+                                    if similar_text:
+                                        knowledge_context = similar_text + "\n\n" + (knowledge_context or "")
+                                except Exception:
+                                    pass
                         trace_log(
                             module="avatar",
                             stage="knowledge",
@@ -556,6 +579,7 @@ class FeiFei:
                             wsa_server.get_instance().add_cmd(content)
                         if should_call_llm:
                             chat_context = {"knowledge_context": knowledge_context} if knowledge_context else {}
+                            chat_context["persona_style"] = (cfg.config or {}).get("attribute", {}).get("persona_style", "vtuber_light")
                             if has_product_context and intro_resolution.get("matched_product"):
                                 matched = intro_resolution["matched_product"]
                                 chat_context["product_name"] = str(matched.get("name") or "")

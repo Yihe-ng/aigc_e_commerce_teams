@@ -79,6 +79,7 @@ def build_cta_prompt(
     product_name: str = "",
     inventory_count: Optional[int] = None,
     has_discount: bool = False,
+    persona_style: str = "vtuber_light",
 ) -> str:
     base = "你是一名专业又亲切的服装导购。回答用户问题时，请自然结合以下营销策略，不要生硬拼接：\n"
 
@@ -89,7 +90,14 @@ def build_cta_prompt(
     target = f"【商品】{product_name}。" if product_name else ""
 
     if stage == SalesStage.ENTER:
-        stage_rule = "先热情欢迎，再引导用户说出偏好（风格/场景/预算），给出轻松选择建议。"
+        if persona_style == "vtuber_light":
+            stage_rule = "先元气满满地打招呼（称呼姐妹们），再引导用户说出偏好（风格/场景/预算），像朋友聊穿搭一样轻松带节奏。\n称呼风格：活泼自然，像直播间开场，不要生硬机械。"
+        elif persona_style == "professional":
+            stage_rule = "先专业问候（称呼您好），再引导用户描述需求（场合/预算/偏好），给出清晰选择建议。\n称呼风格：请根据场合自然使用称呼，不要机械重复。"
+        elif persona_style == "natural":
+            stage_rule = "先自然问候（称呼你），再轻松聊出用户偏好和需求，像朋友推荐一样。\n称呼风格：请根据场合自然使用称呼，不要机械重复。"
+        else:
+            stage_rule = "先热情欢迎，再引导用户说出偏好（风格/场景/预算），给出轻松选择建议。"
     elif stage == SalesStage.BROWSING:
         stage_rule = "先回答当前问题，再补充1-2个核心卖点，最后自然追加温和购买引导。"
     elif stage == SalesStage.COMPARING:

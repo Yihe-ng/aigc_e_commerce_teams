@@ -1,0 +1,26 @@
+# Qwen3 TTS 服务环境
+#
+# 在单独的虚拟环境中安装。请勿与 qwen-asr 一起安装在主 .venv 中，
+# 因为 qwen-tts 当前固定使用 transformers==4.57.3，而 qwen-asr 固定使用 transformers==4.57.6。
+#
+# uv 示例：
+#   uv venv .venv-qwen-tts --python 3.11 --seed
+#   uv pip install --python .\.venv-qwen-tts\Scripts\python.exe -r requirements-qwen-tts.txt
+#   .\.venv-qwen-tts\Scripts\python.exe .\tts\qwen3tts_server\server.py
+#
+# pip / venv 示例：
+#   py -3.11 -m venv .venv-qwen-tts
+#   .\.venv-qwen-tts\Scripts\python.exe -m pip install -r requirements-qwen-tts.txt
+#
+# conda 示例：
+#   conda create -n qwen-tts python=3.11
+#   conda activate qwen-tts
+#   python -m pip install -r requirements-qwen-tts.txt
+
+fastapi
+uvicorn
+pydantic
+soundfile
+python-multipart
+modelscope
+faster-qwen3-tts
