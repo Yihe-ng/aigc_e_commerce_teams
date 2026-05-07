@@ -1,0 +1,27 @@
+# Qwen3 ASR 服务环境
+#
+# 在单独的虚拟环境中安装。请勿与 faster-qwen3-tts 一起安装在主 .venv 中，
+# 因为 qwen-asr 当前固定使用 transformers==4.57.6，而 qwen-tts 固定使用 transformers==4.57.3。
+#
+# uv 示例：
+#   uv venv .venv-qwen-asr --python 3.11 --seed
+#   uv pip install --python .\.venv-qwen-asr\Scripts\python.exe -r requirements-qwen-asr.txt
+#   $env:PYTHONPATH="."
+#   .\.venv-qwen-asr\Scripts\python.exe .\asr\qwen3_server\server.py
+#
+# pip / venv 示例：
+#   py -3.11 -m venv .venv-qwen-asr
+#   .\.venv-qwen-asr\Scripts\python.exe -m pip install -r requirements-qwen-asr.txt
+#
+# conda 示例：
+#   conda create -n qwen-asr python=3.11
+#   conda activate qwen-asr
+#   python -m pip install -r requirements-qwen-asr.txt
+
+fastapi
+uvicorn
+pydantic
+soundfile
+python-multipart
+modelscope
+qwen-asr

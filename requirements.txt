@@ -43,18 +43,24 @@ python-dotenv
 schedule~=1.2.0
 redis
 
-# Qwen3 TTS/ASR 服务依赖
-torch
+# 主程序环境依赖。
+# 可使用 pip、uv pip、conda 环境内的 pip 安装本文件。
+#
+# Qwen3 TTS/ASR 的模型服务端依赖不能和主程序依赖混装。
+# qwen-tts 当前锁定 transformers==4.57.3，qwen-asr 当前锁定 transformers==4.57.6，
+# 因此 faster-qwen3-tts / qwen-asr 已拆到独立可选 requirements 文件：
+# - requirements-qwen-tts.txt
+# - requirements-qwen-asr.txt
+#
+# 这里保留 FastAPI 运行时依赖，供项目内轻量 API/辅助服务使用。
 fastapi
 uvicorn
 pydantic
 soundfile
-modelscope
-faster-qwen3-tts
-qwen-asr
 python-multipart
 
-# Hugging Face 相关（用于本地LLM服务）
+# Hugging Face / 本地 embedding / 本地 LLM 相关
+torch
 transformers
 sentence-transformers
 tiktoken

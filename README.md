@@ -24,11 +24,12 @@
       - [1.1 克隆项目](#11-克隆项目)
       - [1.2 创建并激活Python虚拟环境](#12-创建并激活python虚拟环境)
       - [1.3 安装Python依赖](#13-安装python依赖)
-      - [1.4 安装前端依赖](#14-安装前端依赖)
+      - [1.4 可选：安装本地 Qwen3 TTS/ASR 服务依赖](#14-可选安装本地-qwen3-ttsasr-服务依赖)
+      - [1.5 安装前端依赖](#15-安装前端依赖)
     - [第二步：服务启动](#第二步服务启动)
-      - [2.1 启动 TTS 服务 (终端窗口1)](#21-启动-tts-服务-终端窗口1)
-      - [2.2 启动 ASR 服务 (终端窗口2)](#22-启动-asr-服务-终端窗口2)
-      - [2.3 启动主程序 (终端窗口3)](#23-启动主程序-终端窗口3)
+      - [2.1 启动主程序](#21-启动主程序)
+      - [2.2 可选：启动 Qwen3 TTS 服务](#22-可选启动-qwen3-tts-服务)
+      - [2.3 可选：启动 Qwen3 ASR 服务](#23-可选启动-qwen3-asr-服务)
     - [第三步：验证服务](#第三步验证服务)
       - [3.1 服务健康检查](#31-服务健康检查)
       - [3.2 访问Web界面](#32-访问web界面)
@@ -38,7 +39,9 @@
     - [2. `config.json` - 数字人配置模板](#2-configjson---数字人配置模板)
     - [3. `.env` - 环境变量配置模板](#3-env---环境变量配置模板)
     - [4. `knowledge_keywords.json` - 知识库关键词配置模板](#4-knowledge_keywordsjson---知识库关键词配置模板)
-    - [5. Dify 工作流配置说明](#5-dify-工作流配置说明)
+    - [5. `backend/services/rules.json` - 搭配规则库配置](#5-backendservicesrulesjson---搭配规则库配置)
+    - [6. Dify 工作流配置说明](#6-dify-工作流配置说明)
+    - [7. 数字人运行时配置 (Runtime Config)](#7-数字人运行时配置-runtime-config)
     - [AI服务密钥申请](#ai服务密钥申请)
   - [🖥️ 访问与使用](#️-访问与使用)
     - [Web界面功能](#web界面功能)
@@ -56,6 +59,8 @@
       - [2. 添加新的ASR引擎](#2-添加新的asr引擎)
       - [3. 添加新的LLM服务](#3-添加新的llm服务)
       - [4. 自定义数字人模型](#4-自定义数字人模型)
+      - [5. 扩展搭配规则](#5-扩展搭配规则)
+      - [6. 调优相似推荐算法](#6-调优相似推荐算法)
     - [调试与日志](#调试与日志)
       - [1. 日志文件位置](#1-日志文件位置)
       - [2. 调试模式](#2-调试模式)
@@ -116,40 +121,79 @@
    - 知识库检索与增强 (Dify集成 + 本地RAG向量检索)
    - 违禁词审核与合规检查 (输入/输出双重过滤)
    - 智能产品匹配与意图识别
-   - 专业知识库集成 (面料、洗护、风格等领域)
+    - 专业知识库集成 (面料、洗护、风格等领域)
+
+6. **搭配规则引擎**
+   - 结构化搭配规则库 (9风格 × 6场景 × 3版型 × 6颜色)
+   - 关键词触发 (搭配/怎么搭/配什么 等6个触发词)
+   - 规则匹配 + LLM话术润色，避免纯LLM编造
+   - 可扩展JSON规则库 (`rules.json`)
+
+7. **相似商品推荐**
+   - TF-IDF 加权 Jaccard 相似度算法
+   - 属性级语义匹配 (style/scene/tags/color/material)
+   - 触发词匹配 (相似/类似/推荐/还有/同款/看看别的)
+   - 可解释推荐结果 (显示匹配属性和相似度分数)
+
+8. **尺码推荐系统**
+   - 商品尺码表匹配 + 身形数据推理
+   - 版型/弹力/厚度/偏码多因子加权
+   - 支持身高体重选码、梨形/肩宽适配
+   - 用户数据提取 (身高/体重/身形/平时尺码)
+
+9. **主播风格控制**
+   - 三种预设风格: `vtuber_light`(元气主播)、`professional`(专业导购)、`natural`(自然对话)
+   - 风格Prompt注入 + Few-shot示例学习
+   - 前后端统一的风格切换与持久化
+   - 数字人设置页面可视化管理
+
+10. **AI 商品自动打标**
+    - LLM 一键生成商品 description / style / scene / tags
+    - 前端商品表单集成 (风格 Select、场景/标签 Chip 组)
+    - 数据双向同步 (数据库与 raw_info 兼容)
 
 ## 🏗️ 系统架构
 
 ### 整体架构图
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     前端界面 (Next.js)                       │
-│  ┌────────────┐  ┌────────────┐  ┌────────────────────┐  │
-│  │ Live2D数字人 │  │ 电商管理后台 │  │ AI工具工作区      │  │
-│  └────────────┘  └────────────┘  └────────────────────┘  │
-└─────────────────────────┬──────────────────────────────────┘
-                          │ HTTP/WebSocket
-┌─────────────────────────▼──────────────────────────────────┐
-│                   主业务API层 (Flask)                       │
-│  ┌────────────┐  ┌────────────┐  ┌────────────────────┐  │
-│  │ aigc_server │  │登录/注册服务│  │ 数据看板服务      │  │
-│  │   (5000)    │  │   (3002)   │  │   (5001)         │  │
-│  └────────────┘  └────────────┘  └────────────────────┘  │
-└─────────────────┬────────────┬────────────┬───────────────┘
-                  │            │            │
-       ┌──────────▼──┐  ┌─────▼────┐  ┌───▼──────────┐
-       │ Qwen3-TTS   │  │ Qwen3-ASR│  │ WebSocket    │
-       │   (8000)    │  │   (8001) │  │ (10003-10004)│
-       └─────────────┘  └──────────┘  └──────────────┘
-                  │            │
-           ┌──────▼────────────▼──────┐
-           │      AI服务集群           │
-           │  • Dify.ai API           │
-           │  • LiblibAI API          │
-           │  • 阿里云OSS              │
-           │  • 多种LLM后端            │
-           └───────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                      前端界面 (Next.js)                       │
+│  ┌─────────┐ ┌──────────┐ ┌───────────┐ ┌───────────────┐  │
+│  │Live2D数字人│ │电商管理后台│ │ AI工具工作区│ │ 数字人设置 ⚙️ │  │
+│  └─────────┘ └──────────┘ └───────────┘ └───────────────┘  │
+└────────────────────────┬─────────────────────────────────────┘
+                         │ HTTP/WebSocket
+┌────────────────────────▼─────────────────────────────────────┐
+│                    主业务API层 (Flask :5000)                   │
+│  ┌─────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────┐ │
+│  │ aigc_server │ │ 登录/注册  │ │ 数据看板   │ │runtime-  │ │
+│  │ (商品/AI/配置)│ │   (3002)   │ │   (5001)   │ │config API│ │
+│  └─────────────┘ └────────────┘ └────────────┘ └──────────┘ │
+└────────┬────────────────┬─────────────┬──────────────────────┘
+         │                │             │
+┌────────▼────────────────▼──────┬──────▼──────────────────────┐
+│          服务引擎层 (backend/services/)                       │
+│  ┌───────────┐ ┌───────────┐ ┌────────────┐ ┌────────────┐  │
+│  │搭配规则引擎│ │相似推荐引擎│ │尺码推荐引擎│ │销售策略引擎│  │
+│  │outfit_rules│ │similarity │ │size_recomm │ │sales_strategy│ │
+│  └───────────┘ └───────────┘ └────────────┘ └────────────┘  │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+         ┌───────────────┼───────────────┐
+         │               │               │
+  ┌──────▼─────┐ ┌──────▼─────┐ ┌──────▼──────────┐
+  │ Qwen3-TTS │ │ Qwen3-ASR │ │   WebSocket     │
+  │  :8000    │ │  :8001    │ │ (10003-10004)   │
+  └────────────┘ └────────────┘ └─────────────────┘
+         │               │
+  ┌──────▼───────────────▼──────┐
+  │        AI 服务集群           │
+  │  • LLM (LongCat/GPT/Qwen)   │
+  │  • Dify.ai 工作流 / 知识库   │
+  │  • LiblibAI / 阿里云OSS     │
+  │  • 硅基流动 Embedding        │
+  └──────────────────────────────┘
 ```
 
 ### 核心数据流程
@@ -179,6 +223,26 @@
    用户输入 → 违禁词检测 → 知识域识别 → 产品匹配 → LLM处理 → 输出审核 → 最终回复
    ```
 
+6. **搭配推理流程（规则引擎）**
+   ```
+   用户提问 → 触发词检测 → rules.json 规则匹配 → 搭配结果 → LLM 话术润色 → 输出
+   ```
+
+7. **相似推荐流程（Jaccard 相似度）**
+   ```
+   当前商品属性 → 候选商品属性提取 → TF-IDF 加权 Jaccard 计算 → 排序 → Top-K 推荐
+   ```
+
+8. **尺码推荐流程**
+   ```
+   用户身形数据 → 商品尺码表检索 → 版型/弹力/偏码多因子规则 → 尺码建议 → LLM 话术
+   ```
+
+9. **风格控制流程**
+   ```
+   结构化结果(JSON) → persona_style 分支 → 风格 Prompt + Few-shot 注入 → LLM 生成 → 风格化话术
+   ```
+
 ### 服务端口说明
 
 | 服务 | 端口 | 说明 | 启动文件 |
@@ -205,11 +269,13 @@
 - **知识检索框架**: Dify知识库API + 本地RAG检索器
 - **审核引擎**: 快速模式匹配 + 语义理解
 - **任务调度**: schedule
+- **推荐引擎**: TF-IDF 加权 Jaccard 相似度 / 结构化搭配规则引擎 / 多因子尺码推荐
+- **风格控制**: 三模式 Persona 风格注入 + Few-shot 示例学习
 - **音频处理**: pydub, soundfile, pyaudio
 
 ### 前端技术栈
 - **框架**: Next.js 15 + React 19 + TypeScript
-- **UI组件**: HeroUI + Tailwind CSS + Radix UI
+- **UI组件**: HeroUI v3 + Tailwind CSS + Radix UI (含数字人设置、商品打标等表单组件)
 - **Live2D渲染**: PixiJS + pixi-live2d-display
 - **状态管理**: React Context + 原生Hooks
 - **构建工具**: pnpm + ESLint + PostCSS
@@ -221,6 +287,7 @@
 - **图像生成**: LiblibAI API, 稳定扩散模型
 - **情感分析**: 百度AI情感分析, Cemotion
 - **知识检索**: Dify知识库API, 本地RAG向量检索 (ChromaDB + 硅基流动Embedding)
+- **商品理解**: AI 自动打标 (style/scene/tags 提取), 自然语言查询 → 结构化属性映射
 - **审核服务**: 违禁词检测, 内容合规检查
 - **唇形同步**: 能量模型, 文本时间线处理
 
@@ -235,9 +302,9 @@
 
 ### 环境要求
 - **操作系统**: Windows 10/11 (推荐), Linux/macOS (需适配)
-- **Python**: 3.10+
+- **Python**: 3.10+ (推荐 3.11)
 - **Node.js**: 18+
-- **包管理器**: pnpm (前端), pip (后端)
+- **包管理器**: pnpm (前端), pip/uv/conda 环境内 pip (后端)
 - **磁盘空间**: 至少10GB (用于AI模型缓存)
 
 ### 第一步：环境准备
@@ -265,17 +332,40 @@ source .venv/bin/activate
 
 #### 1.3 安装Python依赖
 ```powershell
-# 安装所有依赖 (包含TTS/ASR所需依赖)
-pip install -r requirements.txt
+# 安装主程序依赖
+python -m pip install -r requirements.txt
 ```
 
-**注意**: requirements.txt 已包含项目所需的所有依赖，包括：
-- Qwen3 TTS/ASR 服务依赖 (`faster-qwen3-tts`, `qwen-asr`, `modelscope`)
+**注意**: `requirements.txt` 用于主程序环境，已包含：
 - Web 框架依赖 (`fastapi`, `uvicorn`, `flask`)
-- AI 框架依赖 (`torch`, `transformers`, `sentence-transformers`)
+- AI 与本地检索依赖 (`langchain`, `chromadb`, `torch`, `transformers`, `sentence-transformers`)
 - 工具类依赖 (`pydub`, `soundfile`, `opencv-python`)
 
-#### 1.4 安装前端依赖
+如果你使用 uv 或 conda，请先进入对应 Python 环境，再执行同样的
+`python -m pip install -r requirements.txt` 命令。
+
+#### 1.4 可选：安装本地 Qwen3 TTS/ASR 服务依赖
+
+只有当 `system.conf` 中启用本地 Qwen3 TTS/ASR 时，才需要安装本节依赖。
+Qwen3 TTS 与 Qwen3 ASR 必须使用不同虚拟环境，不能安装到同一个环境。
+若使用uv/conda参考他们的依赖文件开头注释
+
+原因是 `qwen-tts` 当前固定依赖 `transformers==4.57.3`，而 `qwen-asr`
+当前固定依赖 `transformers==4.57.6`。
+
+Qwen3 TTS 环境：
+```powershell
+.\.venv-qwen-tts\Scripts\Activate.ps1
+python -m pip install -r requirements-qwen-tts.txt
+```
+
+Qwen3 ASR 环境：
+```powershell
+.\.venv-qwen-asr\Scripts\Activate.ps1
+python -m pip install -r requirements-qwen-asr.txt
+```
+
+#### 1.5 安装前端依赖
 ```powershell
 # 进入前端目录
 cd frontend
@@ -289,57 +379,65 @@ cd ..
 
 ### 第二步：服务启动
 
-项目需要启动三个核心服务，建议使用三个独立的终端窗口，注：若需要本地TTS&ASR服务才需单独启用。
+默认只需要启动主程序。`main.py` 会拉起主 API、登录服务、WebSocket
+服务，以及 Next.js 前端开发服务。只有当配置启用本地 Qwen3 TTS 或
+Qwen3 ASR 时，才需要额外启动对应服务。
 
-#### 2.1 启动 TTS 服务 (终端窗口1)
+#### 2.1 启动主程序
 ```powershell
-# 确保在项目根目录且虚拟环境已激活
 .\.venv\Scripts\Activate.ps1
+python .\main.py
+```
+**成功标志**: 看到以下服务启动信息：
+- 主业务 API 服务启动，默认端口 `5000`
+- 登录服务启动，默认端口 `3002`
+- 页面壳服务启动，默认端口 `6000`
+- WebSocket 服务启动，默认端口 `10003` / `10004`
+- 前端开发服务启动，默认端口 `3000`
+
+#### 2.2 可选：启动 Qwen3 TTS 服务
+
+当 `system.conf` 中 `tts_module = qwen3` 时，需要单独启动本服务。
+
+```powershell
+.\.venv-qwen-tts\Scripts\Activate.ps1
 python .\tts\qwen3tts_server\server.py
 ```
 **成功标志**: 看到 `Uvicorn running on http://0.0.0.0:8000`
 
-#### 2.2 启动 ASR 服务 (终端窗口2)
+#### 2.3 可选：启动 Qwen3 ASR 服务
+
+当 `system.conf` 中 `ASR_mode = qwen3` 时，需要单独启动本服务。
+
 ```powershell
-# 确保在项目根目录且虚拟环境已激活
-.\.venv\Scripts\Activate.ps1
-$env:PYTHONPATH="."
+.\.venv-qwen-asr\Scripts\Activate.ps1
 python .\asr\qwen3_server\server.py
 ```
 **成功标志**: 看到 `Uvicorn running on http://0.0.0.0:8001`
-
-#### 2.3 启动主程序 (终端窗口3)
-```powershell
-# 确保在项目根目录且虚拟环境已激活
-.\.venv\Scripts\Activate.ps1
-python main.py
-```
-**成功标志**: 看到以下服务启动信息：
-- `Starting aigc_server on port 5000`
-- `Starting flask_server on port 6000`
-- `Starting login_server on port 3002`
-- `WebSocket servers started`
 
 ### 第三步：验证服务
 
 #### 3.1 服务健康检查
 ```powershell
-# TTS 服务健康检查
+# 主 API 健康检查
+curl http://127.0.0.1:5000/api/health/live
+curl http://127.0.0.1:5000/api/ws-status
+curl http://127.0.0.1:5000/api/admin/local-rag/status
+
+# Qwen3 TTS 服务健康检查 (仅启用本地 Qwen3 TTS 时使用)
 curl http://127.0.0.1:8000/health
 
-# ASR 服务健康检查
+# Qwen3 ASR 服务健康检查 (仅启用本地 Qwen3 ASR 时使用)
 curl http://127.0.0.1:8001/health
-
-# 主 API 健康检查
-curl http://127.0.0.1:5000/health
 ```
 
 #### 3.2 访问Web界面
-- 建议访问http://127.0.0.1:5000 ，会自动重定向至登录界面，完成登录后进入主页面
 - **主管理界面**: http://127.0.0.1:3000
+- **登录界面**: http://127.0.0.1:3000/login
 - **Live2D数字人界面**: http://127.0.0.1:3000/live
-- **API文档 (TTS)**: http://127.0.0.1:8000/docs
-- **API文档 (ASR)**: http://127.0.0.1:8001/docs
+- **主 API 服务**: http://127.0.0.1:5000
+- **API文档 (Qwen3 TTS，仅启动后可用)**: http://127.0.0.1:8000/docs
+- **API文档 (Qwen3 ASR，仅启动后可用)**: http://127.0.0.1:8001/docs
 
 ## ⚙️ 配置说明
 
@@ -353,6 +451,7 @@ curl http://127.0.0.1:5000/health
 | `config.json` | 数字人属性配置，定义音色、模型、交互参数等 | **必需** |
 | `.env` | 环境变量配置，用于云服务、第三方API密钥等 | 可选（但建议配置） |
 | `knowledge_keywords.json` | 知识库关键词映射配置，定义面料、洗护、风格等知识域 | 可选（知识库功能需要） |
+| `backend/services/rules.json` | 搭配规则库，定义风格/场景/版型/颜色的搭配规则 | 可选（搭配推荐功能需要） |
 | `runtime/forbidden_words.txt` | 违禁词库文件，用于内容审核与合规检查 | 可选（审核功能需要） |
 
 ### 1. `system.conf` - 系统主配置模板
@@ -363,7 +462,7 @@ curl http://127.0.0.1:5000/health
 [key]
 # ==================== ASR 配置 ====================
 # ASR模式选择: funasr / ali / sensevoice / qwen3
-# 建议使用 qwen3 (本地部署) 或 ali (阿里云，免费3个月)
+# qwen3 需要单独启动 Qwen3-ASR 服务
 ASR_mode = qwen3
 
 # 本地 FunASR 服务地址 (当 ASR_mode=funasr 时使用)
@@ -380,8 +479,8 @@ ali_nls_app_key = YOUR_ALI_NLS_APP_KEY
 
 # ==================== TTS 配置 ====================
 # TTS类型: azure / ali / gptsovits / volcano / gptsovits_v3 / qwen3
-# 建议使用 qwen3 (本地部署，效果最佳)
-tts_module = qwen3
+# qwen3 需要单独启动 Qwen3-TTS 服务；不启动本地服务时可使用 azure / ali / volcano
+tts_module = azure
 
 # Qwen3-TTS 本地服务端地址 (当 tts_module=qwen3 时使用)
 qwen3_tts_url = http://127.0.0.1:8000/tts
@@ -667,7 +766,25 @@ PATH=%PATH%;./test/ovr_lipsync/ffmpeg/bin
 2. 系统通过`dataset_aliases`映射到Dify知识库中的具体数据集
 3. 检索到的专业知识将作为上下文注入LLM，生成更专业的回复
 
-### 5. Dify 工作流配置说明
+### 5. `backend/services/rules.json` - 搭配规则库配置
+
+**文件位置**: 项目根目录下的 `backend/services/rules.json`
+
+搭配规则库是搭配推荐引擎的配置核心，定义了服装属性与推荐搭配项的映射关系。当前覆盖 **9 种风格 × 6 种场景 × 3 种版型 × 6 种颜色** 的组合规则。
+
+**规则结构示例**:
+```json
+{
+  "style": { "法式": ["高跟鞋", "小包", "珍珠配饰"] },
+  "scene": { "通勤": ["西装外套", "乐福鞋", "通勤包"] },
+  "fit": { "修身": ["高腰下装"], "宽松": ["修身下装"] },
+  "color": { "黑色": ["浅色包", "银色饰品", "亮色丝巾"] }
+}
+```
+
+**扩展方式**: 直接在 JSON 中添加新的风格/场景/版型/颜色键值对即可，引擎会自动匹配。
+
+### 6. Dify 工作流配置说明
 
 项目中的文案生成功能使用了 **Dify 工作流**，配置文件位于 `dify_workflows/` 目录：
 
@@ -685,6 +802,21 @@ PATH=%PATH%;./test/ovr_lipsync/ffmpeg/bin
 - 生成小红书、抖音、公众号等多平台文案
 - 支持情感分析与语气调整
 - 与数字人语音播报无缝集成
+
+### 7. 数字人运行时配置 (Runtime Config)
+
+数字人的主播风格、语气等个性化设置通过运行时配置系统管理，不在 `config.json` 中直接修改。
+
+**管理接口**: `GET/POST /api/runtime-config/digital-human`
+
+**可配置字段**:
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `persona_style` | `string` | 主播风格: `vtuber_light`(元气主播) / `professional`(专业导购) / `natural`(自然对话) |
+| `temperature` | `float` | LLM 生成温度 (0.3-0.8) |
+| `voice` | `string` | TTS 音色选择 |
+
+**Web 界面管理**: 登录后在 数字人设置页面 可视化调整以上参数。
 
 ### AI服务密钥申请
 
@@ -769,12 +901,21 @@ aigc_e_commerce_team/
 ├── backend/                   # 现代化后端API (重构)
 │   ├── routes/                # API路由定义
 │   ├── services/              # 业务服务层
+│   │   ├── outfit_rules.py    #   搭配规则匹配引擎
+│   │   ├── rules.json         #   搭配规则库 (9风格×6场景×3版型×6颜色)
+│   │   ├── similarity.py      #   相似商品推荐引擎 (TF-IDF + Jaccard)
+│   │   ├── size_recommendation.py  # 尺码推荐引擎
+│   │   ├── sales_strategy.py  #   销售策略 (含 persona_style 三风格)
+│   │   └── ...
 │   ├── adapters/              # AI服务适配器
 │   ├── config/                # 运行时配置
 │   └── schemas/               # 数据模型定义
 ├── frontend/                  # Next.js前端应用
 │   ├── app/                   # App Router页面
 │   ├── components/            # React组件库
+│   │   ├── products/          #   商品管理组件 (含 AI 打标表单)
+│   │   ├── settings/          #   设置页组件 (含数字人设置 digital-human-settings.tsx)
+│   │   └── ...
 │   ├── lib/                   # 工具函数和类型
 │   └── public/                # 静态资源
 ├── gui/                       # 传统Flask GUI (兼容层)
@@ -806,7 +947,10 @@ aigc_e_commerce_team/
 │   └── openai_api/            # OpenAI API兼容层
 ├── dify_workflows/            # Dify工作流配置
 ├── docker/                    # Docker部署配置
-└── docs/                      # 项目文档
+├── docs/                      # 项目文档
+│   ├── 计划/                   #   功能规划文档
+│   └── 变更日志/               #   版本变更记录
+└── ...
 ```
 
 ### 模块扩展指南
@@ -835,6 +979,18 @@ aigc_e_commerce_team/
 3. 修改 `config.json` 中的 `live2d.model` 配置
 4. 添加对应的动作文件到 `frontend/public/runtime/motion/`
 
+#### 5. 扩展搭配规则
+搭配规则集中在 `backend/services/rules.json`，按 JSON 键值对组织：
+- 添加新风格/场景/版型/颜色：直接在对应 key 下追加数组元素
+- 引擎 `outfit_rules.py` 自动遍历所有规则进行匹配
+- 无需修改代码，重启服务即生效
+
+#### 6. 调优相似推荐算法
+- **IDF 权重**：在 `backend/services/similarity.py` 的 `IDF_WEIGHTS` 字典中调整各属性的权重
+- **相似度阈值**：修改 `SIMILARITY_THRESHOLD` (当前默认 0.30)，越高结果越严格
+- **触发词**：修改 `SIMILARITY_TRIGGERS` 列表控制何时激活推荐
+- 测试脚本：`test/test_weighted_sim.py` 可验证调优效果
+
 ### 调试与日志
 
 #### 1. 日志文件位置
@@ -858,6 +1014,7 @@ netstat -ano | findstr :5000
 # 检查Python环境
 python --version
 pip list | findstr torch
+python -m pip check
 
 # 检查前端构建
 cd frontend
@@ -907,16 +1064,34 @@ taskkill /PID <PID> /F
 ```
 
 #### Q2: TTS/ASR 服务启动失败
-**A**: 检查依赖是否安装完整：
+**A**: Qwen3 TTS 与 Qwen3 ASR 使用不同依赖环境，不能安装到同一个
+虚拟环境中。分别检查对应环境的依赖：
 ```powershell
-# 检查关键依赖
-pip list | findstr faster-qwen3-tts
-pip list | findstr qwen-asr
-pip list | findstr modelscope
+# 检查 Qwen3 TTS 环境
+.\.venv-qwen-tts\Scripts\Activate.ps1
+python -m pip list | findstr faster-qwen3-tts
+python -m pip list | findstr qwen-tts
 
-# 重新安装依赖
-pip install --force-reinstall faster-qwen3-tts qwen-asr modelscope
+# 重新安装 Qwen3 TTS 依赖
+python -m pip install -r requirements-qwen-tts.txt
 ```
+
+```powershell
+# 检查 Qwen3 ASR 环境
+.\.venv-qwen-asr\Scripts\Activate.ps1
+python -m pip list | findstr qwen-asr
+
+# 重新安装 Qwen3 ASR 依赖
+python -m pip install -r requirements-qwen-asr.txt
+```
+
+如果 ASR 服务启动时报项目模块导入错误，可在当前终端补充项目根目录到
+`PYTHONPATH` 后重试：
+```powershell
+$env:PYTHONPATH="."
+python .\asr\qwen3_server\server.py
+```
+若终端自动选取了某个虚拟环境激活，可输入“deactivate”来退出
 
 #### Q3: 模型下载缓慢或失败
 **A**: 使用镜像源或手动下载：
