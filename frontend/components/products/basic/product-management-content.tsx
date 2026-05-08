@@ -262,9 +262,21 @@ export default function ProductManagementContent() {
     setFormData((current) => {
       const sizes = current.sizes || []
       const exists = sizes.includes(size)
+      const size_chart = current.size_chart || []
+      if (exists) {
+        return {
+          ...current,
+          sizes: sizes.filter((s) => s !== size),
+          size_chart: size_chart.filter((row) => row.尺码 !== size),
+        }
+      }
+      const newRow: SizeChartRow = {
+        尺码: size, 胸围: "", 腰围: "", 臀围: "", 肩宽: "", 袖长: "", 衣长: "", 建议体重: "",
+      }
       return {
         ...current,
-        sizes: exists ? sizes.filter((s) => s !== size) : [...sizes, size],
+        sizes: [...sizes, size],
+        size_chart: [...size_chart, newRow],
       }
     })
   }
@@ -347,6 +359,18 @@ export default function ProductManagementContent() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
+    const rowsWithoutUnit = (formData.size_chart || []).filter(
+      (row) => row.建议体重 && !/\d\s*(kg|公斤|斤)/i.test(row.建议体重)
+    )
+    if (rowsWithoutUnit.length > 0) {
+      const names = rowsWithoutUnit.map((r) => `“${r.尺码 || "?"}”码`).join("、")
+      const ok = window.confirm(
+        `${names} 的体重建议未标明单位，将默认按 kg（公斤）处理。\n\n提示：数值后可加 "kg"、"公斤" 或 "斤"。`
+      )
+      if (!ok) return
+    }
+
     setIsSubmitting(true)
     setNotice(null)
 
