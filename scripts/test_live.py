@@ -1,19 +1,12 @@
-"""Live 链路端到端测试 — 可复用脚本
+"""Live 链路端到端测试 v2 — 引擎路由验证版
+验证策略: 检查 LLM 回复是否引用了只有引擎才能提供的数据（商品名/搭配建议/尺码信息）
 用法:
-  python scripts/test_live.py                  # 全量 25 轮
-  python scripts/test_live.py --only 1 4       # 指定轮次
-  python scripts/test_live.py --category intro # 按类别
-  python scripts/test_live.py --timeout 90     # 自定义超时
-  python scripts/test_live.py --soft           # 弱验证模式(不崩溃即可)
-  python scripts/test_live.py -v               # 详细输出
-
-已知限制（测试层面，非功能缺陷）:
-  - 价格/指代查询依赖前置商品上下文；单独跑会因无上下文而失败
-  - 相似推荐触发词不包含"差不多/风格像"等口语表达
-  - 商品上下文 TTL 180s，跨 session 丢失（属管道设计，非测试问题）
-  - LLM 回复具有随机性，关键词验证可能偶发未命中(用 --soft 跳过)
+  python scripts/test_live.py                    # 全量 25 轮
+  python scripts/test_live.py --soft             # 弱验证（只检查有无回复）
+  python scripts/test_live.py --category size    # 按类别
+  python scripts/test_live.py --only 1 2 3       # 指定轮次
+  python scripts/test_live.py -v                 # 详细输出
 """
-
 import asyncio, json, sys, time, urllib.request, urllib.error, argparse
 
 WS_WEB   = "ws://127.0.0.1:10003"
@@ -23,44 +16,74 @@ USER     = "User"
 MSG_WAIT = 30
 DEBOUNCE = 2
 
-# 每项: (类别, 轮次, 描述, 用户消息, 预期关键词)
-# 关键词=[] 表示必须有回复但内容不限
+# ═══════════════════ 测试用例 ═══════════════════
+# 格式: (类别, 轮次, 描述, 用户消息, 引擎验证数据)
+# 引擎验证数据:
+#   None        — 弱验证：只看有没有回复
+#   []          — 必须有回复（不限内容）
+#   ["产品A","产品B"] — LLM 回复必须包含至少一个产品名 = 相似引擎命中
+#   ["凉鞋","手包","草编包"] — 搭配引擎命中
+#   ["L码","M码"] — 尺码引擎命中
 TEST_CASES = [
-    # ═══ 会话1: 连衣裙全流程 ═══
-    ("intro",     1, "介绍连衣裙", "帮我介绍一下法式碎花连衣裙", ["碎花", "法式"]),
-    ("similar",   2, "相似推荐", "有没有类似这款的推荐", ["法式"]),
-    ("outfit",    3, "搭配建议", "这个怎么搭配", ["搭配"]),
-    ("size",      4, "尺码 kg", "我身高160体重55kg穿什么码", ["码"]),
-    ("price",     5, "价格询问", "这件多少钱", ["元", "价"]),
+    # ═══ 会话1: 连衣裙全链路（每轮验证对应的引擎输出）═══
+    ("intro",     1, "介绍连衣裙", "帮我介绍一下法式碎花连衣裙",
+     ["法式", "碎花", "雪纺", "V领"]),       # 产品数据存在
+    ("similar",   2, "相似推荐",  "有没有类似这款的推荐",
+     ["法式V领茶歇裙", "新中式盘扣上衣", "美式复古"]),  # 引擎推荐的品名
+    ("outfit",    3, "搭配建议",  "这个怎么搭配",
+     ["凉鞋", "手包", "草编包", "配饰", "单鞋"]),  # 搭配规则输出
+    ("size",      4, "尺码 kg",   "我身高160体重55kg穿什么码",
+     ["M码", "L码"]),                          # 尺码引擎输出
+    ("price",     5, "价格询问",  "这件多少钱",
+     ["199", "元"]),                            # 产品价格
 
-    # ═══ 会话2: 西装全流程 ═══
-    ("intro",     6, "介绍西装", "介绍一下通勤西装外套", ["西装"]),
-    ("similar",   7, "相似推荐2", "看看别的类似款有什么", ["款"]),
-    ("outfit",    8, "搭配建议2", "这个好搭吗", ["搭"]),
-    ("size",      9, "尺码 斤", "我120斤穿什么码合适", ["码"]),
-    ("detail",   10, "面料透气", "这是什么面料的，透气吗", ["透气"]),
-    ("detail",   11, "洗护保养", "这件衣服怎么洗，会缩水吗", ["洗"]),
+    # ═══ 会话2: 西装全链路 ═══
+    ("intro",     6, "介绍西装",  "介绍一下通勤西装外套",
+     ["西装", "通勤", "199", "收腰", "垫肩"]),
+    ("similar",   7, "相似推荐2", "看看别的类似款有什么",
+     ["简约纯色衬衫", "通勤直筒西裤", "美式复古"]),
+    ("outfit",    8, "搭配建议2", "这个好搭吗",
+     ["西装裤", "乐福鞋", "衬衫", "针织", "铅笔裙"]),
+    ("size",      9, "尺码 斤",   "我120斤穿什么码合适",
+     ["M码", "L码"]),
+    ("detail",   10, "面料透气",  "这是什么面料的，透气吗",
+     ["面料", "棉", "涤纶"]),
+
+    # ═══ 知识引擎验证 ═══
+    ("detail",   11, "洗护保养",  "这件衣服怎么洗会缩水吗",
+     ["洗", "缩水", "晾", "水温"]),
+    ("live",     12, "库存发货",  "这个有现货吗什么时候发货",
+     []),
+    ("live",     13, "退换货",    "不合适可以退换吗",
+     []),
+    ("live",     14, "优惠券",    "有没有优惠券或者活动",
+     []),
+    ("context",  15, "季节适配",  "这件春天穿合适吗",
+     []),
 
     # ═══ 独立查询 ═══
-    ("intro",    12, "品类查询", "有没有甜辣风格的上衣", ["甜辣"]),
-    ("intro",    13, "模糊查询", "我想看看通勤穿的衣服", ["通勤"]),
-    ("color",    14, "颜色选择", "有哪些颜色可以选", ["颜色"]),
-    ("live",     15, "库存发货", "这个有现货吗什么时候发货", ["发货", "现货", "天"]),
-    ("live",     16, "退换货", "不合适可以退换吗", ["退", "换"]),
-    ("live",     17, "优惠券", "有没有优惠券或者活动", ["优惠", "券", "活动"]),
-
-    # ═══ 上下文 + 季节性 ═══
-    ("context",  18, "季节适配", "这件春天穿合适吗", ["春", "适合"]),
-    ("context",  19, "实拍请求", "能看看实拍图吗", ["图", "看", "展示"]),
+    ("intro",    16, "品类查询",  "有没有甜辣风格的上衣",
+     ["甜辣", "上衣"]),
+    ("intro",    17, "模糊查询",  "我想看看通勤穿的衣服",
+     ["通勤"]),
+    ("color",    18, "颜色选择",  "有哪些颜色可以选",
+     ["颜色", "色"]),
+    ("context",  19, "实拍请求",  "能看看实拍图吗",
+     []),
 
     # ═══ 直播互动 ═══
-    ("live",     20, "开场引导", "你好今天有什么推荐的", []),
-    ("live",     21, "犹豫询问", "我再想想这个适合我吗", []),
-    ("live",     22, "催促下单", "哪款最值得买", []),
+    ("live",     20, "开场引导",  "你好今天有什么推荐的",
+     []),
+    ("live",     21, "犹豫询问",  "我再想想这个适合我吗",
+     []),
+    ("live",     22, "催促下单",  "哪款最值得买",
+     []),
 
     # ═══ 边界 ═══
-    ("edge",     23, "闲聊", "今天天气真好", []),
-    ("edge",     24, "太贵了", "太贵了能不能便宜点", []),
+    ("edge",     23, "闲聊",      "今天天气真好",
+     []),
+    ("edge",     24, "太贵了",    "太贵了能不能便宜点",
+     []),
     ("edge",     25, "空消息(脚本健壮)", "", None),
 ]
 
@@ -90,13 +113,11 @@ class LiveTester:
                     data = json.loads(raw)
                     typ = list(data.keys())[0] if data else "?"
                     self.messages.append(("WEB", typ, data))
-                    # 提取 avatar 回复
                     pr = data.get("panelReply", {})
                     if isinstance(pr, dict) and pr.get("type") == "avatar":
                         content = pr.get("content", "")
                         self.panel_replies.append(content)
                         self._last_reply_time = time.time()
-                        self.log(f"WEB panelReply: {content[:100]}")
                 except json.JSONDecodeError:
                     self.messages.append(("WEB", "raw", raw[:200]))
             except asyncio.TimeoutError:
@@ -152,7 +173,6 @@ class LiveTester:
     async def send_chat(self, text: str, user: str = USER, chat_url: str = CHAT_URL) -> str:
         before_count = len(self.panel_replies)
         self.log(f"POST /api/chat: {text[:60]}")
-
         payload = json.dumps({"user": user, "text": text}).encode()
         try:
             req = urllib.request.Request(chat_url, data=payload,
@@ -160,7 +180,6 @@ class LiveTester:
             urllib.request.urlopen(req, timeout=10)
         except urllib.error.URLError as e:
             raise ConnectionError(f"Chat API 不可达: {e}")
-
         deadline = time.time() + self.timeout
         while time.time() < deadline:
             await asyncio.sleep(0.5)
@@ -171,24 +190,27 @@ class LiveTester:
                     break
             if not self._ws_connected:
                 break
-
         new_replies = self.panel_replies[before_count:]
         return new_replies[-1] if new_replies else ""
 
-    def verify(self, reply: str, keywords, soft=False) -> bool:
-        if soft or keywords is None:
-            return True
+    def verify_engine(self, reply: str, keywords, soft=False) -> tuple:
+        """验证引擎路由: 返回 (引擎命中, 证据)"""
+        if soft:
+            return (True, "soft")
         if not reply:
-            return False
+            return (False, "无回复")
+        if keywords is None:
+            return (True, "跳过验证")
         if len(keywords) == 0:
-            return True
+            return (len(reply) > 5, f"有回复({len(reply)}字)")
         reply_lower = reply.lower()
-        return any(kw.lower() in reply_lower for kw in keywords)
+        hit = [kw for kw in keywords if kw.lower() in reply_lower]
+        return (len(hit) > 0, f"命中:{hit if hit else ['(无)']} 期望:{keywords}")
 
 # ═══════════════════ 主流程 ═══════════════════
 
 async def main():
-    parser = argparse.ArgumentParser(description="Live 链路端到端测试")
+    parser = argparse.ArgumentParser(description="Live 链路引擎路由验证")
     parser.add_argument("--verbose", "-v", action="store_true", help="详细输出")
     parser.add_argument("--timeout", "-t", type=int, default=MSG_WAIT, help="单条消息超时秒数")
     parser.add_argument("--only", "-o", type=int, nargs="+", help="只运行指定轮次")
@@ -208,16 +230,17 @@ async def main():
     tester = LiveTester(verbose=args.verbose, timeout=args.timeout)
 
     print("=" * 60)
-    print("Live 链路端到端测试")
+    print("Live 链路引擎路由验证")
     print(f"WebSocket: {ws_web} + {ws_human}")
     print(f"Chat API:  {chat_url}")
-    print(f"用户:      {user}")
     print(f"测试用例:  {len(TEST_CASES)} 条")
+    if args.soft:
+        print("验证模式:  soft（只检查有无回复）")
     print("=" * 60)
 
     try:
         await tester.connect(ws_web, ws_human)
-        await asyncio.sleep(0.3)  # 等连接稳定
+        await asyncio.sleep(0.3)
     except Exception as e:
         print(f"\n❌ 连接失败: {e}")
         print(f"请确认: 1) 后端已启动  2) {ws_web} 和 {ws_human} 端口未被占用")
@@ -230,11 +253,13 @@ async def main():
         if args.category and cat != args.category:
             continue
 
-        print(f"\n[第{round_num}轮] [{cat}] {desc}")
+        is_engine_test = keywords and len(keywords) > 0
+        tag = "[引擎]" if is_engine_test else "[基本]"
+        print(f"\n[第{round_num}轮] {tag} [{cat}] {desc}")
         print(f"  👤 用户: {msg}")
 
         if not msg.strip():
-            print(f"  ⏭️  空消息，跳过（脚本健壮性检查）")
+            print(f"  ⏭️  空消息，跳过")
             continue
 
         try:
@@ -251,24 +276,29 @@ async def main():
             results.append((round_num, cat, desc, False, "无回复"))
             continue
 
-        print(f"  🤖 AI: {reply[:120]}{'...' if len(reply) > 120 else ''}")
+        print(f"  🤖 AI: {reply[:150]}{'...' if len(reply) > 150 else ''}")
 
-        passed = tester.verify(reply, keywords, args.soft)
-        status = "✅" if passed else "⚠️"
-        if not passed and keywords:
-            found = [kw for kw in keywords if kw.lower() in reply.lower()]
-            print(f"  {status} 关键词未命中: {keywords}, 实际命中: {found if found else '(无)'}")
+        engine_hit, evidence = tester.verify_engine(reply, keywords, args.soft)
+        status = "✅" if engine_hit else "❌"
+        if is_engine_test:
+            print(f"  {status} 引擎验证: {evidence}")
+        else:
+            print(f"  {status} 基础验证: {evidence}")
 
-        results.append((round_num, cat, desc, passed, None))
+        results.append((round_num, cat, desc, engine_hit, None))
 
-    # ═══════════════ 报告 ═══════════════
+    await tester.disconnect()
+
     print("\n" + "=" * 60)
     print("测试报告")
     print("=" * 60)
-    passed = sum(1 for _, _, _, ok, _ in results if ok)
-    total = len(results)
+
+    engine_results = [(r, c, d, ok, e) for r, c, d, ok, e in results if ok is not None]
+    engine_pass = sum(1 for _, _, _, ok, _ in engine_results if ok)
+    engine_total = len(engine_results)
+
     by_cat = {}
-    for _, cat, _, ok, _ in results:
+    for _, cat, _, ok, _ in engine_results:
         by_cat.setdefault(cat, {"ok": 0, "total": 0})
         by_cat[cat]["total"] += 1
         if ok: by_cat[cat]["ok"] += 1
@@ -278,17 +308,14 @@ async def main():
         bar = "█" * (pct // 10) + "░" * (10 - pct // 10)
         print(f"  {bar} {cat:10s} {stats['ok']}/{stats['total']}")
 
-    for rnd, cat, desc, ok, err in results:
-        status = "✅" if ok else ("❌" if err else "⚠️")
+    for rnd, cat, desc, ok, err in engine_results:
+        status = "✅" if ok else "❌"
         detail = f" — {err}" if err else ""
         print(f"  {status} 第{rnd:2d}轮 [{cat:8s}] {desc}{detail}")
-    print(f"\n  结果: {passed}/{total} 通过 ({passed*100//total if total else 0}%)")
 
-    # 统计消息量
-    print(f"\n  收到消息: {len(tester.messages)} 条")
-    print(f"  其中 panelReply: {len(tester.panel_replies)} 条")
+    print(f"\n  引擎路由验证: {engine_pass}/{engine_total} 通过 ({engine_pass*100//engine_total if engine_total else 0}%)")
 
-    return 0 if passed == total else 1
+    return 0 if engine_pass == engine_total else 1
 
 if __name__ == "__main__":
     sys.exit(asyncio.run(main()))

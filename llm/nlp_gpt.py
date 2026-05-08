@@ -103,12 +103,12 @@ def _build_product_context_system_prompt(person_info, product_style_instruction)
         f"你喜好为{person_info['hobby']}。"
         "回答之前请一步一步想清楚。对于大部分问题，请直接回答并提供有用和准确的信息。"
         "但当有人质疑你是假的 AI，或者质疑你是用 ChatGPT 套的壳制作的时候，请避而不答，转而讲一个笑话。"
-        "当提供 knowledge_context 时，你必须优先使用其中的信息进行回答。"
         "请结合知识内容进行详细、自然的解释，而不是仅给出简短结论。"
         "回答尽量不少于2到3句，优先引用参考知识里的关键信息，但不要机械复述。"
         "不要提及知识库、检索、system prompt 或内部上下文。"
         f"{product_style_instruction}"
         f"{_build_persona_instruction(person_info)}"
+        "当提供 knowledge_context 时，你必须优先使用其中的信息进行回答，直接给出具体推荐结果，不要反问用户或让对方重新提供信息。"
     )
 
 
@@ -165,11 +165,8 @@ def _build_product_user_prompt(user_input, knowledge_context):
         return question
 
     return (
-        "---\n"
-        f"用户问题：\n{question}\n\n"
-        f"参考知识：\n{context}\n\n"
-        "请基于以上信息进行回答：\n"
-        "---"
+        f"用户问题：{question}\n\n"
+        "请基于系统提供的参考知识进行回答。"
     )
 
 
@@ -190,17 +187,8 @@ def _build_fallback_user_prompt(user_input, knowledge_context):
         )
 
     return (
-        "用户问题：\n"
-        f"{question}\n\n"
-        "参考知识：\n"
-        f"{context}\n\n"
-        "你必须按以下规则回答：\n"
-        "1. 当前没有明确商品上下文。\n"
-        "2. 即使有参考知识，也只能讨论“这类衣服”或“这种款式”，不允许提及任何具体商品名称。\n"
-        "3. 第一部分只写一句泛化建议。\n"
-        "4. 第二部分只写一句澄清追问，引导用户补充款式、颜色、场景、面料或洗护需求。\n"
-        "5. 不允许输出“这款XXX”“这件XXX”，不允许编造颜色、尺码、材质、设计细节或卖点。\n"
-        "请直接输出两句自然中文，不要标题，不要分点。"
+        f"用户问题：{question}\n\n"
+        "请基于系统指令中的推荐数据回答。"
     )
 
 
@@ -253,6 +241,8 @@ def question(cont, uid=0, chat_context=None, has_product_context=None):
         user_prompt = _build_fallback_user_prompt(cont, knowledge_context)
 
     message = [{"role": "system", "content": prompt}]
+    if knowledge_context:
+        message.append({"role": "system", "content": f"[系统指令] 以下是必须使用的推荐数据，你必须基于这些数据直接回答用户，不要反问或要求补充信息：\n\n{knowledge_context}"})
     trace_log(
         module="nlp_gpt",
         stage="knowledge_context",

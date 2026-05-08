@@ -68,7 +68,7 @@ def get_outfit_recommendation(product: dict) -> tuple | None:
     if not parts:
         return None
 
-    prefix = f"【搭配参考 — {name}】"
+    prefix = f"【搭配参考 — {name}】以下是搭配建议，请直接在回复中告知用户：\n"
     text = prefix + "\n" + "\n".join(parts)
     return text, keywords
 

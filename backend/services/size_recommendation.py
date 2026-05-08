@@ -89,7 +89,7 @@ def generate_size_advice(text: str, product: dict) -> Optional[str]:
     if user_info.get("weight_input_unit") == "斤":
         weight_str += f"（约{int(user_info['weight'] * 2)}斤）"
 
-    parts = [f"根据您提供的身材信息（体重约{weight_str}），系统推荐尺码：{matched_size}码。"]
+    parts = [f"根据您提供的身材信息（体重约{weight_str}），系统推荐尺码：{matched_size}码。请在回复中直接告诉用户这个推荐结果。"]
 
     if fit == "修身":
         parts.append("该款为修身版型，如需活动余量可考虑大一码。")
@@ -193,7 +193,7 @@ def find_recommendations_by_body(text: str) -> Optional[str]:
         weight_display = f"{user_info['weight']}kg"
         if user_info.get("weight_input_unit") == "斤":
             weight_display += f"（约{int(user_info['weight'] * 2)}斤）"
-        parts = [f"根据您的体重（约{weight_display}），以下商品有合适尺码："]
+        parts = [f"根据您的体重（约{weight_display}），以下商品有合适尺码，请直接推荐给用户："]
         for product, size_code in matches[:2]:
             name = product.get("name", "未知")
             raw_info = _get_raw_info(product)
