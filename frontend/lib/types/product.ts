@@ -7,6 +7,11 @@ export interface SizeChartRow {
   袖长: number | ""
   衣长: number | ""
   建议体重: string
+  裤长: number | ""
+  裙长: number | ""
+  大腿围: number | ""
+  小腿围: number | ""
+  建议身高: string
 }
 
 export interface Product {
