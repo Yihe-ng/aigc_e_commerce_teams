@@ -58,11 +58,11 @@ export default function ProductManagementContent() {
 
   const categories: Category[] = useMemo(
     () => [
-      { key: "服装", label: "服装" },
-      { key: "电子产品", label: "电子产品" },
-      { key: "食品", label: "食品" },
-      { key: "美妆", label: "美妆" },
-      { key: "其他", label: "其他" },
+      { key: "上衣", label: "上衣" },
+      { key: "外套", label: "外套" },
+      { key: "裤装", label: "裤装" },
+      { key: "半身裙", label: "半身裙" },
+      { key: "连衣裙", label: "连衣裙" },
     ],
     [],
   )
@@ -201,13 +201,25 @@ export default function ProductManagementContent() {
       const product = await fetchProductDetail(id)
 
       const sizeChartRecord = product.size_chart || {}
-      const sizeChartArray: SizeChartRow[] = Object.values(sizeChartRecord)
-      const storedSizes = product.sizes || []
-      const sizes = storedSizes.length > 0 ? storedSizes : Object.keys(sizeChartRecord)
+      const DEFAULT_DIMS = { 尺码: "", 胸围: "", 腰围: "", 臀围: "", 肩宽: "", 袖长: "", 衣长: "", 建议体重: "", 裤长: "", 裙长: "", 大腿围: "", 小腿围: "", 建议身高: "" }
+      const sizeChartArray: SizeChartRow[] = Object.entries(sizeChartRecord).map(([code, dims]) => ({
+        ...DEFAULT_DIMS,
+        ...(dims as SizeChartRow),
+        尺码: code.toUpperCase(),
+      }))
+      const storedSizes = (product.sizes || []).map((s: string) => s.toUpperCase())
+      const sizes = storedSizes.length > 0 ? storedSizes : Object.keys(sizeChartRecord).map((k) => k.toUpperCase())
+
+      const OLD_CATEGORY_MAP: Record<string, string> = {
+        "服装": "上衣", "电子产品": "", "食品": "", "美妆": "",
+      }
+      const category = OLD_CATEGORY_MAP[product.category] ?? product.category ?? ""
 
       setFormData({
         name: product.name || "",
-        category: product.category || "",
+        category,
+
+
         price: product.price ? String(product.price) : "",
         features: Array.isArray(product.features) ? product.features.join("\n") : product.features || "",
         description: product.description || "",
@@ -262,9 +274,21 @@ export default function ProductManagementContent() {
     setFormData((current) => {
       const sizes = current.sizes || []
       const exists = sizes.includes(size)
+      const size_chart = current.size_chart || []
+      if (exists) {
+        return {
+          ...current,
+          sizes: sizes.filter((s) => s !== size),
+          size_chart: size_chart.filter((row) => row.尺码 !== size),
+        }
+      }
+      const newRow: SizeChartRow = {
+        尺码: size, 胸围: "", 腰围: "", 臀围: "", 肩宽: "", 袖长: "", 衣长: "", 建议体重: "", 裤长: "", 裙长: "", 大腿围: "", 小腿围: "", 建议身高: "",
+      }
       return {
         ...current,
-        sizes: exists ? sizes.filter((s) => s !== size) : [...sizes, size],
+        sizes: [...sizes, size],
+        size_chart: [...size_chart, newRow],
       }
     })
   }
@@ -347,6 +371,18 @@ export default function ProductManagementContent() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
+    const rowsWithoutUnit = (formData.size_chart || []).filter(
+      (row) => row.建议体重 && !/\d\s*(kg|公斤|斤)/i.test(row.建议体重)
+    )
+    if (rowsWithoutUnit.length > 0) {
+      const names = rowsWithoutUnit.map((r) => `“${r.尺码 || "?"}”码`).join("、")
+      const ok = window.confirm(
+        `${names} 的体重建议未标明单位，将默认按 kg（公斤）处理。\n\n提示：数值后可加 "kg"、"公斤" 或 "斤"。`
+      )
+      if (!ok) return
+    }
+
     setIsSubmitting(true)
     setNotice(null)
 
@@ -367,13 +403,14 @@ export default function ProductManagementContent() {
       const sizeChartRecord: Record<string, SizeChartRow> = {}
       for (const row of formData.size_chart) {
         if (row.尺码) {
-          sizeChartRecord[row.尺码] = row
+          const normalizedSize = row.尺码.toUpperCase()
+          sizeChartRecord[normalizedSize] = { ...row, 尺码: normalizedSize }
         }
       }
 
       const finalSizes = formData.sizes.length > 0
-        ? formData.sizes
-        : formData.size_chart.filter((r) => r.尺码).map((r) => r.尺码)
+        ? formData.sizes.map((s) => s.toUpperCase())
+        : formData.size_chart.filter((r) => r.尺码).map((r) => r.尺码.toUpperCase())
 
       const payload = {
         name: formData.name,

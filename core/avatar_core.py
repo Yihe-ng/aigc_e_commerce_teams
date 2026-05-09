@@ -114,7 +114,7 @@ def get_guide_identity_reply(text: str) -> str:
 
 
 ENABLE_RECENT_PRODUCT_CONTEXT = True
-_RECENT_PRODUCT_CONTEXT_TTL_SECONDS = 180
+_RECENT_PRODUCT_CONTEXT_TTL_SECONDS = 300
 _RECENT_PRODUCT_CONTEXT_BY_USER = {}
 _RECENT_PRODUCT_CONTEXT_LOCK = threading.RLock()
 _CANDIDATE_SELECTION_BYPASS_TERMS = (
@@ -546,7 +546,7 @@ class FeiFei:
                             except Exception:
                                 pass
                         if has_product_context and intro_resolution.get("matched_product"):
-                            _sim_triggers = ("相似", "类似", "推荐", "还有", "同款", "看看别的")
+                            _sim_triggers = ("相似", "类似", "推荐", "还有", "同款", "看看别的", "差不多", "风格像", "差不多款")
                             if any(kw in original_msg for kw in _sim_triggers):
                                 try:
                                     from backend.services.similarity import build_similarity_context

@@ -34,11 +34,14 @@ def parse_user_body_info(text: str) -> Optional[dict]:
         weight_match = re.search(r"我?\s*(\d{2,3})\s*(?:斤|kg|公斤|重)?", content)
     if weight_match:
         w = int(weight_match.group(1))
-        if 30 <= w <= 200:
+        if 25 <= w <= 150:
             match_text = weight_match.group(0)
-            if "kg" in match_text or "公斤" in match_text:
-                w = w * 2
+            is_jin = "斤" in match_text and "kg" not in match_text and "公斤" not in match_text
+            if is_jin:
+                w = w / 2
+            w = int(w) if w == int(w) else w
             info["weight"] = w
+            info["weight_input_unit"] = "斤" if is_jin else "kg"
 
     return info if info else None
 
@@ -46,9 +49,14 @@ def parse_user_body_info(text: str) -> Optional[dict]:
 def _parse_weight_range(weight_str: str) -> tuple:
     weight_str = str(weight_str or "").strip()
     nums = re.findall(r"(\d+)", weight_str)
-    if len(nums) >= 2:
-        return int(nums[0]), int(nums[1])
-    return None, None
+    if len(nums) < 2:
+        return None, None
+    w_min, w_max = int(nums[0]), int(nums[1])
+    is_kg = "kg" in weight_str.lower() or "公斤" in weight_str
+    is_jin = "斤" in weight_str and not is_kg
+    if is_jin:
+        w_min, w_max = w_min / 2, w_max / 2
+    return w_min, w_max
 
 
 def generate_size_advice(text: str, product: dict) -> Optional[str]:
@@ -77,7 +85,11 @@ def generate_size_advice(text: str, product: dict) -> Optional[str]:
     if not matched_size:
         return None
 
-    parts = [f"根据您提供的身材信息（体重约{user_info['weight']}斤），系统推荐尺码：{matched_size}码。"]
+    weight_str = f"{user_info['weight']}kg"
+    if user_info.get("weight_input_unit") == "斤":
+        weight_str += f"（约{int(user_info['weight'] * 2)}斤）"
+
+    parts = [f"根据您提供的身材信息（体重约{weight_str}），系统推荐尺码：{matched_size}码。请在回复中直接告诉用户这个推荐结果。"]
 
     if fit == "修身":
         parts.append("该款为修身版型，如需活动余量可考虑大一码。")
@@ -126,12 +138,20 @@ def find_recommendations_by_body(text: str) -> Optional[str]:
                     matches.append(product)
                 elif body_type == "小个子":
                     size_chart = _get_size_chart_from_raw(raw_info)
+                    found_petite = False
                     for dims in size_chart.values():
-                        if isinstance(dims, dict) and dims.get("衣长", 0):
-                            length = int(str(dims.get("衣长", "0")).replace("cm", "").strip() or "0")
-                            if length and length <= 70:
-                                matches.append(product)
-                                break
+                        if not isinstance(dims, dict):
+                            continue
+                        for length_field in ("衣长", "裤长", "裙长"):
+                            val = dims.get(length_field, 0)
+                            if val:
+                                length = int(str(val).replace("cm", "").strip() or "0")
+                                if length and length <= 70:
+                                    matches.append(product)
+                                    found_petite = True
+                                    break
+                        if found_petite:
+                            break
             if matches:
                 parts = ["根据您的体型，以下商品可能有合适的尺码："]
                 for product in matches[:2]:
@@ -170,7 +190,10 @@ def find_recommendations_by_body(text: str) -> Optional[str]:
                     matches.append((product, size_code))
                     break
     if matches:
-        parts = [f"根据您的体重（约{user_info['weight']}斤），以下商品有合适尺码："]
+        weight_display = f"{user_info['weight']}kg"
+        if user_info.get("weight_input_unit") == "斤":
+            weight_display += f"（约{int(user_info['weight'] * 2)}斤）"
+        parts = [f"根据您的体重（约{weight_display}），以下商品有合适尺码，请直接推荐给用户："]
         for product, size_code in matches[:2]:
             name = product.get("name", "未知")
             raw_info = _get_raw_info(product)
@@ -182,7 +205,7 @@ def find_recommendations_by_body(text: str) -> Optional[str]:
             parts.append(f"- {name} | 推荐{size_code}码 | 价格{price}{weight_part}")
         body_type = parse_body_type(text)
         if body_type:
-            body_advice = {"梨形": "优先关注臀围和腰围数据", "肩宽": "优先关注肩宽数据", "小个子": "优先关注衣长数据"}.get(body_type, "")
+            body_advice = {"梨形": "优先关注臀围和腰围数据", "肩宽": "优先关注肩宽数据", "小个子": "优先关注衣长/裤长/裙长数据"}.get(body_type, "")
             if body_advice:
                 parts.append(f"体型建议：{body_advice}")
         parts.append("请优先基于以上商品与尺码回答，不要编造额外尺码信息。")

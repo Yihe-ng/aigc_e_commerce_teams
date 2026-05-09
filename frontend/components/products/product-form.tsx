@@ -7,6 +7,21 @@ import { Edit, PlusCircle, RotateCcw, Save, Sparkles, Trash2, UploadCloud, X } f
 import type { Category, ProductFormValue, SizeChartRow } from "@/lib/types/product"
 import { ImageCarousel } from "./image-carousel"
 
+type MeasurementField = Exclude<keyof SizeChartRow, "尺码" | "建议体重" | "建议身高">
+
+const CATEGORY_SIZE_FIELDS: Record<string, readonly MeasurementField[]> = {
+  "上衣": ["胸围", "腰围", "肩宽", "袖长", "衣长"],
+  "外套": ["胸围", "腰围", "肩宽", "袖长", "衣长"],
+  "裤装": ["腰围", "臀围", "裤长", "大腿围", "小腿围"],
+  "半身裙": ["腰围", "臀围", "裙长"],
+  "连衣裙": ["胸围", "腰围", "臀围", "肩宽", "袖长", "衣长"],
+}
+
+const FALLBACK_SIZE_FIELDS: readonly MeasurementField[] = ["胸围", "腰围", "臀围", "肩宽", "袖长", "衣长"]
+
+const RENDER_FIELDS = (category: string): readonly MeasurementField[] =>
+  CATEGORY_SIZE_FIELDS[category] ?? FALLBACK_SIZE_FIELDS
+
 interface PreviewImage {
   file: File
   url: string
@@ -461,20 +476,18 @@ export default function ProductForm(props: ProductFormProps) {
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/80">
                       <th className="px-2 py-2 text-left font-semibold text-gray-600 dark:text-slate-400">尺码</th>
-                      <th className="px-2 py-2 text-left font-semibold text-gray-600 dark:text-slate-400">胸围</th>
-                      <th className="px-2 py-2 text-left font-semibold text-gray-600 dark:text-slate-400">腰围</th>
-                      <th className="px-2 py-2 text-left font-semibold text-gray-600 dark:text-slate-400">臀围</th>
-                      <th className="px-2 py-2 text-left font-semibold text-gray-600 dark:text-slate-400">肩宽</th>
-                      <th className="px-2 py-2 text-left font-semibold text-gray-600 dark:text-slate-400">袖长</th>
-                      <th className="px-2 py-2 text-left font-semibold text-gray-600 dark:text-slate-400">衣长</th>
+                      {RENDER_FIELDS(formData.category).map((field) => (
+                        <th key={field} className="px-2 py-2 text-left font-semibold text-gray-600 dark:text-slate-400">{field}</th>
+                      ))}
                       <th className="px-2 py-2 text-left font-semibold text-gray-600 dark:text-slate-400">建议体重</th>
+                      <th className="px-2 py-2 text-left font-semibold text-gray-600 dark:text-slate-400">建议身高</th>
                       <th className="w-8 px-1 py-2"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {(formData.size_chart || []).map((row, index) => (
                       <tr
-                        key={`${row.尺码 || "new"}-${index}`}
+                        key={row.尺码 || `_new_${index}`}
                         className="border-b border-gray-100 last:border-0 dark:border-slate-700/50"
                       >
                         <td className="px-2 py-1">
@@ -484,7 +497,7 @@ export default function ProductForm(props: ProductFormProps) {
                               className="text-xs h-7"
                               onChange={(e) => {
                               const updated = [...formData.size_chart]
-                              updated[index] = { ...row, 尺码: e.target.value }
+                              updated[index] = { ...row, 尺码: e.target.value.toUpperCase() }
                               const existingSizes = new Set(updated.map((r) => r.尺码).filter(Boolean))
                               const syncSizes = ["S", "M", "L", "XL", "XXL", "均码"].filter((s) => existingSizes.has(s))
                               const sizes = formData.sizes || []
@@ -498,7 +511,7 @@ export default function ProductForm(props: ProductFormProps) {
                             }}
                           />
                         </td>
-                        {(["胸围", "腰围", "臀围", "肩宽", "袖长", "衣长"] as const).map((field) => (
+                        {RENDER_FIELDS(formData.category).map((field) => (
                           <td key={field} className="px-2 py-1">
                               <Input
                                 type="number"
@@ -522,6 +535,18 @@ export default function ProductForm(props: ProductFormProps) {
                             onChange={(e) => {
                               const updated = [...formData.size_chart]
                               updated[index] = { ...row, 建议体重: e.target.value }
+                              onSizeChartChange(updated)
+                            }}
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                            <Input
+                              value={row.建议身高 || ""}
+                              placeholder="如：160-170cm"
+                              className="text-xs h-7"
+                            onChange={(e) => {
+                              const updated = [...formData.size_chart]
+                              updated[index] = { ...row, 建议身高: e.target.value }
                               onSizeChartChange(updated)
                             }}
                           />
@@ -555,6 +580,11 @@ export default function ProductForm(props: ProductFormProps) {
                     袖长: "",
                     衣长: "",
                     建议体重: "",
+                    裤长: "",
+                    裙长: "",
+                    大腿围: "",
+                    小腿围: "",
+                    建议身高: "",
                   }
                   onSizeChartChange([...(formData.size_chart || []), newRow])
                 }}

@@ -96,7 +96,7 @@ def build_similarity_context(current_product: dict, all_products: list[dict]) ->
         style_str = f" · {style}" if style else ""
         parts.append(f"- {name}{style_str}{price_str}")
 
-    parts.append("请自然地在回答中向用户提及以上相似商品，但不要生硬罗列。")
+    parts.append("请务必在回答中向用户推荐以上相似商品，直接给出具体品名和价格，不要反问用户。")
     return "\n".join(parts)
 
 
